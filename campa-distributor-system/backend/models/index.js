@@ -3,24 +3,23 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-console.log('Environment:', process.env.NODE_ENV);
-console.log('Database URL configured:', process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/:[^:@]*@/, ':****@') : 'NOT SET');
-
-const isProduction = process.env.NODE_ENV === 'production';
-const config = {
-    dialect: 'postgres',
-    logging: false,
-    dialectOptions: {}
-};
-
-if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')) {
-    config.dialectOptions.ssl = {
-        require: true,
-        rejectUnauthorized: false
-    };
+if (!process.env.DATABASE_URL) {
+    console.error('Error: DATABASE_URL environment variable is missing.');
+    // We don't exit here to allow for some flexibility or let the crash happen at connection time,
+    // but the user asked for a clear log message.
 }
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, config);
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    protocol: 'postgres',
+    logging: false,
+    dialectOptions: {
+        ssl: {
+            require: true,
+            rejectUnauthorized: false
+        }
+    }
+});
 
 const db = {};
 
