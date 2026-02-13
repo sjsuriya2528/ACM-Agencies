@@ -9,17 +9,28 @@ if (!process.env.DATABASE_URL) {
     // but the user asked for a clear log message.
 }
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
+const config = {
     dialect: 'postgres',
     protocol: 'postgres',
     logging: false,
-    dialectOptions: {
-        ssl: {
+    dialectOptions: {}
+};
+
+if (process.env.DATABASE_URL) {
+    if (!process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1')) {
+        config.dialectOptions.ssl = {
             require: true,
             rejectUnauthorized: false
-        }
+        };
     }
-});
+} else {
+    console.error('CRITICAL ERROR: DATABASE_URL environment variable is NOT set.');
+}
+
+const sequelize = process.env.DATABASE_URL
+    ? new Sequelize(process.env.DATABASE_URL, config)
+    : new Sequelize({ dialect: 'postgres' }); // Fallback dummy to prevent immediate crash on require, will fail on sync
+
 
 const db = {};
 
