@@ -3,6 +3,9 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Database URL configured:', process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/:[^:@]*@/, ':****@') : 'NOT SET');
+
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     logging: false,
