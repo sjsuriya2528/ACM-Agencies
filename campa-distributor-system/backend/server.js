@@ -35,14 +35,19 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/invoices', require('./routes/invoiceRoutes'));
 
 // Database Connection & Sync
-db.sequelize.sync({ force: false }) // Set force: true to drop tables and recreate
-  .then(() => {
-    console.log('Database connected and synced');
-    // Start Server only after DB sync
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+// Database Connection & Sync
+if (require.main === module) {
+  db.sequelize.sync({ force: false }) // Set force: true to drop tables and recreate
+    .then(() => {
+      console.log('Database connected and synced');
+      // Start Server only after DB sync
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    })
+    .catch(err => {
+      console.error('Error syncing database:', err);
     });
-  })
-  .catch(err => {
-    console.error('Error syncing database:', err);
-  });
+}
+
+module.exports = app;
