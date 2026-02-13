@@ -1,4 +1,5 @@
 const { Sequelize } = require('sequelize');
+const pg = require('pg');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -12,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 const config = {
     dialect: 'postgres',
     protocol: 'postgres',
-    dialectModule: require('pg'), // Force 'pg' module for Vercel/Serverless
+    dialectModule: pg, // Force 'pg' module for Vercel/Serverless
     logging: false,
     dialectOptions: {}
 };
