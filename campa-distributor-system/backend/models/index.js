@@ -12,6 +12,7 @@ if (!process.env.DATABASE_URL) {
 const config = {
     dialect: 'postgres',
     protocol: 'postgres',
+    dialectModule: require('pg'), // Force 'pg' module for Vercel/Serverless
     logging: false,
     dialectOptions: {}
 };
