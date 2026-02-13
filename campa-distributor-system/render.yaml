@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: campa-backend
+    env: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    fromDatabase:
+      name: campa-db
+      property: connectionString
+
+databases:
+  - name: campa-db
+    plan: free
+    region: singapore
+    databaseName: campa_db
+    user: campa_user
+
+version: "1"
