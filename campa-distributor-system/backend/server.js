@@ -32,6 +32,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/invoices', require('./routes/invoiceRoutes'));
 
 // Database Connection & Sync
 db.sequelize.sync({ force: false }) // Set force: true to drop tables and recreate
