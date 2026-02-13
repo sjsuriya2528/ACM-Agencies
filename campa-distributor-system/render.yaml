@@ -13,7 +13,7 @@ services:
       - key: PORT
         value: 10000
     fromDatabase:
-      name: campa-db
+      name: campa_db
       property: connectionString
 
 databases:
