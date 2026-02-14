@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 const Sidebar = () => {
+    const { logout } = useContext(AuthContext);
+
     return (
         <div className="w-64 h-screen bg-gray-800 text-white flex flex-col">
             <div className="p-4 text-2xl font-bold">Campa Admin</div>
@@ -9,14 +12,17 @@ const Sidebar = () => {
                 <Link to="/" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
                     Dashboard
                 </Link>
-                <Link to="/orders" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
-                    Orders
-                </Link>
                 <Link to="/products" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
                     Products
                 </Link>
                 <Link to="/retailers" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
                     Retailers
+                </Link>
+                <Link to="/users" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                    Users
+                </Link>
+                <Link to="/orders" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                    Orders
                 </Link>
                 <Link to="/deliveries" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
                     Deliveries
@@ -28,7 +34,7 @@ const Sidebar = () => {
             <div className="p-4">
                 <button
                     onClick={() => {
-                        localStorage.removeItem('token');
+                        logout();
                         window.location.href = '/login';
                     }}
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"

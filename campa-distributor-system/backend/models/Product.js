@@ -18,8 +18,12 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
         gstPercentage: {
-            type: DataTypes.FLOAT,
-            defaultValue: 18.0,
+            type: DataTypes.DECIMAL(5, 2),
+            defaultValue: 18.00,
+        },
+        hsnCode: {
+            type: DataTypes.STRING,
+            comment: 'HSN Code for GST',
         },
         stockQuantity: {
             type: DataTypes.INTEGER,

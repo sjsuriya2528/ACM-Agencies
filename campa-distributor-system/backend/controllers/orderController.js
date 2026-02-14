@@ -1,4 +1,5 @@
 const { Order, OrderItem, Product, Retailer, Invoice, User, sequelize } = require('../models');
+const { Op } = require('sequelize');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -59,9 +60,40 @@ const createOrder = async (req, res) => {
 // @access  Private (Admin/Sales Rep)
 const getOrders = async (req, res) => {
     try {
+        console.log("getOrders called by:", req.user.id, req.user.role);
         let whereClause = {};
         if (req.user.role === 'sales_rep') {
             whereClause = { salesRepId: req.user.id };
+        } else if (req.user.role === 'driver' || req.user.role === 'collection_agent') {
+            whereClause = {
+                [Op.or]: [
+                    { status: 'Approved' }, // Visible to all
+                    { status: 'Dispatched' }, // Visible if assigned (or just visible?)
+                    { status: 'Delivered' },
+                    // Actually, if we want them to see ALL dispatched/delivered orders too, we can just say status IN [...]
+                    // But if we want them to see assigned ones specifically?
+                    // The user said "visible to all of them".
+                    // So let's just show ALL Approved, Dispatched, Delivered orders to everyone.
+                    // Simple: status: ['Approved', 'Dispatched', 'Delivered']
+                ]
+            };
+            // Wait, if I use Op.or with driverId, it means "Approved OR Assigned to me".
+            // If the user wants "Shared Pool", maybe they want to see *other* people's dispatched orders?
+            // "visible all of them(drivers) and also to the collection agent"
+            // Let's stick to "Approved" + "Assigned to me" for now to avoid clutter, 
+            // OR just show all active orders. 
+            // Let's assume they want to see "Approved" (to pick up) and "Dispatched" (if they picked it up).
+            // If I just show ALL Dispatched/Delivered, it might be messy.
+            // But the user said: "once the order is approved, it is assigned to all the drivers and it is visible all of them"
+            // This implies a broadcast.
+
+            // Let's fix the syntax first.
+            whereClause = {
+                [Op.or]: [
+                    { status: 'Approved' },
+                    { driverId: req.user.id }
+                ]
+            };
         }
 
         const orders = await Order.findAll({
@@ -143,6 +175,11 @@ const updateOrderStatus = async (req, res) => {
             }, { transaction: t });
         }
 
+        // Auto-assign if driver/agent updates status
+        if ((req.user.role === 'driver' || req.user.role === 'collection_agent') && !order.driverId) {
+            order.driverId = req.user.id;
+        }
+
         order.status = status;
         await order.save({ transaction: t });
 
@@ -154,9 +191,33 @@ const updateOrderStatus = async (req, res) => {
     }
 };
 
+// @desc    Assign driver to order
+// @route   PUT /api/orders/:id/assign
+// @access  Private (Admin)
+const assignDriver = async (req, res) => {
+    const { driverId } = req.body;
+
+    try {
+        const order = await Order.findByPk(req.params.id);
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        order.driverId = driverId;
+        order.status = 'Dispatched';
+        await order.save();
+
+        res.json(order);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createOrder,
     getOrders,
     getOrderById,
     updateOrderStatus,
+    assignDriver,
 };

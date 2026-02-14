@@ -17,6 +17,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             comment: 'For UPI/Bank Transfer',
         },
+        paymentReference: {
+            type: DataTypes.STRING,
+            comment: 'Cheque No, UPI Ref, etc.',
+        },
         paymentDate: {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW,

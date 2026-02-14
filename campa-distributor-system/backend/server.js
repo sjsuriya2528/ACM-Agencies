@@ -16,7 +16,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'http://localhost:5177'
+  ],
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -58,7 +68,8 @@ app.use('/api/invoices', require('./routes/invoiceRoutes'));
 // Database Connection & Sync
 // Database Connection & Sync
 if (require.main === module) {
-  db.sequelize.sync({ force: false }) // Set force: true to drop tables and recreate
+  // Use alter: false to avoid sync errors (schema manually updated)
+  db.sequelize.sync({ alter: false })
     .then(() => {
       console.log('Database connected and synced');
       // Start Server only after DB sync

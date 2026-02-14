@@ -24,6 +24,15 @@ module.exports = (sequelize, DataTypes) => {
         gpsLongitude: {
             type: DataTypes.FLOAT,
         },
+        externalId: {
+            type: DataTypes.STRING,
+            unique: true,
+            comment: 'Code from Excel import',
+        },
+        routeName: {
+            type: DataTypes.STRING,
+            comment: 'Delivery route name',
+        },
         creditBalance: {
             type: DataTypes.DECIMAL(10, 2),
             defaultValue: 0.00,

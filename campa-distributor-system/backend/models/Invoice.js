@@ -21,6 +21,9 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.ENUM('Pending', 'Partially Paid', 'Paid'),
             defaultValue: 'Pending',
         },
+        invoiceDate: {
+            type: DataTypes.DATEONLY,
+        },
     });
 
     return Invoice;

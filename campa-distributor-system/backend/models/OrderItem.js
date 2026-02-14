@@ -19,6 +19,16 @@ module.exports = (sequelize, DataTypes) => {
         totalPrice: {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
+            comment: 'Excluding Tax (Taxable Value)',
+        },
+        taxAmount: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true, // Make nullable for backward compat
+        },
+        netAmount: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true, // Make nullable for backward compat
+            comment: 'Total including Tax',
         },
     });
 

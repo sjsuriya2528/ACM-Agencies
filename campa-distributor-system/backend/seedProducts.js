@@ -1,63 +1,43 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const dotenv = require('dotenv');
+const { Product, sequelize } = require('./models');
 
-dotenv.config();
-
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'postgres',
-    logging: false,
-});
-
-const Product = require('./models/product')(sequelize, DataTypes);
+const products = [
+    { name: 'Campa Cola 200ml', sku: 'CC-200', price: 10.00, bottlesPerCrate: 30, stockQuantity: 1000 },
+    { name: 'Campa Cola 500ml', sku: 'CC-500', price: 20.00, bottlesPerCrate: 24, stockQuantity: 1000 },
+    { name: 'Campa Cola 2L', sku: 'CC-2000', price: 80.00, bottlesPerCrate: 9, stockQuantity: 500 },
+    { name: 'Campa Orange 200ml', sku: 'CO-200', price: 10.00, bottlesPerCrate: 30, stockQuantity: 1000 },
+    { name: 'Campa Orange 500ml', sku: 'CO-500', price: 20.00, bottlesPerCrate: 24, stockQuantity: 1000 },
+    { name: 'Campa Orange 2L', sku: 'CO-2000', price: 80.00, bottlesPerCrate: 9, stockQuantity: 500 },
+    { name: 'Campa Lemon 200ml', sku: 'CL-200', price: 10.00, bottlesPerCrate: 30, stockQuantity: 1000 },
+    { name: 'Campa Lemon 500ml', sku: 'CL-500', price: 20.00, bottlesPerCrate: 24, stockQuantity: 1000 },
+    { name: 'Campa Lemon 2L', sku: 'CL-2000', price: 80.00, bottlesPerCrate: 9, stockQuantity: 500 },
+    { name: 'Campa Jeera 200ml', sku: 'CJ-200', price: 10.00, bottlesPerCrate: 30, stockQuantity: 1000 },
+    { name: 'Campa Jeera 500ml', sku: 'CJ-500', price: 20.00, bottlesPerCrate: 24, stockQuantity: 1000 },
+    { name: 'Campa Power Up 250ml', sku: 'CPU-250', price: 40.00, bottlesPerCrate: 24, stockQuantity: 1000 },
+];
 
 const seedProducts = async () => {
     try {
         await sequelize.authenticate();
-        console.log('Database connected...');
+        console.log('Database connected.');
 
-        // Sync model to ensure new column exists (safe option, won't drop data)
-        await Product.sync({ alter: true });
+        await sequelize.sync();
 
-        const products = [
-            // 200ml Bottles (Usually 24 or 30 per crate)
-            { name: 'Campa Cola 200ml', sku: 'CAMPA-COLA-200', price: 10.00, stockQuantity: 1000, bottlesPerCrate: 24 },
-            { name: 'Campa Orange 200ml', sku: 'CAMPA-ORG-200', price: 10.00, stockQuantity: 1000, bottlesPerCrate: 24 },
-            { name: 'Campa Lemon 200ml', sku: 'CAMPA-LEM-200', price: 10.00, stockQuantity: 1000, bottlesPerCrate: 24 },
-            { name: 'Campa Jeera 200ml', sku: 'CAMPA-JRA-200', price: 10.00, stockQuantity: 1000, bottlesPerCrate: 24 },
-            { name: 'Campa Pop 200ml', sku: 'CAMPA-POP-200', price: 10.00, stockQuantity: 1000, bottlesPerCrate: 24 },
-
-            // 500ml Bottles (Usually 24 per crate)
-            { name: 'Campa Cola 500ml', sku: 'CAMPA-COLA-500', price: 20.00, stockQuantity: 500, bottlesPerCrate: 24 },
-            { name: 'Campa Orange 500ml', sku: 'CAMPA-ORG-500', price: 20.00, stockQuantity: 500, bottlesPerCrate: 24 },
-            { name: 'Campa Lemon 500ml', sku: 'CAMPA-LEM-500', price: 20.00, stockQuantity: 500, bottlesPerCrate: 24 },
-
-            // 600ml Bottles (Usually 24 per crate)
-            { name: 'Campa Cola 600ml', sku: 'CAMPA-COLA-600', price: 25.00, stockQuantity: 500, bottlesPerCrate: 24 },
-
-            // 1L Bottles (Usually 12 or 15 per crate)
-            { name: 'Campa Cola 1L', sku: 'CAMPA-COLA-1L', price: 40.00, stockQuantity: 200, bottlesPerCrate: 12 },
-
-            // 2L Bottles (Usually 9 per crate)
-            { name: 'Campa Cola 2L', sku: 'CAMPA-COLA-2L', price: 80.00, stockQuantity: 100, bottlesPerCrate: 9 },
-            { name: 'Campa Orange 2L', sku: 'CAMPA-ORG-2L', price: 80.00, stockQuantity: 100, bottlesPerCrate: 9 },
-        ];
-
-        for (const product of products) {
-            const existing = await Product.findOne({ where: { sku: product.sku } });
-            if (existing) {
-                // Update existing product to have correct bottlesPerCrate
-                await existing.update(product);
-                console.log(`Updated: ${product.name}`);
-            } else {
-                await Product.create(product);
+        for (const p of products) {
+            const [product, created] = await Product.findOrCreate({
+                where: { sku: p.sku },
+                defaults: p
+            });
+            if (created) {
                 console.log(`Created: ${product.name}`);
+            } else {
+                console.log(`Exists: ${product.name}`);
             }
         }
 
-        console.log('Product seeding completed!');
-        process.exit();
+        console.log('Seeding complete.');
+        process.exit(0);
     } catch (error) {
-        console.error('Error seeding products:', error);
+        console.error('Seeding failed:', error);
         process.exit(1);
     }
 };

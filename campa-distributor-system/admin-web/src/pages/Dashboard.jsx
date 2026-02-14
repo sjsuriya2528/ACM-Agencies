@@ -1,33 +1,28 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import DashboardHome from './DashboardHome';
+import Products from './Products';
+import Retailers from './Retailers';
+import Users from './Users';
+import Orders from './Orders';
 
 const Dashboard = () => {
     return (
         <div className="flex h-screen bg-gray-100">
             <Sidebar />
-            <div className="flex-1 p-10">
-                <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h2 className="text-xl font-semibold mb-2">Total Sales</h2>
-                        <p className="text-3xl font-bold text-green-600">₹ 0.00</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h2 className="text-xl font-semibold mb-2">Pending Orders</h2>
-                        <p className="text-3xl font-bold text-yellow-600">0</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h2 className="text-xl font-semibold mb-2">Active Deliveries</h2>
-                        <p className="text-3xl font-bold text-blue-600">0</p>
-                    </div>
-                </div>
-
-                <div className="mt-10 bg-white p-6 rounded-lg shadow h-96">
-                    <h2 className="text-xl font-semibold mb-4">Live Delivery Map</h2>
-                    <div className="bg-gray-200 h-full flex items-center justify-center">
-                        Map Placeholder (Leaflet Integration Pending)
-                    </div>
-                </div>
+            <div className="flex-1 p-10 overflow-auto">
+                <Routes>
+                    <Route path="/" element={<DashboardHome />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/retailers" element={<Retailers />} />
+                    <Route path="/users" element={<Users />} />
+                    <Route path="/users" element={<Users />} />
+                    <Route path="/orders" element={<Orders />} />
+                    <Route path="/deliveries" element={<div>Deliveries (Coming Soon)</div>} />
+                    <Route path="/deliveries" element={<div>Deliveries (Coming Soon)</div>} />
+                    <Route path="/payments" element={<div>Payments (Coming Soon)</div>} />
+                </Routes>
             </div>
         </div>
     );

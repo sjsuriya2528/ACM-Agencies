@@ -1,5 +1,5 @@
 {
-  "name": "admin-web",
+  "name": "employee-web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,11 +13,9 @@
     "@esbuild/win32-x64": "^0.27.3",
     "@tailwindcss/postcss": "^4.1.18",
     "axios": "^1.13.5",
-    "leaflet": "^1.9.4",
     "lucide-react": "^0.564.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.13.0"
   },
   "overrides": {
