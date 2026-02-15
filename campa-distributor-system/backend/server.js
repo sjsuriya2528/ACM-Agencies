@@ -64,6 +64,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/invoices', require('./routes/invoiceRoutes'));
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
 // Database Connection & Sync
 // Database Connection & Sync

@@ -9,6 +9,11 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.ENUM('Draft', 'Requested', 'Approved', 'Rejected', 'Dispatched', 'Delivered'),
             defaultValue: 'Requested',
         },
+        paymentMode: {
+            type: DataTypes.ENUM('Cash', 'Credit'),
+            defaultValue: 'Credit',
+            allowNull: false,
+        },
         driverId: {
             type: DataTypes.INTEGER,
             references: {

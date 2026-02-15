@@ -33,6 +33,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             defaultValue: 24,
         },
+        groupName: {
+            type: DataTypes.STRING,
+            comment: 'Product Group e.g., ORANGE, LEMON',
+        },
         isActive: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,

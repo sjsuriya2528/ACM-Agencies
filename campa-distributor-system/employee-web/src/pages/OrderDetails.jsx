@@ -134,10 +134,18 @@ const OrderDetails = () => {
                 {/* Invoice Info if Approved */}
                 {order.Invoice && (
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                            <FileText size={18} className="text-blue-600" />
-                            Invoice Information
-                        </h2>
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                                <FileText size={18} className="text-blue-600" />
+                                Invoice Information
+                            </h2>
+                            <button
+                                onClick={() => navigate(`/invoice/${order.Invoice.id}`)}
+                                className="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors hover:bg-blue-100"
+                            >
+                                View Detailed Invoice
+                            </button>
+                        </div>
                         <div className="flex justify-between items-center">
                             <span className="text-gray-600">Payment Status</span>
                             <span className={`px-2 py-1 rounded text-xs font-bold ${order.Invoice.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

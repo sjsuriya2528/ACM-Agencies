@@ -4,7 +4,7 @@ const { createOrder, getOrders, getOrderById, updateOrderStatus, assignDriver } 
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 router.route('/')
-    .post(protect, authorize('sales_rep'), createOrder)
+    .post(protect, authorize('sales_rep', 'driver'), createOrder)
     .get(protect, getOrders);
 
 router.route('/:id')

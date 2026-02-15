@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { ShoppingCart, Users, LogOut, FileText, CheckCircle, Clock, IndianRupee } from 'lucide-react';
+import { ShoppingCart, Users, LogOut, FileText, CheckCircle, Clock, IndianRupee, TrendingUp, Package, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axios';
@@ -23,7 +23,7 @@ const SalesDashboard = () => {
 
                 const totalOrders = orders.length;
                 const requested = orders.filter(o => o.status === 'Requested').length;
-                const accepted = orders.filter(o => o.status === 'Approved').length; // Assuming 'Approved' is 'Accepted'
+                const accepted = orders.filter(o => o.status === 'Approved').length;
                 const totalAmount = orders.reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
 
                 setStats({ totalOrders, requested, accepted, totalAmount });
@@ -40,97 +40,145 @@ const SalesDashboard = () => {
     }, [user]);
 
     const handleLogout = () => {
-        logout();
-        navigate('/login');
+        if (window.confirm('Are you sure you want to logout?')) {
+            logout();
+            navigate('/login');
+        }
     };
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="flex justify-between items-center mb-8">
+    const StatCard = ({ title, value, icon: Icon, color, subtext }) => (
+        <div className={`relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1`}>
+            {/* Background Decoration */}
+            <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color}`}></div>
+            <div className={`absolute -left-6 -bottom-6 w-16 h-16 rounded-full opacity-5 ${color}`}></div>
+
+            <div className="flex justify-between items-start z-10 relative">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Sales Dashboard</h1>
-                    <p className="text-gray-600">Welcome, <span className="font-semibold text-blue-600">{user?.name}</span></p>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
+                    <h3 className="text-2xl font-extrabold text-slate-800">{value}</h3>
+                    {subtext && <p className={`text-[10px] mt-2 font-medium flex items-center gap-1 ${color.replace('bg-', 'text-')}`}>
+                        {subtext}
+                    </p>}
                 </div>
-                <button onClick={handleLogout} className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors">
-                    <LogOut size={20} />
-                </button>
+                <div className={`p-3 rounded-xl ${color} bg-opacity-10 backdrop-blur-sm`}>
+                    <Icon size={20} className={color.replace('bg-', 'text-').replace('/10', '')} />
+                </div>
             </div>
+        </div>
+    );
+
+    const QuickActionCard = ({ title, desc, icon: Icon, color, onClick }) => (
+        <button
+            onClick={onClick}
+            className="flex items-center p-5 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-slate-100 group text-left w-full h-full relative overflow-hidden"
+        >
+            <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity ${color}`}></div>
+            <div className={`p-4 rounded-full mr-4 transition-colors ${color} bg-opacity-10 group-hover:bg-opacity-20`}>
+                <Icon size={24} className={color.replace('bg-', 'text-').replace('/10', '')} />
+            </div>
+            <div className="flex-1">
+                <h2 className="text-lg font-bold text-slate-800 group-hover:text-blue-700 transition-colors">{title}</h2>
+                <p className="text-slate-500 text-sm font-medium">{desc}</p>
+            </div>
+            <div className="text-slate-300 group-hover:translate-x-1 transition-transform">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </div>
+        </button>
+    );
+
+    return (
+        <div className="min-h-screen bg-slate-50 p-4 md:p-6 pb-24">
+            {/* Header */}
+            <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-200">
+                        {user?.name?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide">Welcome back</p>
+                        <h1 className="text-xl font-extrabold text-slate-800">{user?.name || 'Sales Rep'}</h1>
+                    </div>
+                </div>
+                <button
+                    onClick={handleLogout}
+                    className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                    title="Logout"
+                >
+                    <LogOut size={22} />
+                </button>
+            </header>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                            <FileText size={20} />
-                        </div>
-                        <span className="text-gray-500 text-sm">Total Orders</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">{stats.totalOrders}</p>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-yellow-50 text-yellow-600 rounded-lg">
-                            <Clock size={20} />
-                        </div>
-                        <span className="text-gray-500 text-sm">Requested</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">{stats.requested}</p>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-green-50 text-green-600 rounded-lg">
-                            <CheckCircle size={20} />
-                        </div>
-                        <span className="text-gray-500 text-sm">Accepted</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">{stats.accepted}</p>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
-                            <IndianRupee size={20} />
-                        </div>
-                        <span className="text-gray-500 text-sm">Total Sales</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">₹{stats.totalAmount.toFixed(2)}</p>
-                </div>
+                <StatCard
+                    title="Total Orders"
+                    value={stats.totalOrders}
+                    icon={FileText}
+                    color="bg-blue-600"
+                    subtext="Lifetime Orders"
+                />
+                <StatCard
+                    title="Requested"
+                    value={stats.requested}
+                    icon={Clock}
+                    color="bg-amber-500"
+                    subtext="Pending Approval"
+                />
+                <StatCard
+                    title="Approved"
+                    value={stats.accepted}
+                    icon={CheckCircle}
+                    color="bg-emerald-500"
+                    subtext="Ready / Delivered"
+                />
+                <StatCard
+                    title="Total Sales"
+                    value={`₹${stats.totalAmount.toLocaleString()}`}
+                    icon={IndianRupee}
+                    color="bg-violet-600"
+                    subtext="Total Revenue"
+                />
             </div>
 
             {/* Actions Grid */}
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onClick={() => navigate('/create-order')} className="flex items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 group">
-                    <div className="p-4 bg-blue-100 rounded-full mr-4 group-hover:bg-blue-200 transition-colors">
-                        <ShoppingCart size={24} className="text-blue-600" />
-                    </div>
-                    <div className="text-left">
-                        <h2 className="text-lg font-semibold text-gray-800">New Order</h2>
-                        <p className="text-gray-500 text-sm">Create a new order</p>
-                    </div>
-                </button>
+            <h2 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+                <TrendingUp size={20} className="text-blue-500" /> Quick Actions
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <QuickActionCard
+                    title="New Order"
+                    desc="Create a new order for a retailer"
+                    icon={ShoppingCart}
+                    color="bg-blue-600"
+                    onClick={() => navigate('/create-order')}
+                />
+                <QuickActionCard
+                    title="Track Orders"
+                    desc="View status of all your orders"
+                    icon={Package}
+                    color="bg-indigo-600"
+                    onClick={() => navigate('/view-orders')}
+                />
+                <QuickActionCard
+                    title="Manage Retailers"
+                    desc="View and add new retailers"
+                    icon={Users}
+                    color="bg-emerald-600"
+                    onClick={() => navigate('/retailers')}
+                />
+            </div>
 
-                <button onClick={() => navigate('/view-orders')} className="flex items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 group">
-                    <div className="p-4 bg-indigo-100 rounded-full mr-4 group-hover:bg-indigo-200 transition-colors">
-                        <FileText size={24} className="text-indigo-600" />
-                    </div>
-                    <div className="text-left">
-                        <h2 className="text-lg font-semibold text-gray-800">View Orders</h2>
-                        <p className="text-gray-500 text-sm">Track order status</p>
-                    </div>
-                </button>
-
-                <button onClick={() => navigate('/retailers')} className="flex items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 group">
-                    <div className="p-4 bg-green-100 rounded-full mr-4 group-hover:bg-green-200 transition-colors">
-                        <Users size={24} className="text-green-600" />
-                    </div>
-                    <div className="text-left">
-                        <h2 className="text-lg font-semibold text-gray-800">Retailers</h2>
-                        <p className="text-gray-500 text-sm">Manage retailer list</p>
-                    </div>
-                </button>
+            {/* Recent Activity Placeholder (Optional) */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-slate-800">Recent Activity</h3>
+                    <button className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline">View All</button>
+                </div>
+                <div className="text-center py-8 text-slate-400 text-sm">
+                    No recent activity to show.
+                </div>
             </div>
         </div>
     );

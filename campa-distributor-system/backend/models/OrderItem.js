@@ -12,6 +12,11 @@ module.exports = (sequelize, DataTypes) => {
                 min: 1,
             },
         },
+        productName: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            comment: 'Snapshot of product name at time of order',
+        },
         pricePerUnit: {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,

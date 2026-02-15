@@ -12,7 +12,14 @@ const Products = () => {
     const fetchProducts = async () => {
         try {
             const response = await api.get('/products');
-            setProducts(response.data);
+            // Map backend fields to frontend state if needed, or directly use them.
+            // Backend: stockQuantity, groupName. Frontend previously used: stock, category.
+            const mappedProducts = response.data.map(p => ({
+                ...p,
+                stock: p.stockQuantity,
+                category: p.groupName
+            }));
+            setProducts(mappedProducts);
         } catch (error) {
             console.error(error);
         } finally {
@@ -75,6 +82,7 @@ const Products = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
@@ -85,6 +93,7 @@ const Products = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {products.map(product => (
                                 <tr key={product.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap">{product.id}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">₹{product.price}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{product.stock}</td>

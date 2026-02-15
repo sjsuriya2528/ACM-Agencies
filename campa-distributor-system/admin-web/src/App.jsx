@@ -22,14 +22,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/orders"
-            element={
-              <ProtectedRoute>
-                <Orders />
-              </ProtectedRoute>
-            }
-          />
+
         </Routes>
       </Router>
     </AuthProvider>

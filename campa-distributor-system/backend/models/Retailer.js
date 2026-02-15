@@ -26,7 +26,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         externalId: {
             type: DataTypes.STRING,
-            unique: true,
+            allowNull: true,
             comment: 'Code from Excel import',
         },
         routeName: {

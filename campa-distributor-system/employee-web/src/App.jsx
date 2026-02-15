@@ -14,6 +14,7 @@ import DriverDashboard from './pages/DriverDashboard';
 import CollectPayment from './pages/CollectPayment';
 import PaymentHistory from './pages/PaymentHistory';
 import CollectionDashboard from './pages/CollectionDashboard';
+import InvoiceView from './pages/InvoiceView';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -118,6 +119,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['collection_agent']}>
                 <CollectPayment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/invoice/:id"
+            element={
+              <ProtectedRoute allowedRoles={['collection_agent', 'sales_rep', 'driver']}>
+                <InvoiceView />
               </ProtectedRoute>
             }
           />
