@@ -290,9 +290,15 @@ const CreateOrder = () => {
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
                                         <h3 className="font-bold text-slate-800 text-lg">{product.name}</h3>
-                                        <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-sm font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">₹{product.price}</span>
-                                            <span className="text-xs text-slate-400 font-medium">1 Crate = {bottlesPerCrate} btls</span>
+                                        <div className="flex flex-col gap-0.5 mt-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-bold text-slate-800">₹{(product.price * bottlesPerCrate).toFixed(2)}</span>
+                                                <span className="text-xs text-slate-500">/ crate</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-medium text-slate-500">₹{product.price}</span>
+                                                <span className="text-[10px] text-slate-400">/ bottle</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="text-right">

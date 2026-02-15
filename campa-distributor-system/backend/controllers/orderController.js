@@ -246,10 +246,61 @@ const generateInvoiceData = (order) => {
     };
 };
 
+// @desc    Delete order (Cancel)
+// @route   DELETE /api/orders/:id
+// @access  Private (Admin)
+const deleteOrder = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const order = await Order.findByPk(req.params.id, {
+            include: [{ model: OrderItem, as: 'items', include: [Product] }, { model: Invoice }]
+        });
+
+        if (!order) {
+            await transaction.rollback();
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // 1. Restore Stock if Approved/Dispatched/Delivered (Items were deducted)
+        if (['Approved', 'Dispatched', 'Delivered'].includes(order.status)) {
+            for (const item of order.items) {
+                if (item.Product) {
+                    await item.Product.increment('stockQuantity', { by: item.quantity, transaction });
+                }
+            }
+        }
+
+        // 2. Delete Dependencies
+        // Delete Invoice (and its related Payments/Deliveries via DB cascade usually, but explicit delete is safer for API logic)
+        if (order.Invoice) {
+            await Invoice.destroy({ where: { id: order.Invoice.id }, transaction });
+        }
+        await OrderItem.destroy({ where: { orderId: order.id }, transaction });
+
+        // 3. Delete Order
+        await order.destroy({ transaction });
+
+        // 4. Reset Sequences to fill the gap or reset to max
+        // Use raw queries to reset sequence to MAX(id)
+        await sequelize.query(`SELECT setval('"Orders_id_seq"', COALESCE((SELECT MAX(id) FROM "Orders"), 1000));`, { transaction });
+        // Assuming Invoices align with Orders often, reset that too just in case
+        await sequelize.query(`SELECT setval('"Invoices_id_seq"', COALESCE((SELECT MAX(id) FROM "Invoices"), 1000));`, { transaction });
+
+        await transaction.commit();
+        res.json({ message: 'Order cancelled and deleted successfully. Inventory updated.' });
+
+    } catch (error) {
+        await transaction.rollback();
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createOrder,
     getOrders,
     getOrderById,
     updateOrderStatus,
     assignDriver,
+    deleteOrder,
 };

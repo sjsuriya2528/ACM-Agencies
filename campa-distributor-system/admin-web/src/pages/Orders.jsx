@@ -14,7 +14,8 @@ import {
     User,
     Calendar,
     IndianRupee,
-    MoreVertical
+    MoreVertical,
+    Trash2
 } from 'lucide-react';
 
 const Orders = () => {
@@ -122,6 +123,19 @@ const Orders = () => {
         } catch (error) {
             console.error("Failed to assign driver", error);
             alert("Failed to assign driver");
+        }
+    };
+
+    const handleDeleteOrder = async (orderId) => {
+        if (!window.confirm("CRITICAL WARNING: This will PERMANENTLY DELETE this order, revert stock, and reset the database sequence.\n\nAre you sure you want to proceed?")) return;
+
+        try {
+            await api.delete(`/orders/${orderId}`);
+            alert("Order cancelled and deleted successfully.");
+            fetchOrders();
+        } catch (error) {
+            console.error("Failed to delete order", error);
+            alert(error.response?.data?.message || "Failed to delete order");
         }
     };
 
@@ -638,35 +652,51 @@ const Orders = () => {
                                                                     >
                                                                         <XCircle size={16} /> Reject
                                                                     </button>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteOrder(order.id); }}
+                                                                        className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
+                                                                        title="Permanently Delete"
+                                                                    >
+                                                                        <Trash2 size={16} /> Cancel
+                                                                    </button>
                                                                 </>
                                                             )}
 
                                                             {order.status === 'Approved' && (
-                                                                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                                                                    {assigningOrder === order.id ? (
-                                                                        <>
-                                                                            <select
-                                                                                className="bg-white border text-sm rounded-lg p-1.5 focus:ring-blue-500 focus:border-blue-500 min-w-[150px]"
-                                                                                onChange={(e) => handleAssignDriver(order.id, e.target.value)}
-                                                                                defaultValue=""
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                                                                        {assigningOrder === order.id ? (
+                                                                            <>
+                                                                                <select
+                                                                                    className="bg-white border text-sm rounded-lg p-1.5 focus:ring-blue-500 focus:border-blue-500 min-w-[150px]"
+                                                                                    onChange={(e) => handleAssignDriver(order.id, e.target.value)}
+                                                                                    defaultValue=""
+                                                                                >
+                                                                                    <option value="" disabled>Select Driver</option>
+                                                                                    {drivers.map(d => (
+                                                                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                                <button onClick={() => setAssigningOrder(null)} className="p-1 hover:bg-slate-200 rounded">
+                                                                                    <XCircle size={18} className="text-slate-500" />
+                                                                                </button>
+                                                                            </>
+                                                                        ) : (
+                                                                            <button
+                                                                                onClick={(e) => { e.stopPropagation(); setAssigningOrder(order.id); }}
+                                                                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"
                                                                             >
-                                                                                <option value="" disabled>Select Driver</option>
-                                                                                {drivers.map(d => (
-                                                                                    <option key={d.id} value={d.id}>{d.name}</option>
-                                                                                ))}
-                                                                            </select>
-                                                                            <button onClick={() => setAssigningOrder(null)} className="p-1 hover:bg-slate-200 rounded">
-                                                                                <XCircle size={18} className="text-slate-500" />
+                                                                                <Truck size={16} /> Assign Driver
                                                                             </button>
-                                                                        </>
-                                                                    ) : (
-                                                                        <button
-                                                                            onClick={(e) => { e.stopPropagation(); setAssigningOrder(order.id); }}
-                                                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"
-                                                                        >
-                                                                            <Truck size={16} /> Assign Driver
-                                                                        </button>
-                                                                    )}
+                                                                        )}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteOrder(order.id); }}
+                                                                        className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
+                                                                        title="Permanently Delete"
+                                                                    >
+                                                                        <Trash2 size={16} /> Cancel
+                                                                    </button>
                                                                 </div>
                                                             )}
                                                         </div>
