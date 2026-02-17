@@ -35,6 +35,15 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true, // Make nullable for backward compat
             comment: 'Total including Tax',
         },
+    }, {
+        indexes: [
+            {
+                fields: ['orderId']
+            },
+            {
+                fields: ['productId']
+            }
+        ]
     });
 
     return OrderItem;

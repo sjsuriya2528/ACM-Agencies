@@ -1,4 +1,4 @@
-const { Order, OrderItem, Product, Retailer, Invoice, User, sequelize } = require('../models');
+const { Order, OrderItem, Product, Retailer, Invoice, User, CancelledOrder, CancelledOrderItem, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // @desc    Create new order
@@ -65,20 +65,44 @@ const createOrder = async (req, res) => {
 // @access  Private (Admin/Sales Rep)
 const getOrders = async (req, res) => {
     try {
+        const { startDate, endDate } = req.query;
         let whereClause = {};
+
         if (req.user.role === 'sales_rep') {
             whereClause = { salesRepId: req.user.id };
         } else if (req.user.role === 'driver') {
             whereClause = {
                 [Op.or]: [
-                    { status: 'Approved' }, // Drivers can pick up approved orders
-                    { driverId: req.user.id } // And see their own assignments
+                    { status: 'Approved' },
+                    { driverId: req.user.id }
                 ]
             };
         } else if (req.user.role === 'collection_agent') {
-            // Agents see everything or specific? Let's show all for now or Delivered/Dispatched
             whereClause = {
                 status: { [Op.in]: ['Dispatched', 'Delivered'] }
+            };
+        }
+
+        // Apply Date Range Filter
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            whereClause.createdAt = {
+                [Op.between]: [start, end]
+            };
+        } else if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            whereClause.createdAt = {
+                [Op.gte]: start
+            };
+        } else if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            whereClause.createdAt = {
+                [Op.lte]: end
             };
         }
 
@@ -87,8 +111,13 @@ const getOrders = async (req, res) => {
             include: [
                 { model: Retailer, as: 'retailer', attributes: ['id', 'shopName'] },
                 { model: User, as: 'salesRep', attributes: ['id', 'name'] },
-                { model: OrderItem, as: 'items', include: [{ model: Product, attributes: ['id', 'name'] }] },
-                { model: Invoice }, // Include invoice if exists
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    separate: true,
+                    include: [{ model: Product, attributes: ['id', 'name'] }]
+                },
+                { model: Invoice },
             ],
             order: [['createdAt', 'DESC']],
         });
@@ -261,7 +290,36 @@ const deleteOrder = async (req, res) => {
             return res.status(404).json({ message: 'Order not found' });
         }
 
-        // 1. Restore Stock if Approved/Dispatched/Delivered (Items were deducted)
+        // 1. Move to Cancelled Tables
+        const cancelledOrder = await CancelledOrder.create({
+            id: order.id,
+            retailerId: order.retailerId,
+            salesRepId: order.salesRepId,
+            status: order.status,
+            paymentMode: order.paymentMode,
+            totalAmount: order.totalAmount,
+            billNumber: order.billNumber,
+            remarks: order.remarks,
+            gpsLatitude: order.gpsLatitude,
+            gpsLongitude: order.gpsLongitude,
+            originalCreatedAt: order.createdAt,
+            cancelledAt: new Date()
+        }, { transaction });
+
+        for (const item of order.items) {
+            await CancelledOrderItem.create({
+                cancelledOrderId: cancelledOrder.id,
+                productId: item.productId,
+                productName: item.productName,
+                quantity: item.quantity,
+                pricePerUnit: item.pricePerUnit,
+                totalPrice: item.totalPrice,
+                taxAmount: item.taxAmount,
+                netAmount: item.netAmount
+            }, { transaction });
+        }
+
+        // 2. Restore Stock if Approved/Dispatched/Delivered (Items were deducted)
         if (['Approved', 'Dispatched', 'Delivered'].includes(order.status)) {
             for (const item of order.items) {
                 if (item.Product) {
@@ -270,20 +328,17 @@ const deleteOrder = async (req, res) => {
             }
         }
 
-        // 2. Delete Dependencies
-        // Delete Invoice (and its related Payments/Deliveries via DB cascade usually, but explicit delete is safer for API logic)
+        // 3. Delete Dependencies
         if (order.Invoice) {
             await Invoice.destroy({ where: { id: order.Invoice.id }, transaction });
         }
         await OrderItem.destroy({ where: { orderId: order.id }, transaction });
 
-        // 3. Delete Order
+        // 4. Delete Order
         await order.destroy({ transaction });
 
-        // 4. Reset Sequences to fill the gap or reset to max
-        // Use raw queries to reset sequence to MAX(id)
+        // 5. Reset Sequences
         await sequelize.query(`SELECT setval('"Orders_id_seq"', COALESCE((SELECT MAX(id) FROM "Orders"), 1000));`, { transaction });
-        // Assuming Invoices align with Orders often, reset that too just in case
         await sequelize.query(`SELECT setval('"Invoices_id_seq"', COALESCE((SELECT MAX(id) FROM "Invoices"), 1000));`, { transaction });
 
         await transaction.commit();
@@ -296,6 +351,76 @@ const deleteOrder = async (req, res) => {
     }
 };
 
+// @desc    Get all cancelled orders
+// @route   GET /api/orders/cancelled
+// @access  Private (Admin)
+const getCancelledOrders = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let whereClause = {};
+
+        // Apply Date Range Filter Based on Cancellation Date
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            whereClause.cancelledAt = {
+                [Op.between]: [start, end]
+            };
+        } else if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            whereClause.cancelledAt = {
+                [Op.gte]: start
+            };
+        } else if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            whereClause.cancelledAt = {
+                [Op.lte]: end
+            };
+        }
+
+        const orders = await CancelledOrder.findAll({
+            where: whereClause,
+            include: [
+                { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'phone'] },
+                { model: User, as: 'salesRep', attributes: ['id', 'name'] },
+                { model: CancelledOrderItem, as: 'items', include: [{ model: Product, attributes: ['id', 'name'] }] }
+            ],
+            order: [['cancelledAt', 'DESC']],
+        });
+
+        res.json(orders);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get cancelled order by ID
+// @route   GET /api/orders/cancelled/:id
+// @access  Private (Admin)
+const getCancelledOrderById = async (req, res) => {
+    try {
+        const order = await CancelledOrder.findByPk(req.params.id, {
+            include: [
+                { model: Retailer, as: 'retailer' },
+                { model: User, as: 'salesRep', attributes: ['id', 'name'] },
+                { model: CancelledOrderItem, as: 'items', include: [{ model: Product }] }
+            ],
+        });
+
+        if (order) {
+            res.json(order);
+        } else {
+            res.status(404).json({ message: 'Cancelled order not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createOrder,
     getOrders,
@@ -303,4 +428,6 @@ module.exports = {
     updateOrderStatus,
     assignDriver,
     deleteOrder,
+    getCancelledOrders,
+    getCancelledOrderById
 };

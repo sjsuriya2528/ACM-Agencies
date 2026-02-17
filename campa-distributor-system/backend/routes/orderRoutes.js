@@ -2,12 +2,20 @@ const express = require('express');
 const router = express.Router();
 const { createOrder, getOrders, getOrderById, updateOrderStatus,
     assignDriver,
-    deleteOrder
+    deleteOrder,
+    getCancelledOrders,
+    getCancelledOrderById
 } = require('../controllers/orderController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
+router.route('/cancelled')
+    .get(protect, authorize('admin'), getCancelledOrders);
+
+router.route('/cancelled/:id')
+    .get(protect, authorize('admin'), getCancelledOrderById);
+
 router.route('/')
-    .post(protect, authorize('sales_rep', 'driver'), createOrder)
+    .post(protect, createOrder)
     .get(protect, getOrders);
 
 router.route('/:id')

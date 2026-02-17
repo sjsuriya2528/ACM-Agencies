@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
             unique: true,
         },
         price: {
-            type: DataTypes.DECIMAL(10, 2),
+            type: DataTypes.DECIMAL(10, 4),
             allowNull: false,
         },
         gstPercentage: {

@@ -1,4 +1,4 @@
-const { Order, OrderItem, Product, sequelize } = require('../models');
+const { Order, OrderItem, Product, Invoice, User, Payment, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Helper to get start of today
@@ -24,17 +24,11 @@ const getDashboardSummary = async (req, res) => {
             }
         });
 
-        // 2. Total Sales Today (Sum of totalAmount for today's orders)
-        // Note: Sales usually means 'Completed' or 'Approved' orders, but let's take all for now or filter by status if needed.
-        // Let's assume 'Approved', 'Dispatched', 'Delivered' count as sales. 'Requested' might not.
-        // For simplicity, let's just sum all valid orders created today.
-        const totalSalesTodayResult = await Order.sum('totalAmount', {
+        // 2. Total Sales Today (Using Invoices for accuracy)
+        const totalSalesTodayResult = await Invoice.sum('netTotal', {
             where: {
                 createdAt: {
                     [Op.gte]: today
-                },
-                status: {
-                    [Op.ne]: 'Rejected' // Exclude rejected
                 }
             }
         });
@@ -43,14 +37,8 @@ const getDashboardSummary = async (req, res) => {
         // 3. Total Lifetime Orders
         const totalLifetimeOrders = await Order.count();
 
-        // 4. Total Lifetime Sales
-        const totalLifetimeSalesResult = await Order.sum('totalAmount', {
-            where: {
-                status: {
-                    [Op.ne]: 'Rejected'
-                }
-            }
-        });
+        // 4. Total Lifetime Sales (Active Bills)
+        const totalLifetimeSalesResult = await Invoice.sum('netTotal');
         const totalLifetimeSales = totalLifetimeSalesResult || 0;
 
         // 5. Stocks Available (Low Stock Count or Total Items?)
@@ -233,10 +221,60 @@ const getRepPerformance = async (req, res) => {
     }
 };
 
+// @desc    Get stats for Employee (Driver/Collection Agent)
+// @route   GET /api/analytics/employee-stats
+// @access  Private (Driver/Collector)
+const getEmployeeStats = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(500).json({ message: 'User not found in request' });
+        }
+
+        const { id, role } = req.user;
+        const today = getStartOfToday();
+
+        const stats = {
+            role,
+            today: {},
+            overall: {}
+        };
+
+        if (role === 'driver') {
+            stats.pending = await Order.count({ where: { status: 'Approved' } });
+            stats.dispatched = await Order.count({ where: { driverId: id, status: 'Dispatched' } });
+            stats.delivered = await Order.count({ where: { driverId: id, status: 'Delivered' } });
+        }
+
+        if (role === 'collection_agent' || role === 'driver') {
+            // Collection stats
+            const todaySum = await Payment.sum('amount', {
+                where: {
+                    collectedById: id,
+                    createdAt: { [Op.gte]: today }
+                }
+            });
+            stats.todayCollection = todaySum || 0;
+
+            // Pending invoices
+            stats.pendingInvoices = await Invoice.count({
+                where: {
+                    paymentStatus: { [Op.ne]: 'Paid' }
+                }
+            });
+        }
+
+        res.json(stats);
+    } catch (error) {
+        console.error('Error fetching employee performance:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
 module.exports = {
     getDashboardSummary,
     getSalesTrend,
     getProductSales,
     getStockData,
-    getRepPerformance
+    getRepPerformance,
+    getEmployeeStats
 };

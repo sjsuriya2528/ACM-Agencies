@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Package, Clock, CheckCircle, XCircle, FileText } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import api from '../api/axios';
 
 const OrderDetails = () => {
@@ -91,13 +92,13 @@ const OrderDetails = () => {
                                 className="text-blue-500 text-xs mt-2 inline-block hover:underline"
                             >
                                 View Order Location on Maps
-                            </a>
+                            </a >
                         )}
-                    </div>
-                </div>
+                    </div >
+                </div >
 
                 {/* Order Items */}
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                < div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100" >
                     <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                         <Package size={18} className="text-blue-600" />
                         Order Items
@@ -129,37 +130,39 @@ const OrderDetails = () => {
                         <span className="font-bold text-gray-800">Total Amount</span>
                         <span className="text-xl font-bold text-blue-600">₹{order.totalAmount}</span>
                     </div>
-                </div>
+                </div >
 
                 {/* Invoice Info if Approved */}
                 {order.Invoice && (
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <div className="flex justify-between items-center mb-3">
-                            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                                <FileText size={18} className="text-blue-600" />
-                                Invoice Information
-                            </h2>
-                            <button
-                                onClick={() => navigate(`/invoice/${order.Invoice.id}`)}
-                                className="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors hover:bg-blue-100"
-                            >
-                                View Detailed Invoice
-                            </button>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Payment Status</span>
-                            <span className={`px-2 py-1 rounded text-xs font-bold ${order.Invoice.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 rounded-2xl shadow-lg shadow-blue-200 text-white">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h2 className="font-extrabold text-lg flex items-center gap-2">
+                                    <FileText size={20} />
+                                    Invoice Generated
+                                </h2>
+                                <p className="text-blue-100 text-xs mt-1 font-medium italic">#{order.Invoice.invoiceNumber || order.Invoice.id}</p>
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${order.Invoice.paymentStatus === 'Paid' ? 'bg-emerald-500/20 text-emerald-100 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-100 border border-rose-500/30'}`}>
                                 {order.Invoice.paymentStatus}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center mt-2">
-                            <span className="text-gray-600">Balance Amount</span>
-                            <span className="font-medium">₹{order.Invoice.balanceAmount}</span>
+
+                        <div className="flex items-center justify-between mb-5 bg-white/10 p-3 rounded-xl backdrop-blur-sm">
+                            <span className="text-sm font-medium text-blue-50">Balance Amount</span>
+                            <span className="text-xl font-black">₹{Number(order.Invoice.balanceAmount).toLocaleString()}</span>
                         </div>
+
+                        <button
+                            onClick={() => navigate(`/invoice/${order.Invoice.id}`)}
+                            className="w-full py-3.5 bg-white text-blue-600 font-black rounded-xl shadow-xl transition-all active:scale-[0.98] hover:bg-blue-50 flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
+                        >
+                            <FileText size={18} /> View Main Bill
+                        </button>
                     </div>
                 )}
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

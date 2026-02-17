@@ -25,6 +25,14 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW,
         },
+        invoiceId: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
+        collectedById: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        }
     });
 
     return Payment;

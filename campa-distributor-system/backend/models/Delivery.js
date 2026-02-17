@@ -20,6 +20,14 @@ module.exports = (sequelize, DataTypes) => {
         deliveryTime: {
             type: DataTypes.DATE,
         },
+        invoiceId: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
+        driverId: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        }
     });
 
     return Delivery;

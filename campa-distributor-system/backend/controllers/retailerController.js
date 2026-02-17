@@ -1,11 +1,13 @@
-const { Retailer } = require('../models');
+const { Retailer, Order, OrderItem, Invoice, Payment, User, Product } = require('../models');
 
 // @desc    Get all retailers
 // @route   GET /api/retailers
 // @access  Private
 const getRetailers = async (req, res) => {
     try {
-        const retailers = await Retailer.findAll();
+        const retailers = await Retailer.findAll({
+            order: [['shopName', 'ASC']]
+        });
         res.json(retailers);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -17,7 +19,31 @@ const getRetailers = async (req, res) => {
 // @access  Private
 const getRetailerById = async (req, res) => {
     try {
-        const retailer = await Retailer.findByPk(req.params.id);
+        const retailer = await Retailer.findByPk(req.params.id, {
+            include: [
+                {
+                    model: Order,
+                    as: 'orders',
+                    include: [
+                        {
+                            model: OrderItem,
+                            as: 'items',
+                            include: [{ model: Product, attributes: ['id', 'name', 'price'] }]
+                        },
+                        {
+                            model: Invoice,
+                            include: [
+                                {
+                                    model: Payment,
+                                    include: [{ model: User, as: 'collectedBy', attributes: ['id', 'name'] }]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            order: [[{ model: Order, as: 'orders' }, 'createdAt', 'DESC']]
+        });
 
         if (retailer) {
             res.json(retailer);

@@ -7,46 +7,86 @@ import {
     MapPin,
     User,
     Package,
-    Search
+    Search,
+    Calendar,
+    CreditCard,
+    Plus,
+    X
 } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const Deliveries = () => {
     const [deliveries, setDeliveries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDelivery, setSelectedDelivery] = useState(null); // For payment modal
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentData, setPaymentData] = useState({
+        amount: '',
+        paymentMode: 'Cash',
+        transactionId: ''
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const fetchDeliveries = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/orders');
+            const activeDeliveries = response.data.filter(
+                o => o.status === 'Dispatched' || o.status === 'Delivered'
+            );
+            setDeliveries(activeDeliveries);
+        } catch (error) {
+            console.error("Failed to fetch deliveries", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchDeliveries = async () => {
-            try {
-                // We fetch orders that are either Dispatched or Delivered
-                const response = await api.get('/orders');
-                const activeDeliveries = response.data.filter(
-                    o => o.status === 'Dispatched' || o.status === 'Delivered'
-                );
-                setDeliveries(activeDeliveries);
-            } catch (error) {
-                console.error("Failed to fetch deliveries", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchDeliveries();
     }, []);
 
+    const handleRecordPayment = async (e) => {
+        e.preventDefault();
+        if (!selectedDelivery || !selectedDelivery.Invoice) return;
+
+        const balance = parseFloat(selectedDelivery.Invoice.balanceAmount);
+        if (parseFloat(paymentData.amount) > balance) {
+            alert(`Payment amount cannot exceed balance (₹${balance})`);
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await api.post('/payments', {
+                invoiceId: selectedDelivery.Invoice.id,
+                amount: paymentData.amount,
+                paymentMode: paymentData.paymentMode,
+                transactionId: paymentData.transactionId
+            });
+
+            setShowPaymentModal(false);
+            setPaymentData({ amount: '', paymentMode: 'Cash', transactionId: '' });
+            alert("Payment recorded successfully!");
+            fetchDeliveries(); // Refresh list to update balances
+        } catch (error) {
+            console.error("Failed to record payment", error);
+            alert(error.response?.data?.message || "Failed to record payment");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const filteredDeliveries = deliveries.filter(d =>
-        d.retailer?.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (d.retailer?.shopName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.id.toString().includes(searchTerm)
     );
 
     const activeCount = deliveries.filter(d => d.status === 'Dispatched').length;
     const completedCount = deliveries.filter(d => d.status === 'Delivered').length;
 
-    if (loading) return (
-        <div className="flex justify-center items-center h-full min-h-[400px]">
-            <div className="w-10 h-10 rounded-full animate-spin border-4 border-solid border-blue-500 border-t-transparent shadow-lg"></div>
-        </div>
-    );
+    if (loading) return <LoadingSpinner />;
 
     return (
         <div className="animate-fade-in-up space-y-8 p-2">
@@ -123,15 +163,32 @@ const Deliveries = () => {
                                     </div>
                                 </div>
 
-                                <div className="text-right">
-                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Status</p>
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${delivery.status === 'Dispatched'
+                                <div className="text-right flex items-center gap-6">
+                                    <div>
+                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Status</p>
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${delivery.status === 'Dispatched'
                                             ? 'bg-blue-100 text-blue-700 border border-blue-200'
                                             : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                                        }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${delivery.status === 'Dispatched' ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}></span>
-                                        {delivery.status}
-                                    </span>
+                                            }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${delivery.status === 'Dispatched' ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                                            {delivery.status}
+                                        </span>
+                                    </div>
+
+                                    {delivery.Invoice && delivery.Invoice.paymentStatus !== 'Paid' && (
+                                        <button
+                                            onClick={() => {
+                                                setSelectedDelivery(delivery);
+                                                setPaymentData({ ...paymentData, amount: delivery.Invoice.balanceAmount });
+                                                setShowPaymentModal(true);
+                                            }}
+                                            className="bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 p-2 rounded-lg transition-colors shadow-sm flex items-center gap-2 group/btn"
+                                            title="Collect Payment"
+                                        >
+                                            <CreditCard size={18} className="group-hover/btn:scale-110 transition-transform" />
+                                            <span className="text-xs font-bold">Collect</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -144,6 +201,98 @@ const Deliveries = () => {
                     )}
                 </div>
             </div>
+
+            {/* Payment Collection Modal */}
+            {showPaymentModal && selectedDelivery && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">Record Payment</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Order #{selectedDelivery.id} - {selectedDelivery.retailer?.shopName}</p>
+                            </div>
+                            <button
+                                onClick={() => setShowPaymentModal(false)}
+                                className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleRecordPayment} className="p-6 space-y-5">
+                            <div className="bg-blue-50 rounded-xl p-4 flex justify-between items-center border border-blue-100">
+                                <div>
+                                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Outstanding Balance</p>
+                                    <p className="text-2xl font-black text-blue-700">₹{parseFloat(selectedDelivery.Invoice?.balanceAmount || 0).toLocaleString()}</p>
+                                </div>
+                                <div className="p-3 bg-white rounded-lg shadow-sm">
+                                    <CreditCard className="text-blue-500" size={24} />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Collection Amount</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            required
+                                            value={paymentData.amount}
+                                            onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 transition-all font-bold text-slate-700"
+                                            placeholder="Enter amount"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Payment Mode</label>
+                                    <select
+                                        value={paymentData.paymentMode}
+                                        onChange={(e) => setPaymentData({ ...paymentData, paymentMode: e.target.value })}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 transition-all text-sm font-semibold text-slate-700"
+                                    >
+                                        <option value="Cash">Cash</option>
+                                        <option value="UPI">UPI</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="Cheque">Cheque</option>
+                                    </select>
+                                </div>
+
+                                {paymentData.paymentMode !== 'Cash' && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Reference / Transaction ID</label>
+                                        <input
+                                            type="text"
+                                            value={paymentData.transactionId}
+                                            onChange={(e) => setPaymentData({ ...paymentData, transactionId: e.target.value })}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 transition-all text-sm font-medium text-slate-700"
+                                            placeholder="Ref No, UPI ID, etc."
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 text-white font-bold transition-all shadow-lg ${isSubmitting ? 'bg-slate-300' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200 active:scale-[0.98]'
+                                    }`}
+                            >
+                                {isSubmitting ? (
+                                    <>Recording Payment...</>
+                                ) : (
+                                    <>
+                                        <Plus size={20} /> Record Payment
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

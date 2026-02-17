@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { ArrowLeft, IndianRupee, Search, FileText, Calendar, ChevronDown, ChevronUp, CreditCard, Banknote, CheckCircle, AlertCircle, Loader, Share2 } from 'lucide-react';
+import { ArrowLeft, IndianRupee, Search, FileText, Calendar, ChevronDown, ChevronUp, ChevronRight, CreditCard, Banknote, CheckCircle, AlertCircle, Loader, User, Share2, ShieldCheck, Wallet } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 
 const CollectPayment = () => {
@@ -17,6 +18,7 @@ const CollectPayment = () => {
     }, []);
 
     const fetchInvoices = async () => {
+        setLoading(true);
         try {
             const response = await api.get('/invoices?status=Pending');
             setInvoices(response.data);
@@ -97,192 +99,229 @@ const CollectPayment = () => {
     const filteredInvoices = invoices.filter(inv =>
         (getRetailerName(inv).toLowerCase().includes(searchTerm.toLowerCase()) ||
             inv.id.toString().includes(searchTerm)) &&
-        (inv.paymentStatus === 'Pending' || inv.paymentStatus === 'Partially Paid')
+        (inv.paymentStatus === 'Pending' || inv.paymentStatus === 'Partially Paid') &&
+        (inv.Order?.status === 'Delivered')
     );
 
-    return (
-        <div className="min-h-screen bg-slate-50 p-4 pb-24">
-            {/* Header */}
-            <div className="sticky top-0 bg-slate-50 z-20 pb-4">
-                <div className="flex items-center justify-between mb-6">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <h1 className="text-xl font-extrabold text-slate-800">Collect Payment</h1>
-                    <div className="w-10"></div>
-                </div>
+    if (loading) return <LoadingSpinner />;
 
-                {/* Search Bar */}
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="Search Retailer or Bill No..."
-                        className="w-full pl-12 pr-4 py-3.5 bg-white rounded-2xl shadow-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700 transition-all focus:shadow-md"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+    return (
+        <div className="min-h-screen bg-slate-50/50 pb-32">
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-30 bg-white shadow-sm border-b border-slate-100 px-5 pt-8 pb-6 rounded-b-[2.5rem]">
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="flex items-center justify-between">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="p-3 bg-slate-50 rounded-2xl text-slate-600 hover:bg-white hover:shadow-md transition-all border border-slate-100"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Collect Payment</h1>
+                        <div className="w-11"></div>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search by retailer or bill #"
+                            className="w-full pl-12 pr-4 py-4 bg-slate-50 rounded-2xl border border-transparent focus:bg-white focus:border-emerald-100 focus:ring-4 focus:ring-emerald-500/5 focus:outline-none font-bold text-slate-700 transition-all shadow-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
             </div>
 
             {/* Invoices List */}
-            <div className="space-y-4">
-                {loading ? (
-                    <div className="flex justify-center items-center py-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
-                ) : filteredInvoices.length > 0 ? (
+            <div className="px-5 py-8 max-w-7xl mx-auto space-y-5">
+                {filteredInvoices.length > 0 ? (
                     filteredInvoices.map((invoice, index) => {
                         const isExpanded = expandedIds.includes(invoice.id);
-                        const balance = parseFloat(invoice.balanceAmount || invoice.totalAmount);
+                        const balance = parseFloat(invoice.balanceAmount || invoice.netTotal);
                         const retailerName = getRetailerName(invoice);
 
                         return (
                             <div
                                 key={invoice.id}
                                 style={{ animationDelay: `${index * 50}ms` }}
-                                className={`bg-white rounded-2xl shadow-sm border transition-all duration-300 overflow-hidden animate-fade-in-up ${isExpanded ? 'ring-2 ring-blue-500 border-transparent shadow-lg' : 'border-slate-100 hover:shadow-md'}`}
+                                className={`bg-white rounded-[2rem] shadow-lg border transition-all duration-300 overflow-hidden animate-fade-in-up ${isExpanded ? 'ring-2 ring-emerald-500 border-transparent shadow-2xl' : 'border-slate-100 hover:shadow-xl'}`}
                             >
                                 {/* Card Header / Summary */}
                                 <div
                                     onClick={() => toggleExpand(invoice.id, balance)}
-                                    className="p-5 cursor-pointer relative"
+                                    className="p-6 cursor-pointer relative"
                                 >
-                                    {/* Gradient Accent */}
-                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-500 to-indigo-600"></div>
+                                    {/* Gradient Accent Bar */}
+                                    <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b from-emerald-500 to-teal-600"></div>
 
-                                    <div className="flex justify-between items-start pl-3">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded">
+                                    <div className="flex justify-between items-start pl-3 mb-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border border-slate-100">
                                                     Bill #{invoice.id}
                                                 </span>
-                                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
                                                     <Calendar size={12} /> {new Date(invoice.createdAt).toLocaleDateString()}
                                                 </span>
                                             </div>
-                                            <h3 className="font-bold text-slate-800 text-lg leading-tight">
+                                            <h3 className="font-extrabold text-slate-800 text-xl leading-snug tracking-tight">
                                                 {retailerName}
                                             </h3>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Due</p>
-                                            <p className="font-extrabold text-blue-600 text-xl">₹{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Due Amount</p>
+                                            <p className="font-black text-emerald-600 text-2xl tracking-tighter">₹{balance.toLocaleString(undefined, { minimumFractionDigits: 0 })}</p>
                                         </div>
                                     </div>
 
                                     {/* Expansion Indicator */}
-                                    <div className="flex justify-center mt-2">
-                                        {isExpanded ? (
-                                            <ChevronUp size={20} className="text-slate-300" />
-                                        ) : (
-                                            <div className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full mt-2">
-                                                Pay Now <ChevronDown size={14} />
-                                            </div>
+                                    <div className="flex justify-center flex-col items-center gap-2">
+                                        <div className="w-8 h-1 bg-slate-100 rounded-full"></div>
+                                        {!isExpanded && (
+                                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full">
+                                                Tap to Record Payment
+                                            </span>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Expanded Content */}
-                                <div className={`bg-slate-50 px-5 transition-all duration-300 ease-in-out border-t border-slate-100 ${isExpanded ? 'max-h-[800px] py-6 opacity-100' : 'max-h-0 py-0 opacity-0 overflow-hidden'}`}>
+                                <div className={`bg-slate-50/50 px-6 transition-all duration-500 ease-in-out border-t border-slate-50 ${isExpanded ? 'max-h-[1000px] py-8 opacity-100' : 'max-h-0 py-0 opacity-0 overflow-hidden'}`}>
 
-                                    {/* Link to Full Invoice View */}
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/invoice/${invoice.id}`); }}
-                                        className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 mb-4 hover:bg-slate-50 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
-                                            <FileText size={16} className="text-blue-500" />
-                                            View Full Invoice
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                                            <span>Open Details</span>
-                                            <Share2 size={16} />
-                                        </div>
-                                    </button>
-
-                                    {/* Payment Form */}
-                                    <form onSubmit={(e) => handlePaymentSubmit(e, invoice.id, balance)}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Quick Summary View */}
                                         <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Amount to Collect</label>
-                                                <div className="relative">
-                                                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                                    <input
-                                                        type="number"
-                                                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
-                                                        value={paymentData[invoice.id]?.amount || ''}
-                                                        onChange={(e) => handleInputChange(invoice.id, 'amount', e.target.value)}
-                                                        max={balance}
-                                                    />
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/invoice/${invoice.id}`); }}
+                                                className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:shadow-md transition-all group"
+                                            >
+                                                <div className="flex items-center gap-3 text-slate-700 font-bold text-sm">
+                                                    <div className="p-2 bg-blue-50 text-blue-500 rounded-xl">
+                                                        <FileText size={18} />
+                                                    </div>
+                                                    Explore Full Invoice
+                                                </div>
+                                                <ChevronRight size={18} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                                            </button>
+
+                                            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-slate-400 font-bold">Total Bill</span>
+                                                    <span className="font-black text-slate-800">₹{parseFloat(invoice.totalAmount).toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-slate-400 font-bold">Paid So Far</span>
+                                                    <span className="font-black text-emerald-600">₹{(invoice.totalAmount - invoice.balanceAmount).toLocaleString()}</span>
                                                 </div>
                                             </div>
 
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Payment Mode</label>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {['Cash', 'UPI', 'Cheque'].map(mode => (
-                                                        <button
-                                                            key={mode}
-                                                            type="button"
-                                                            onClick={() => handleInputChange(invoice.id, 'paymentMode', mode)}
-                                                            className={`py-2.5 rounded-xl text-sm font-bold border transition-all flex flex-col items-center gap-1 ${paymentData[invoice.id]?.paymentMode === mode
-                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                                        >
-                                                            {mode === 'Cash' && <Banknote size={18} />}
-                                                            {mode === 'UPI' && <Search size={18} />} {/* Placeholder for QR/UPI icon */}
-                                                            {mode === 'Cheque' && <CreditCard size={18} />}
-                                                            {mode}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {paymentData[invoice.id]?.paymentMode !== 'Cash' && (
-                                                <div className="animate-fade-in-up">
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Transaction ID / Ref No</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700"
-                                                        placeholder={`Enter ${paymentData[invoice.id]?.paymentMode} Reference ID`}
-                                                        value={paymentData[invoice.id]?.transactionId || ''}
-                                                        onChange={(e) => handleInputChange(invoice.id, 'transactionId', e.target.value)}
-                                                        required
-                                                    />
+                                            {/* Collection History Audit Trail */}
+                                            {invoice.Payments && invoice.Payments.length > 0 && (
+                                                <div className="space-y-3">
+                                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Collection History</h4>
+                                                    <div className="bg-white/50 rounded-2xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+                                                        {invoice.Payments.map((p, i) => (
+                                                            <div key={i} className="p-3 flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500 uppercase">
+                                                                        {p.collectedBy?.name?.charAt(0) || 'U'}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-black text-slate-700">{p.collectedBy?.name || 'Unknown'}</p>
+                                                                        <p className="text-[9px] text-slate-400">{new Date(p.createdAt).toLocaleString()}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <span className="font-black text-slate-800">₹{parseFloat(p.amount).toLocaleString()}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
-
-                                            <button
-                                                type="submit"
-                                                disabled={processingId === invoice.id}
-                                                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4"
-                                            >
-                                                {processingId === invoice.id ? (
-                                                    <Loader className="animate-spin" size={20} />
-                                                ) : (
-                                                    <>
-                                                        <CheckCircle size={20} /> Confirm Payment
-                                                    </>
-                                                )}
-                                            </button>
                                         </div>
-                                    </form>
+
+                                        {/* Payment Form */}
+                                        <form onSubmit={(e) => handlePaymentSubmit(e, invoice.id, balance)} className="space-y-6">
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Payment Mode</label>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {['Cash', 'UPI', 'Cheque'].map(mode => (
+                                                            <button
+                                                                key={mode}
+                                                                type="button"
+                                                                onClick={() => handleInputChange(invoice.id, 'paymentMode', mode)}
+                                                                className={`py-4 rounded-2xl text-xs font-black border transition-all flex flex-col items-center gap-2 ${paymentData[invoice.id]?.paymentMode === mode
+                                                                    ? 'bg-slate-900 text-white border-slate-900 shadow-xl scale-[1.02]'
+                                                                    : 'bg-white text-slate-500 border-slate-100 hover:bg-slate-50'}`}
+                                                            >
+                                                                {mode === 'Cash' && <Banknote size={20} />}
+                                                                {mode === 'UPI' && <Wallet size={20} />}
+                                                                {mode === 'Cheque' && <CreditCard size={20} />}
+                                                                {mode}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Collection Amount</label>
+                                                    <div className="relative group">
+                                                        <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors" size={18} />
+                                                        <input
+                                                            type="number"
+                                                            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-100 font-black text-slate-800 transition-all text-lg"
+                                                            value={paymentData[invoice.id]?.amount || ''}
+                                                            onChange={(e) => handleInputChange(invoice.id, 'amount', e.target.value)}
+                                                            max={balance}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {paymentData[invoice.id]?.paymentMode !== 'Cash' && (
+                                                    <div className="animate-fade-in-up">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Reference / Trans ID</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-100 font-bold text-slate-800 transition-all"
+                                                            placeholder={`Enter ${paymentData[invoice.id]?.paymentMode} Ref #`}
+                                                            value={paymentData[invoice.id]?.transactionId || ''}
+                                                            onChange={(e) => handleInputChange(invoice.id, 'transactionId', e.target.value)}
+                                                            required
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    type="submit"
+                                                    disabled={processingId === invoice.id}
+                                                    className="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black shadow-xl shadow-emerald-100/50 active:scale-95 transition-all flex items-center justify-center gap-3 mt-4 disabled:opacity-50"
+                                                >
+                                                    {processingId === invoice.id ? (
+                                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <>
+                                                            <ShieldCheck size={22} /> Confirm Receipt
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         );
                     })
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                        <div className="p-6 bg-slate-100 rounded-full mb-4">
-                            <CheckCircle size={48} className="text-slate-300" />
+                    <div className="flex flex-col items-center justify-center py-24 text-center">
+                        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-xl flex items-center justify-center mb-6 border border-slate-50">
+                            <CheckCircle size={48} className="text-emerald-500" />
                         </div>
-                        <p className="font-medium text-lg text-slate-600">No pending collections</p>
-                        <p className="text-sm">Great job! All payments collected.</p>
+                        <h3 className="font-black text-slate-800 text-xl mb-2 tracking-tight">Zero Pendency!</h3>
+                        <p className="text-slate-400 font-medium max-w-[260px] leading-relaxed italic">All scheduled payments for today have been successfully accounted for.</p>
                     </div>
                 )}
             </div>

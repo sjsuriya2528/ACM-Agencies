@@ -1,3 +1,5 @@
+'use strict';
+
 const { Sequelize } = require('sequelize');
 const pg = require('pg');
 const dotenv = require('dotenv');
@@ -6,40 +8,57 @@ dotenv.config();
 
 if (!process.env.DATABASE_URL) {
     console.error('Error: DATABASE_URL environment variable is missing.');
-    // We don't exit here to allow for some flexibility or let the crash happen at connection time,
-    // but the user asked for a clear log message.
 }
 
 const config = {
     dialect: 'postgres',
-    protocol: 'postgres',
-    dialectModule: pg, // Force 'pg' module for Vercel/Serverless
+    dialectModule: pg,
     logging: false,
-    dialectOptions: {}
+    dialectOptions: {
+        ssl: {
+            rejectUnauthorized: false
+        }
+    },
+    pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+    }
 };
 
-if (process.env.DATABASE_URL) {
-    if (!process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1')) {
-        config.dialectOptions.ssl = {
-            require: true,
-            rejectUnauthorized: false
-        };
+const sequelize = new Sequelize(process.env.DATABASE_URL, config);
+
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 5000; // 5 seconds
+
+async function connectWithRetry() {
+    let retries = 0;
+    while (retries < MAX_RETRIES) {
+        try {
+            await sequelize.authenticate();
+            console.log('✅ Database connected successfully');
+            return sequelize;
+        } catch (err) {
+            retries++;
+            console.error(`❌ Database connection attempt ${retries} failed:`, err.message);
+            if (retries < MAX_RETRIES) {
+                console.log(`Retrying in ${RETRY_DELAY / 1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            } else {
+                console.error('Max connection retries reached. Exiting.');
+                throw err;
+            }
+        }
     }
-} else {
-    console.error('CRITICAL ERROR: DATABASE_URL environment variable is NOT set.');
 }
 
-const sequelize = process.env.DATABASE_URL
-    ? new Sequelize(process.env.DATABASE_URL, config)
-    : new Sequelize({ dialect: 'postgres' }); // Fallback dummy to prevent immediate crash on require, will fail on sync
-
-
 const db = {};
-
-db.Sequelize = Sequelize;
 db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+db.authenticate = connectWithRetry;
 
-// Import models (will add as we create them)
+// Import models
 db.User = require('./User')(sequelize, Sequelize);
 db.Retailer = require('./Retailer')(sequelize, Sequelize);
 db.Product = require('./Product')(sequelize, Sequelize);
@@ -48,45 +67,36 @@ db.OrderItem = require('./OrderItem')(sequelize, Sequelize);
 db.Invoice = require('./Invoice')(sequelize, Sequelize);
 db.Delivery = require('./Delivery')(sequelize, Sequelize);
 db.Payment = require('./Payment')(sequelize, Sequelize);
+db.CancelledOrder = require('./CancelledOrder')(sequelize, Sequelize);
+db.CancelledOrderItem = require('./CancelledOrderItem')(sequelize, Sequelize);
 
 // Associations
-
-// User (Role-based)
-// Sales Rep creates Orders
 db.User.hasMany(db.Order, { as: 'orders', foreignKey: 'salesRepId' });
 db.Order.belongsTo(db.User, { as: 'salesRep', foreignKey: 'salesRepId' });
-
-// Retailer has many Orders
 db.Retailer.hasMany(db.Order, { as: 'orders', foreignKey: 'retailerId' });
 db.Order.belongsTo(db.Retailer, { as: 'retailer', foreignKey: 'retailerId' });
-
-// Order has many OrderItems
 db.Order.hasMany(db.OrderItem, { as: 'items', foreignKey: 'orderId' });
 db.OrderItem.belongsTo(db.Order, { foreignKey: 'orderId' });
-
-// Product is in OrderItems
 db.Product.hasMany(db.OrderItem, { foreignKey: 'productId' });
 db.OrderItem.belongsTo(db.Product, { foreignKey: 'productId' });
-
-// Order has one Invoice
 db.Order.hasOne(db.Invoice, { foreignKey: 'orderId' });
 db.Invoice.belongsTo(db.Order, { foreignKey: 'orderId' });
-
-// Invoice has many Payments
 db.Invoice.hasMany(db.Payment, { foreignKey: 'invoiceId' });
 db.Payment.belongsTo(db.Invoice, { foreignKey: 'invoiceId' });
-
-// Delivery belongs to Invoice (or Order? Invoice usually)
-// Plan says: Invoice -> Delivery
 db.Invoice.hasOne(db.Delivery, { foreignKey: 'invoiceId' });
 db.Delivery.belongsTo(db.Invoice, { foreignKey: 'invoiceId' });
-
-// Delivery assigned to Driver (User)
 db.User.hasMany(db.Delivery, { as: 'deliveries', foreignKey: 'driverId' });
 db.Delivery.belongsTo(db.User, { as: 'driver', foreignKey: 'driverId' });
-
-// Payment collected by User (Driver or Collector)
 db.User.hasMany(db.Payment, { as: 'paymentsCollected', foreignKey: 'collectedById' });
 db.Payment.belongsTo(db.User, { as: 'collectedBy', foreignKey: 'collectedById' });
+db.CancelledOrder.hasMany(db.CancelledOrderItem, { as: 'items', foreignKey: 'cancelledOrderId' });
+db.CancelledOrderItem.belongsTo(db.CancelledOrder, { foreignKey: 'cancelledOrderId' });
+db.CancelledOrder.belongsTo(db.Retailer, { as: 'retailer', foreignKey: 'retailerId' });
+db.CancelledOrder.belongsTo(db.User, { as: 'salesRep', foreignKey: 'salesRepId' });
+db.Product.hasMany(db.CancelledOrderItem, { foreignKey: 'productId' });
+db.CancelledOrderItem.belongsTo(db.Product, { foreignKey: 'productId' });
+
+// Note: models are initialized synchronously at the top level
+// The authenticate function just verifies the connection.
 
 module.exports = db;

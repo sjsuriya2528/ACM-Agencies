@@ -33,7 +33,7 @@ const recordPayment = async (req, res) => {
             }, { transaction: t });
 
             const newPaidAmount = Number(invoice.paidAmount) + paymentAmount;
-            const newBalance = Number(invoice.totalAmount) - newPaidAmount;
+            const newBalance = Number(invoice.netTotal) - newPaidAmount;
 
             invoice.paidAmount = newPaidAmount;
             invoice.balanceAmount = newBalance;
@@ -67,7 +67,7 @@ const getPayments = async (req, res) => {
                 { model: User, as: 'collectedBy', attributes: ['id', 'name'] },
                 {
                     model: Invoice,
-                    attributes: ['id', 'totalAmount', 'balanceAmount'],
+                    attributes: ['id', 'netTotal', 'balanceAmount'],
                     include: [{
                         model: Order,
                         attributes: ['id'],

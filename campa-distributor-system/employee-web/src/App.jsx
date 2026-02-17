@@ -18,6 +18,23 @@ import InvoiceView from './pages/InvoiceView';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import { LoaderProvider, useLoader } from './context/LoaderContext';
+import GlobalLoader from './components/GlobalLoader';
+import api, { setLoaderHandler } from './api/axios';
+
+const LoaderInitializer = () => {
+  const { showLoader, hideLoader } = useLoader();
+
+  React.useEffect(() => {
+    setLoaderHandler({
+      show: showLoader,
+      hide: hideLoader
+    });
+  }, [showLoader, hideLoader]);
+
+  return <GlobalLoader />;
+};
+
 const HomeRedirect = () => {
   const { user } = useContext(AuthContext);
   if (!user) return <Navigate to="/login" replace />;
@@ -33,114 +50,118 @@ const HomeRedirect = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
+    <LoaderProvider>
+      <LoaderInitializer />
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
-          <Route path="/" element={<HomeRedirect />} />
+            <Route path="/" element={<HomeRedirect />} />
 
-          <Route
-            path="/sales-dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['sales_rep']}>
-                <SalesDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/view-orders"
-            element={
-              <ProtectedRoute allowedRoles={['sales_rep']}>
-                <ViewOrders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/orders/:id"
-            element={
-              <ProtectedRoute allowedRoles={['sales_rep']}>
-                <OrderDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/retailers"
-            element={
-              <ProtectedRoute allowedRoles={['sales_rep']}>
-                <Retailers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/create-order"
-            element={
-              <ProtectedRoute allowedRoles={['sales_rep']}>
-                <CreateOrder />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/driver-dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['driver']}>
-                <DriverDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/my-deliveries"
-            element={
-              <ProtectedRoute allowedRoles={['driver', 'collection_agent']}>
-                <MyDeliveries />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/delivery/:id"
-            element={
-              <ProtectedRoute allowedRoles={['driver', 'collection_agent']}>
-                <DeliveryDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/collection-dashboard"
-            element={
-              <ProtectedRoute allowedRoles={['collection_agent']}>
-                <CollectionDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/collect-payment"
-            element={
-              <ProtectedRoute allowedRoles={['collection_agent']}>
-                <CollectPayment />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/invoice/:id"
-            element={
-              <ProtectedRoute allowedRoles={['collection_agent', 'sales_rep', 'driver']}>
-                <InvoiceView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/payment-history"
-            element={
-              <ProtectedRoute allowedRoles={['collection_agent']}>
-                <PaymentHistory />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </AuthProvider>
+            <Route
+              path="/sales-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['sales_rep']}>
+                  <SalesDashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* ... rest of the routes ... */}
+            <Route
+              path="/view-orders"
+              element={
+                <ProtectedRoute allowedRoles={['sales_rep']}>
+                  <ViewOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/:id"
+              element={
+                <ProtectedRoute allowedRoles={['sales_rep']}>
+                  <OrderDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/retailers"
+              element={
+                <ProtectedRoute allowedRoles={['sales_rep', 'driver', 'collection_agent']}>
+                  <Retailers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/create-order"
+              element={
+                <ProtectedRoute allowedRoles={['sales_rep', 'driver']}>
+                  <CreateOrder />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['driver']}>
+                  <DriverDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-deliveries"
+              element={
+                <ProtectedRoute allowedRoles={['driver', 'collection_agent']}>
+                  <MyDeliveries />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/delivery/:id"
+              element={
+                <ProtectedRoute allowedRoles={['driver', 'collection_agent']}>
+                  <DeliveryDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/collection-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['collection_agent', 'sales_rep', 'driver']}>
+                  <CollectionDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/collect-payment"
+              element={
+                <ProtectedRoute allowedRoles={['collection_agent', 'driver', 'sales_rep']}>
+                  <CollectPayment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoice/:id"
+              element={
+                <ProtectedRoute allowedRoles={['collection_agent', 'sales_rep', 'driver']}>
+                  <InvoiceView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment-history"
+              element={
+                <ProtectedRoute allowedRoles={['collection_agent', 'driver', 'sales_rep']}>
+                  <PaymentHistory />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </LoaderProvider>
   );
 }
 

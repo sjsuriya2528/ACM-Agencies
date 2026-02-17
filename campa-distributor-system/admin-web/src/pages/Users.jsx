@@ -9,8 +9,10 @@ import {
     Award,
     Calendar,
     IndianRupee,
-    Package
+    Package,
+    UserPlus
 } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const Users = () => {
     const [activeTab, setActiveTab] = useState('users'); // 'users' or 'performance'
@@ -100,6 +102,8 @@ const Users = () => {
             </span>
         );
     };
+
+    if (loading) return <LoadingSpinner />;
 
     return (
         <div className="animate-fade-in-up space-y-8 p-2">

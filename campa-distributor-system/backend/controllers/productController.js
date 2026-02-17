@@ -33,7 +33,7 @@ const getProductById = async (req, res) => {
 // @route   POST /api/products
 // @access  Private (Admin)
 const createProduct = async (req, res) => {
-    const { name, sku, price, gstPercentage, stockQuantity } = req.body;
+    const { name, sku, price, gstPercentage, stockQuantity, groupName, bottlesPerCrate } = req.body;
 
     try {
         const product = await Product.create({
@@ -42,6 +42,8 @@ const createProduct = async (req, res) => {
             price,
             gstPercentage,
             stockQuantity,
+            groupName,
+            bottlesPerCrate
         });
 
         res.status(201).json(product);
@@ -63,10 +65,12 @@ const updateProduct = async (req, res) => {
             product.price = req.body.price || product.price;
             product.gstPercentage = req.body.gstPercentage || product.gstPercentage;
             product.stockQuantity = req.body.stockQuantity !== undefined ? req.body.stockQuantity : product.stockQuantity;
+            product.groupName = req.body.groupName || product.groupName;
+            product.bottlesPerCrate = req.body.bottlesPerCrate !== undefined ? req.body.bottlesPerCrate : product.bottlesPerCrate;
             product.isActive = req.body.isActive !== undefined ? req.body.isActive : product.isActive;
 
             const updatedProduct = await product.save();
-            res.json(updatedProduct);
+            res.json(updatedProduct); // Return updated product
         } else {
             res.status(404).json({ message: 'Product not found' });
         }

@@ -85,7 +85,17 @@ module.exports = (sequelize, DataTypes) => {
         },
         paymentDetails: {
             type: DataTypes.TEXT, // 'Gpay No SURESH...'
+        },
+        orderId: {
+            type: DataTypes.INTEGER,
+            allowNull: false
         }
+    }, {
+        indexes: [
+            {
+                fields: ['orderId']
+            }
+        ]
     });
 
     return Invoice;

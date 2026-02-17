@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { ArrowLeft, ShoppingCart, Search, MapPin, UserPlus, X, Box, Check, CreditCard, Banknote } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Search, MapPin, UserPlus, X, Box, Check, CreditCard, Banknote, IndianRupee, AlertCircle } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 
 const CreateOrder = () => {
@@ -97,10 +98,11 @@ const CreateOrder = () => {
     };
 
     const calculateTotal = () => {
-        return Object.entries(cart).reduce((total, [productId, qty]) => {
+        const baseTotal = Object.entries(cart).reduce((total, [productId, qty]) => {
             const product = products.find(p => p.id === parseInt(productId));
             return total + (product ? product.price * qty : 0);
         }, 0);
+        return baseTotal * 1.40; // Including 20% SGST + 20% CGST
     };
 
     const itemsCount = Object.values(cart).reduce((a, b) => a + b, 0);
@@ -133,6 +135,8 @@ const CreateOrder = () => {
                     paymentMode, // Include selected mode
                     gpsLatitude: latitude,
                     gpsLongitude: longitude
+                }, {
+                    headers: { 'x-loading-term': 'Placing Order' }
                 });
                 alert("Order placed successfully!");
                 navigate('/sales-dashboard');
@@ -146,53 +150,51 @@ const CreateOrder = () => {
         });
     };
 
-    if (loading) return (
-        <div className="flex justify-center items-center min-h-screen bg-slate-50">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-        </div>
-    );
+    if (loading) return <LoadingSpinner />;
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-44">
+        <div className="min-h-screen bg-slate-50 relative pb-40">
             {/* Header */}
-            <div className="sticky top-0 bg-white/80 backdrop-blur-md shadow-sm z-30 px-4 py-3 flex items-center gap-4 transition-all">
+            <div className="sticky top-0 bg-white/90 backdrop-blur-md shadow-sm z-30 px-4 py-4 flex items-center gap-4 border-b border-slate-100">
                 <button
                     onClick={() => navigate(-1)}
-                    className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-colors"
+                    className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors"
                 >
                     <ArrowLeft size={20} />
                 </button>
-                <h1 className="text-xl font-bold text-slate-800">New Order</h1>
+                <h1 className="text-xl font-black text-slate-800 tracking-tight">New Order</h1>
             </div>
 
-            <div className="p-4 space-y-6 max-w-lg mx-auto">
+            <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
 
                 {/* Retailer Section */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <UserPlus size={14} /> Retailer
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100/60">
+                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <UserPlus size={14} className="text-blue-500" /> Retailer Details
                     </h2>
 
                     {selectedRetailer ? (
-                        <div className="relative group">
-                            <div className="absolute inset-0 bg-blue-500 rounded-2xl opacity-5 group-hover:opacity-10 transition-opacity"></div>
-                            <div className="flex justify-between items-center p-4 rounded-2xl border border-blue-100 bg-blue-50/50">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
-                                            {selectedRetailer.shopName.charAt(0)}
-                                        </div>
-                                        <p className="font-bold text-slate-800">{selectedRetailer.shopName}</p>
+                        <div className="relative group overflow-hidden rounded-2xl border-2 border-blue-100 bg-blue-50/30 transition-all hover:shadow-md hover:border-blue-200">
+                            <div className="p-4 flex justify-between items-center relative z-10">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-blue-200 shadow-lg">
+                                        {selectedRetailer.shopName.charAt(0)}
                                     </div>
-                                    <p className="text-sm text-slate-500 pl-10">{selectedRetailer.ownerName}</p>
-                                    <p className="text-xs text-slate-400 pl-10 mt-1">{selectedRetailer.address}</p>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-lg leading-tight">{selectedRetailer.shopName}</p>
+                                        <p className="text-sm text-slate-500 font-medium">{selectedRetailer.ownerName}</p>
+                                    </div>
                                 </div>
                                 <button
                                     onClick={() => setSelectedRetailer(null)}
-                                    className="px-3 py-1.5 bg-white text-blue-600 text-xs font-bold rounded-lg shadow-sm border border-blue-100 hover:bg-blue-50 transition-colors"
+                                    className="px-3 py-1.5 bg-white text-slate-500 text-xs font-bold rounded-lg shadow-sm border border-slate-200 hover:text-rose-500 hover:border-rose-200 transition-all"
                                 >
                                     Change
                                 </button>
+                            </div>
+                            <div className="px-4 pb-3 pt-0 text-xs text-slate-400 flex items-center gap-1.5">
+                                <MapPin size={12} />
+                                {selectedRetailer.address}
                             </div>
                         </div>
                     ) : (
@@ -201,35 +203,45 @@ const CreateOrder = () => {
                             <input
                                 type="text"
                                 placeholder="Search Retailer..."
-                                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium"
+                                className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium shadow-inner"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
 
                             {searchTerm && (
-                                <div className="absolute top-full left-0 right-0 bg-white shadow-xl rounded-xl mt-2 max-h-60 overflow-y-auto z-20 border border-slate-100 animate-fade-in-up">
+                                <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-2xl mt-2 max-h-64 overflow-y-auto z-20 border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
                                     {filteredRetailers.map(r => (
                                         <div
                                             key={r.id}
                                             onClick={() => handleSelectRetailer(r)}
-                                            className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex items-center justify-between group"
+                                            className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex items-center justify-between group transition-colors"
                                         >
-                                            <div>
-                                                <p className="font-bold text-slate-700 text-sm group-hover:text-blue-600 transition-colors">{r.shopName}</p>
-                                                <p className="text-xs text-slate-500">{r.ownerName}</p>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                                    {r.shopName.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-700 text-sm group-hover:text-blue-700 transition-colors">{r.shopName}</p>
+                                                    <p className="text-xs text-slate-400 font-medium">{r.ownerName}</p>
+                                                </div>
                                             </div>
-                                            <Check size={16} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <div className="w-6 h-6 rounded-full border-2 border-slate-200 flex items-center justify-center group-hover:border-blue-500 group-hover:bg-blue-50 transition-all">
+                                                <Check size={12} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
                                         </div>
                                     ))}
                                     {filteredRetailers.length === 0 && (
-                                        <div className="p-4 text-center text-slate-400 text-sm">No retailers found</div>
+                                        <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
+                                            <Search size={24} className="opacity-50" />
+                                            No retailers found
+                                        </div>
                                     )}
                                 </div>
                             )}
 
                             <button
                                 onClick={() => setShowNewRetailerModal(true)}
-                                className="w-full mt-3 flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-semibold text-sm transition-all active:scale-95 shadow-lg shadow-slate-200"
+                                className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold text-sm transition-all active:scale-95 shadow-lg shadow-slate-200"
                             >
                                 <UserPlus size={16} />
                                 Add New Retailer
@@ -239,192 +251,197 @@ const CreateOrder = () => {
                 </div>
 
                 {/* Payment Mode */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <CreditCard size={14} /> Payment Mode
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100/60">
+                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <CreditCard size={14} className="text-violet-500" /> Payment Mode
                     </h2>
-                    <div className="flex gap-4">
+                    <div className="flex p-1 bg-slate-100 rounded-xl">
                         {['Credit', 'Cash'].map(mode => (
-                            <label key={mode} className={`flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${paymentMode === mode ? 'border-blue-500 bg-blue-50/50' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}>
-                                <input
-                                    type="radio"
-                                    name="paymentMode"
-                                    value={mode}
-                                    checked={paymentMode === mode}
-                                    onChange={() => setPaymentMode(mode)}
-                                    className="hidden"
-                                />
-                                <div className={`p-2 rounded-full ${paymentMode === mode ? 'bg-blue-100 text-blue-600' : 'bg-white text-slate-400'}`}>
-                                    {mode === 'Credit' ? <CreditCard size={20} /> : <Banknote size={20} />}
-                                </div>
-                                <span className={`font-bold text-sm ${paymentMode === mode ? 'text-blue-700' : 'text-slate-600'}`}>{mode}</span>
-                            </label>
+                            <button
+                                key={mode}
+                                onClick={() => setPaymentMode(mode)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${paymentMode === mode
+                                    ? 'bg-white text-slate-800 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                {mode === 'Credit' ? <CreditCard size={16} /> : <Banknote size={16} />}
+                                {mode}
+                            </button>
                         ))}
                     </div>
                 </div>
 
                 {/* Products Section */}
                 <div className="space-y-4">
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-16 z-10">
+                    <div className="sticky top-20 z-20 bg-slate-50 pt-2 pb-4">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="text"
                                 placeholder="Search Products..."
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-medium transition-all"
+                                className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium transition-all shadow-sm"
                                 value={productSearchTerm}
                                 onChange={(e) => setProductSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
-                        const totalQty = cart[product.id] || 0;
-                        const bottlesPerCrate = product.bottlesPerCrate || 24;
-                        const crates = Math.floor(totalQty / bottlesPerCrate);
-                        const pieces = totalQty % bottlesPerCrate;
-                        const isActive = totalQty > 0;
+                    <div className="space-y-3">
+                        {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
+                            const totalQty = cart[product.id] || 0;
+                            const bottlesPerCrate = product.bottlesPerCrate || 24;
+                            const crates = Math.floor(totalQty / bottlesPerCrate);
+                            const pieces = totalQty % bottlesPerCrate;
+                            const isActive = totalQty > 0;
 
-                        return (
-                            <div key={product.id} className={`bg-white p-5 rounded-2xl shadow-sm border transition-all duration-200 ${isActive ? 'border-blue-200 shadow-md ring-1 ring-blue-100' : 'border-slate-100'}`}>
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-slate-800 text-lg">{product.name}</h3>
-                                        <div className="flex flex-col gap-0.5 mt-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-bold text-slate-800">₹{(product.price * bottlesPerCrate).toFixed(2)}</span>
-                                                <span className="text-xs text-slate-500">/ crate</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-medium text-slate-500">₹{product.price}</span>
-                                                <span className="text-[10px] text-slate-400">/ bottle</span>
+                            return (
+                                <div key={product.id} className={`bg-white p-5 rounded-3xl shadow-sm border transition-all duration-300 ${isActive ? 'border-blue-500 ring-4 ring-blue-500/5 shadow-blue-100' : 'border-slate-100'}`}>
+                                    <div className="flex justify-between items-start mb-5">
+                                        <div>
+                                            <h3 className="font-bold text-slate-800 text-lg leading-tight mb-2">{product.name}</h3>
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">
+                                                    ₹{product.price} <span className="text-slate-400 font-medium">/ bottle</span>
+                                                </div>
+                                                <div className="text-xs text-slate-400 font-medium">
+                                                    ₹{(product.price * bottlesPerCrate).toFixed(0)} / crate
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className={`text-right transition-opacity duration-300 ${isActive ? 'opacity-100' : 'opacity-0'}`}>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total</p>
+                                            <p className="font-extrabold text-blue-600 text-xl leading-none">₹{(totalQty * product.price).toFixed(2)}</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-extrabold text-blue-600 text-lg">₹{(totalQty * product.price).toFixed(2)}</p>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Crates</label>
+                                            <div className="flex items-center justify-center">
+                                                <Box size={14} className="text-slate-400 mr-2" />
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
+                                                    value={crates || ''}
+                                                    placeholder="0"
+                                                    onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Pieces</label>
+                                            <div className="flex items-center justify-center">
+                                                <Check size={14} className="text-slate-400 mr-2" />
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max={bottlesPerCrate - 1}
+                                                    className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
+                                                    value={pieces || ''}
+                                                    placeholder="0"
+                                                    onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block tracking-wider">Crates</label>
-                                        <div className="flex items-center bg-slate-50 rounded-xl px-3 border border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                                            <Box size={16} className="text-slate-400 mr-2" />
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                className="w-full bg-transparent py-2.5 focus:outline-none font-bold text-slate-700 text-center"
-                                                value={crates || ''}
-                                                placeholder="0"
-                                                onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block tracking-wider">Pieces</label>
-                                        <div className="flex items-center bg-slate-50 rounded-xl px-3 border border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                                            <Check size={16} className="text-slate-400 mr-2" />
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max={bottlesPerCrate - 1}
-                                                className="w-full bg-transparent py-2.5 focus:outline-none font-bold text-slate-700 text-center"
-                                                value={pieces || ''}
-                                                placeholder="0"
-                                                onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
             {/* Sticky Bottom Summary */}
-            <div className={`fixed bottom-0 left-0 right-0 bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-5 z-40 rounded-t-3xl transition-transform duration-300 ${itemsCount > 0 ? 'translate-y-0' : 'translate-y-full'}`}>
-                <div className="max-w-lg mx-auto">
-                    <div className="flex justify-between items-center mb-5">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-slate-900 rounded-xl text-white">
-                                <ShoppingCart size={20} />
-                            </div>
-                            <div>
-                                <p className="text-slate-500 text-xs uppercase font-bold tracking-wider">Total Items</p>
-                                <span className="font-extrabold text-slate-800 text-xl leading-none">{itemsCount} <span className="text-sm font-medium text-slate-400">Units</span></span>
-                            </div>
+            <div className={`fixed bottom-0 left-0 right-0 bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-4 md:p-6 z-40 rounded-t-[2.5rem] border-t border-slate-100 transition-transform duration-300 ${itemsCount > 0 ? 'translate-y-0' : 'translate-y-full'}`}>
+                <div className="max-w-2xl mx-auto">
+                    <div className="flex justify-between items-end mb-4 px-2">
+                        <div>
+                            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Subtotal (Inc. 40% Tax)</p>
+                            <span className="font-black text-slate-800 text-3xl leading-none tracking-tight">₹{calculateTotal().toLocaleString()}</span>
                         </div>
                         <div className="text-right">
-                            <p className="text-slate-500 text-xs uppercase font-bold tracking-wider">Total Amount</p>
-                            <p className="text-2xl font-black text-blue-600 leading-none">₹{calculateTotal().toFixed(2)}</p>
+                            <span className="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold">
+                                {itemsCount} Items
+                            </span>
                         </div>
                     </div>
                     <button
                         onClick={handleSubmit}
-                        className="w-full bg-blue-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-200"
+                        className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-slate-800 flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl shadow-slate-200"
                     >
-                        <MapPin size={20} />
-                        Place Order Now
+                        <span>Place Order</span>
+                        <ArrowLeft size={20} className="rotate-180" />
                     </button>
                 </div>
             </div>
 
             {/* New Retailer Modal */}
             {showNewRetailerModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-3xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-extrabold text-slate-800">Add New Retailer</h2>
-                            <button onClick={() => setShowNewRetailerModal(false)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
-                                <X size={20} className="text-slate-500" />
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[2rem] w-full max-w-md p-6 max-h-[90vh] overflow-y-auto shadow-2xl scale-100 animate-in zoom-in-95">
+                        <div className="flex justify-between items-center mb-8">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Add Retailer</h2>
+                                <p className="text-slate-400 text-sm font-medium">Register a new shop</p>
+                            </div>
+                            <button onClick={() => setShowNewRetailerModal(false)} className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
+                                <X size={20} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateRetailer} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Shop Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full p-3.5 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                                    value={newRetailer.shopName}
-                                    onChange={(e) => setNewRetailer({ ...newRetailer, shopName: e.target.value })}
-                                />
+                        <form onSubmit={handleCreateRetailer} className="space-y-5">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Shop Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
+                                        placeholder="e.g. Laxmi General Store"
+                                        value={newRetailer.shopName}
+                                        onChange={(e) => setNewRetailer({ ...newRetailer, shopName: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Owner Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
+                                            placeholder="Name"
+                                            value={newRetailer.ownerName}
+                                            onChange={(e) => setNewRetailer({ ...newRetailer, ownerName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Phone</label>
+                                        <input
+                                            type="tel"
+                                            className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
+                                            placeholder="Number"
+                                            value={newRetailer.phone}
+                                            onChange={(e) => setNewRetailer({ ...newRetailer, phone: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Address</label>
+                                    <textarea
+                                        className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 resize-none h-24"
+                                        placeholder="Shop Address..."
+                                        value={newRetailer.address}
+                                        onChange={(e) => setNewRetailer({ ...newRetailer, address: e.target.value })}
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Owner Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-3.5 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                                    value={newRetailer.ownerName}
-                                    onChange={(e) => setNewRetailer({ ...newRetailer, ownerName: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phone Number</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-3.5 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                                    value={newRetailer.phone}
-                                    onChange={(e) => setNewRetailer({ ...newRetailer, phone: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Address</label>
-                                <textarea
-                                    className="w-full p-3.5 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                                    rows="3"
-                                    value={newRetailer.address}
-                                    onChange={(e) => setNewRetailer({ ...newRetailer, address: e.target.value })}
-                                ></textarea>
-                            </div>
+
                             <button
                                 type="submit"
-                                className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 mt-2 shadow-lg transition-transform active:scale-95"
+                                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
                             >
-                                Create Retailer
+                                Save Retailer
                             </button>
                         </form>
                     </div>

@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import DashboardHome from './DashboardHome';
 import Products from './Products';
 import Retailers from './Retailers';
+import RetailerDetail from './RetailerDetail';
 import Users from './Users';
 import Orders from './Orders';
 import Payments from './Payments';
@@ -18,6 +19,7 @@ const Dashboard = () => {
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/products" element={<Products />} />
                     <Route path="/retailers" element={<Retailers />} />
+                    <Route path="/retailers/:id" element={<RetailerDetail />} />
                     <Route path="/users" element={<Users />} />
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/deliveries" element={<Deliveries />} />

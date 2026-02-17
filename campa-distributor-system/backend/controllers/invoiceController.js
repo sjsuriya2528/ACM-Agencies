@@ -1,4 +1,5 @@
-const { Invoice, Order, Retailer, User } = require('../models');
+const { Invoice, Order, Retailer, User, Sequelize } = require('../models');
+const { Op } = Sequelize;
 
 // @desc    Get invoices (with optional status filter)
 // @route   GET /api/invoices
@@ -8,7 +9,9 @@ const getInvoices = async (req, res) => {
         const { status } = req.query;
         let whereClause = {};
 
-        if (status) {
+        if (status === 'Pending') {
+            whereClause.paymentStatus = { [Op.in]: ['Pending', 'Partially Paid'] };
+        } else if (status) {
             whereClause.paymentStatus = status;
         }
 
@@ -17,10 +20,15 @@ const getInvoices = async (req, res) => {
             include: [
                 {
                     model: Order,
+                    where: status === 'Pending' ? { status: 'Delivered' } : {},
                     include: [
                         { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'address'] },
                         { model: User, as: 'salesRep', attributes: ['name'] }
                     ]
+                },
+                {
+                    model: require('../models').Payment,
+                    include: [{ model: User, as: 'collectedBy', attributes: ['name'] }]
                 }
             ],
             order: [['createdAt', 'DESC']],
@@ -50,6 +58,10 @@ const getInvoiceById = async (req, res) => {
                             include: [{ model: require('../models').Product, attributes: ['name', 'price'] }]
                         }
                     ]
+                },
+                {
+                    model: require('../models').Payment,
+                    include: [{ model: User, as: 'collectedBy', attributes: ['name'] }]
                 }
             ]
         });

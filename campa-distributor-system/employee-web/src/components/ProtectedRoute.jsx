@@ -7,11 +7,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     const location = useLocation();
 
     if (!user) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        // Don't capture dashboard URLs in redirect state to avoid profile mixups
+        const isDashboard = ['/sales-dashboard', '/driver-dashboard', '/collection-dashboard'].includes(location.pathname);
+        return <Navigate to="/login" state={isDashboard ? null : { from: location }} replace />;
     }
 
     if (allowedRoles && !allowedRoles.includes(user.role)) {
-        return <Navigate to="/unauthorized" replace />;
+        return <Navigate to="/" replace />;
     }
 
     return children;

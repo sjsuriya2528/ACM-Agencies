@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 const Retailers = () => {
     const [retailers, setRetailers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ shopName: '', ownerName: '', mobileNumber: '', address: '' });
+    const [formData, setFormData] = useState({ shopName: '', ownerName: '', phone: '', address: '' });
     const [editingId, setEditingId] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const fetchRetailers = async () => {
         try {
@@ -33,7 +36,7 @@ const Retailers = () => {
                 await api.post('/retailers', formData);
             }
             setIsModalOpen(false);
-            setFormData({ shopName: '', ownerName: '', mobileNumber: '', address: '' });
+            setFormData({ shopName: '', ownerName: '', phone: '', address: '' });
             setEditingId(null);
             fetchRetailers();
         } catch (error) {
@@ -53,24 +56,41 @@ const Retailers = () => {
     };
 
     const startEdit = (retailer) => {
-        setFormData({ shopName: retailer.shopName, ownerName: retailer.ownerName, mobileNumber: retailer.mobileNumber, address: retailer.address });
+        setFormData({ shopName: retailer.shopName, ownerName: retailer.ownerName, phone: retailer.phone, address: retailer.address });
         setEditingId(retailer.id);
         setIsModalOpen(true);
     };
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Retailers</h1>
-                <button
-                    onClick={() => { setIsModalOpen(true); setEditingId(null); setFormData({ shopName: '', ownerName: '', mobileNumber: '', address: '' }); }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700"
-                >
-                    <Plus size={20} /> Add Retailer
-                </button>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <div className="relative">
+                    <h1 className="text-2xl font-bold text-gray-800">Retailers</h1>
+                    <div className="h-1 w-20 bg-purple-600 rounded mt-1"></div>
+                </div>
+                <div className="flex gap-4 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <input
+                            type="text"
+                            placeholder="Search retailers..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <button
+                        onClick={() => { setIsModalOpen(true); setEditingId(null); setFormData({ shopName: '', ownerName: '', phone: '', address: '' }); }}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 shadow-md transition-all transform hover:scale-105"
+                    >
+                        <Plus size={20} /> <span className="hidden sm:inline">Add Retailer</span>
+                    </button>
+                </div>
             </div>
 
-            {loading ? <div>Loading...</div> : (
+            {loading ? <LoadingSpinner /> : (
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -83,15 +103,36 @@ const Retailers = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {retailers.map(retailer => (
-                                <tr key={retailer.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap">{retailer.shopName}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{retailer.ownerName}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{retailer.mobileNumber}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{retailer.address}</td>
+                            {retailers.filter(r =>
+                                (r.shopName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                (r.ownerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                r.phone?.includes(searchTerm)
+                            ).map(retailer => (
+                                <tr key={retailer.id} className="hover:bg-purple-50 transition-colors duration-150">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center">
+                                            <div className="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold text-lg">
+                                                {retailer.shopName?.charAt(0).toUpperCase() || 'R'}
+                                            </div>
+                                            <div className="ml-4">
+                                                <Link to={`/retailers/${retailer.id}`} className="text-sm font-medium text-purple-600 hover:text-purple-900 hover:underline transition-all">
+                                                    {retailer.shopName}
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">{retailer.ownerName}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            {retailer.phone}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={retailer.address}>{retailer.address}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => startEdit(retailer)} className="text-indigo-600 hover:text-indigo-900 mr-4"><Edit size={18} /></button>
-                                        <button onClick={() => handleDelete(retailer.id)} className="text-red-600 hover:text-red-900"><Trash2 size={18} /></button>
+                                        <button onClick={() => startEdit(retailer)} className="text-indigo-600 hover:text-indigo-900 mr-3 p-1 hover:bg-indigo-50 rounded-full transition-colors"><Edit size={18} /></button>
+                                        <button onClick={() => handleDelete(retailer.id)} className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={18} /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -107,7 +148,7 @@ const Retailers = () => {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input type="text" placeholder="Shop Name" className="w-full border p-2 rounded" value={formData.shopName} onChange={e => setFormData({ ...formData, shopName: e.target.value })} required />
                             <input type="text" placeholder="Owner Name" className="w-full border p-2 rounded" value={formData.ownerName} onChange={e => setFormData({ ...formData, ownerName: e.target.value })} required />
-                            <input type="text" placeholder="Mobile Number" className="w-full border p-2 rounded" value={formData.mobileNumber} onChange={e => setFormData({ ...formData, mobileNumber: e.target.value })} required />
+                            <input type="text" placeholder="Mobile Number" className="w-full border p-2 rounded" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} required />
                             <input type="text" placeholder="Address" className="w-full border p-2 rounded" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required />
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>

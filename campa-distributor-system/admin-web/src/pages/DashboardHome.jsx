@@ -6,8 +6,10 @@ import {
     IndianRupee,
     Box,
     AlertTriangle,
+    TrendingUp,
     ArrowUpRight
 } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const DashboardHome = () => {
     const [stats, setStats] = useState({
@@ -64,14 +66,7 @@ const DashboardHome = () => {
         </div>
     );
 
-    if (loading) return (
-        <div className="flex justify-center items-center h-full min-h-[500px]">
-            <div className="relative">
-                <div className="w-12 h-12 rounded-full absolute border-4 border-solid border-gray-200"></div>
-                <div className="w-12 h-12 rounded-full animate-spin absolute border-4 border-solid border-blue-500 border-t-transparent"></div>
-            </div>
-        </div>
-    );
+    if (loading) return <LoadingSpinner />;
 
     return (
         <div className="p-2 animate-fade-in-up space-y-8">

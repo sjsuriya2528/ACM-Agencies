@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Search, Filter, ChevronRight, Clock, CheckCircle, XCircle, FileText, Calendar } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
@@ -8,21 +9,35 @@ const ViewOrders = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                const response = await api.get('/orders');
-                setOrders(response.data);
-            } catch (error) {
-                console.error("Failed to fetch orders", error);
-            } finally {
-                setLoading(false);
-            }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            const fetchOrders = async (signal) => {
+                try {
+                    const params = {};
+                    if (startDate) params.startDate = startDate;
+                    if (endDate) params.endDate = endDate;
+                    const response = await api.get('/orders', { params, signal });
+                    setOrders(response.data);
+                } catch (error) {
+                    if (error.name === 'CanceledError' || error.name === 'AbortError') return;
+                    console.error("Failed to fetch orders", error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchOrders(controller.signal);
+        }, 300); // 300ms debounce
+
+        return () => {
+            clearTimeout(timeoutId);
+            controller.abort();
         };
-        fetchOrders();
-    }, []);
+    }, [startDate, endDate]);
 
     const filteredOrders = orders.filter(order => {
         const matchesSearch = order.retailer?.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,30 +77,65 @@ const ViewOrders = () => {
                     <h1 className="text-xl font-bold text-slate-800">My Orders</h1>
                 </div>
 
-                {/* Search & Filter */}
-                <div className="flex gap-3">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search retailer or ID..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-medium focus:bg-white transition-all"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                {/* Search & Status Filter */}
+                <div className="flex flex-col gap-3">
+                    <div className="flex gap-2">
+                        <div className="flex-1 relative group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search retailer or ID..."
+                                className="w-full pl-10 pr-4 py-3 bg-slate-100 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-semibold transition-all focus:bg-white"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="relative">
+                            <select
+                                className="appearance-none bg-slate-100 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer h-full"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                            >
+                                <option value="All">All Status</option>
+                                <option value="Requested">Requested</option>
+                                <option value="Approved">Accepted</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
+                        </div>
                     </div>
-                    <div className="relative">
-                        <select
-                            className="appearance-none bg-slate-100 rounded-xl pl-4 pr-10 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer h-full"
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="All">All Status</option>
-                            <option value="Requested">Requested</option>
-                            <option value="Approved">Accepted</option>
-                            <option value="Rejected">Rejected</option>
-                        </select>
-                        <Filter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
+
+                    {/* Date Filter Toggle/Group */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 shadow-sm">
+                            <div className="flex-1 flex items-center bg-white rounded-lg px-2 border border-slate-100">
+                                <Calendar size={14} className="text-slate-400 mr-2" />
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="bg-transparent border-none text-[10px] font-bold text-slate-700 focus:ring-0 p-1.5 w-full uppercase"
+                                />
+                            </div>
+                            <span className="text-slate-400 font-bold">→</span>
+                            <div className="flex-1 flex items-center bg-white rounded-lg px-2 border border-slate-100">
+                                <Calendar size={14} className="text-slate-400 mr-2" />
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="bg-transparent border-none text-[10px] font-bold text-slate-700 focus:ring-0 p-1.5 w-full uppercase"
+                                />
+                            </div>
+                            {(startDate || endDate) && (
+                                <button
+                                    onClick={() => { setStartDate(''); setEndDate(''); }}
+                                    className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-500 transition-all ml-1"
+                                >
+                                    <XCircle size={18} />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -93,9 +143,7 @@ const ViewOrders = () => {
             {/* Order List */}
             <div className="p-4 space-y-4 max-w-lg mx-auto">
                 {loading ? (
-                    <div className="flex justify-center items-center py-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
+                    <LoadingSpinner />
                 ) : filteredOrders.length > 0 ? (
                     filteredOrders.map((order, index) => (
                         <div

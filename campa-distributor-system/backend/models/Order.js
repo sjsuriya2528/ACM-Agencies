@@ -47,6 +47,12 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.FLOAT,
             comment: 'Location where order was taken',
         },
+    }, {
+        indexes: [
+            {
+                fields: ['createdAt']
+            }
+        ]
     });
 
     return Order;
