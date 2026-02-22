@@ -46,14 +46,22 @@ module.exports = (sequelize, DataTypes) => {
     Retailer.updateCreditBalance = async function (retailerId) {
         const { Invoice, Order } = sequelize.models;
 
-        // Find all orders for this retailer that have invoices
-        const outstandingAmount = await Invoice.sum('balanceAmount', {
-            include: [{
-                model: Order,
-                where: { retailerId },
-                attributes: [] // We only care about the join
-            }]
-        }) || 0;
+        // Sequelize's .sum() does not support `include` (causes internal TypeError).
+        // Instead, find all Invoice IDs belonging to this retailer's orders, then sum.
+        const orders = await Order.findAll({
+            where: { retailerId },
+            attributes: ['id'],
+            raw: true,
+        });
+
+        const orderIds = orders.map(o => o.id);
+
+        let outstandingAmount = 0;
+        if (orderIds.length > 0) {
+            outstandingAmount = await Invoice.sum('balanceAmount', {
+                where: { orderId: orderIds },
+            }) || 0;
+        }
 
         await Retailer.update(
             { creditBalance: outstandingAmount },

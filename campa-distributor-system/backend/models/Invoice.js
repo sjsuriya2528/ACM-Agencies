@@ -124,7 +124,7 @@ module.exports = (sequelize, DataTypes) => {
         const invoice = await this.findByPk(invoiceId);
         if (!invoice) return;
 
-        const totalPaid = await Payment.sum('amount', { where: { invoiceId } }) || 0;
+        const totalPaid = await Payment.sum('amount', { where: { invoiceId, approvalStatus: 'Approved' } }) || 0;
         const netTotal = Number(invoice.netTotal);
         const newBalance = netTotal - totalPaid;
 
