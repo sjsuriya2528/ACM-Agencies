@@ -91,10 +91,11 @@ const approvePayment = async (req, res) => {
             return res.status(400).json({ message: `Payment is already ${payment.approvalStatus}` });
         }
 
+        const body = req.body || {};
         await payment.update({
             approvalStatus: 'Approved',
             approvedById: req.user.id,
-            approvalNote: req.body.note || null,
+            approvalNote: body.note || null,
         });
         // Invoice.updateBalance is triggered via afterUpdate hook (changed('approvalStatus'))
 
@@ -115,10 +116,11 @@ const rejectPayment = async (req, res) => {
             return res.status(400).json({ message: `Payment is already ${payment.approvalStatus}` });
         }
 
+        const body = req.body || {};
         await payment.update({
             approvalStatus: 'Rejected',
             approvedById: req.user.id,
-            approvalNote: req.body.note || null,
+            approvalNote: body.note || null,
         });
         // No balance change — payment was never approved
 
@@ -139,9 +141,10 @@ const cancelPayment = async (req, res) => {
             return res.status(400).json({ message: 'Only approved payments can be cancelled' });
         }
 
+        const body = req.body || {};
         await payment.update({
             approvalStatus: 'Rejected',
-            approvalNote: req.body.note || 'Cancelled by admin',
+            approvalNote: body.note || 'Cancelled by admin',
         });
         // afterUpdate hook will re-calculate invoice balance, effectively reverting the payment
 
