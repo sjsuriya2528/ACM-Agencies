@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@esbuild/win32-x64": "^0.27.3",
     "@tailwindcss/postcss": "^4.1.18",
     "axios": "^1.13.5",
     "chart.js": "^4.5.1",
