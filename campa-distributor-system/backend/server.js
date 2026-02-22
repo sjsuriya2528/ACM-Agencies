@@ -23,7 +23,9 @@ const corsOptions = {
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:5176',
-    'http://localhost:5177'
+    'http://localhost:5177',
+    'https://acm-agencies-admin.vercel.app',
+    'https://acm-agencies-employee.vercel.app'
   ],
   optionsSuccessStatus: 200,
 };
