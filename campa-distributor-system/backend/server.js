@@ -49,6 +49,16 @@ app.use('/api/invoices', require('./routes/invoiceRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 
+// Diagnostic route
+app.get('/api/health', async (req, res) => {
+  try {
+    await db.authenticate();
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', database: 'disconnected', message: error.message });
+  }
+});
+
 // Database Connection & Sync
 if (require.main === module) {
   db.authenticate()

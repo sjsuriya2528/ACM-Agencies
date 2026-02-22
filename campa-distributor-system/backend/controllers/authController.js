@@ -75,8 +75,16 @@ const loginUser = async (req, res) => {
             res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
-        console.error('Login Error:', error);
-        res.status(500).json({ message: error.message });
+        console.error('Login Error Full Details:', {
+            message: error.message,
+            stack: error.stack,
+            email: email
+        });
+        res.status(500).json({
+            message: 'Internal Server Error during login',
+            error: error.message,
+            hint: 'Check Vercel logs for full stack trace'
+        });
     }
 };
 

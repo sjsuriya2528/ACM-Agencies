@@ -382,8 +382,23 @@ const deleteOrder = async (req, res) => {
 
     } catch (error) {
         await transaction.rollback();
-        console.error(error);
-        res.status(500).json({ message: error.message });
+        console.error('Logout - Order Deletion/Cancellation Error:', {
+            message: error.message,
+            stack: error.stack,
+            orderId: req.params.id,
+            errorObject: error
+        });
+        let errorMessage = error.message;
+        if (error.name === 'SequelizeValidationError') {
+            errorMessage = `Validation Error: ${error.errors.map(e => e.message).join(', ')}`;
+        } else if (error.name === 'SequelizeUniqueConstraintError') {
+            errorMessage = `Conflict Error: This order ID might already be cancelled or a duplicate exists. (${error.message})`;
+        }
+
+        res.status(500).json({
+            message: errorMessage,
+            details: error.errors
+        });
     }
 };
 
