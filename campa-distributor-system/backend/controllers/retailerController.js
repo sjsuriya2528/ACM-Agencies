@@ -73,7 +73,10 @@ const createRetailer = async (req, res) => {
 
         res.status(201).json(retailer);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+            message: error.message,
+            details: error.errors?.map(e => e.message) || []
+        });
     }
 };
 

@@ -75,7 +75,8 @@ const CreateOrder = () => {
         if (!product) return;
 
         const bottlesPerCrate = product.bottlesPerCrate || 24;
-        const currentTotal = cart[productId] || 0;
+        const currentData = cart[productId] || { quantity: 0, pricePerUnit: product.price };
+        const currentTotal = currentData.quantity;
 
         let currentCrates = Math.floor(currentTotal / bottlesPerCrate);
         let currentPieces = currentTotal % bottlesPerCrate;
@@ -93,19 +94,39 @@ const CreateOrder = () => {
                 const { [productId]: _, ...rest } = prev;
                 return rest;
             }
-            return { ...prev, [productId]: newTotal };
+            return {
+                ...prev,
+                [productId]: {
+                    ...currentData,
+                    quantity: newTotal
+                }
+            };
         });
     };
 
-    const calculateTotal = () => {
-        const baseTotal = Object.entries(cart).reduce((total, [productId, qty]) => {
-            const product = products.find(p => p.id === parseInt(productId));
-            return total + (product ? product.price * qty : 0);
-        }, 0);
-        return baseTotal * 1.40; // Including 20% SGST + 20% CGST
+    const handlePriceChange = (productId, value) => {
+        setCart(prev => ({
+            ...prev,
+            [productId]: {
+                ...(prev[productId] || { quantity: 0 }),
+                pricePerUnit: value
+            }
+        }));
     };
 
-    const itemsCount = Object.values(cart).reduce((a, b) => a + b, 0);
+    const calculateTotal = () => {
+        return Object.entries(cart).reduce((total, [productId, data]) => {
+            const product = products.find(p => p.id === parseInt(productId));
+            if (!product) return total;
+
+            const price = parseFloat(data.pricePerUnit) || 0;
+            const taxable = price * data.quantity;
+            const gstRate = Number(product.gstPercentage || 18) / 100;
+            return total + (taxable * (1 + gstRate));
+        }, 0);
+    };
+
+    const itemsCount = Object.values(cart).reduce((a, b) => a + b.quantity, 0);
 
     const handleSubmit = async () => {
         if (!selectedRetailer) return alert("Please select a retailer");
@@ -122,9 +143,10 @@ const CreateOrder = () => {
         navigator.geolocation.getCurrentPosition(async (position) => {
             const { latitude, longitude } = position.coords;
 
-            const orderItems = Object.entries(cart).map(([productId, quantity]) => ({
+            const orderItems = Object.entries(cart).map(([productId, data]) => ({
                 productId: parseInt(productId),
-                quantity
+                quantity: data.quantity,
+                pricePerUnit: parseFloat(data.pricePerUnit) || 0
             }));
 
             try {
@@ -289,37 +311,55 @@ const CreateOrder = () => {
 
                     <div className="space-y-3">
                         {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
-                            const totalQty = cart[product.id] || 0;
+                            const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.price };
+                            const totalQty = cartData.quantity;
+                            const pricePerUnit = cartData.pricePerUnit;
                             const bottlesPerCrate = product.bottlesPerCrate || 24;
                             const crates = Math.floor(totalQty / bottlesPerCrate);
                             const pieces = totalQty % bottlesPerCrate;
                             const isActive = totalQty > 0;
+                            const gstRate = Number(product.gstPercentage || 18);
 
                             return (
                                 <div key={product.id} className={`bg-white p-5 rounded-3xl shadow-sm border transition-all duration-300 ${isActive ? 'border-blue-500 ring-4 ring-blue-500/5 shadow-blue-100' : 'border-slate-100'}`}>
                                     <div className="flex justify-between items-start mb-5">
-                                        <div>
+                                        <div className="flex-1">
                                             <h3 className="font-bold text-slate-800 text-lg leading-tight mb-2">{product.name}</h3>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex flex-wrap items-center gap-3">
                                                 <div className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">
-                                                    ₹{product.price} <span className="text-slate-400 font-medium">/ bottle</span>
+                                                    ₹{product.price} <span className="text-slate-400 font-medium">/ bottle (Default)</span>
                                                 </div>
-                                                <div className="text-xs text-slate-400 font-medium">
-                                                    ₹{(product.price * bottlesPerCrate).toFixed(0)} / crate
+                                                <div className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded-lg">
+                                                    GST: {gstRate}%
                                                 </div>
                                             </div>
                                         </div>
                                         <div className={`text-right transition-opacity duration-300 ${isActive ? 'opacity-100' : 'opacity-0'}`}>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total</p>
-                                            <p className="font-extrabold text-blue-600 text-xl leading-none">₹{(totalQty * product.price).toFixed(2)}</p>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total (inc. GST)</p>
+                                            <p className="font-extrabold text-blue-600 text-xl leading-none">
+                                                ₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Price/Pc</label>
+                                            <div className="flex items-center justify-center">
+                                                <IndianRupee size={14} className="text-slate-400 mr-1" />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
+                                                    value={pricePerUnit}
+                                                    onChange={(e) => handlePriceChange(product.id, e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
                                         <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Crates</label>
                                             <div className="flex items-center justify-center">
-                                                <Box size={14} className="text-slate-400 mr-2" />
+                                                <Box size={14} className="text-slate-400 mr-1" />
                                                 <input
                                                     type="number"
                                                     min="0"
@@ -333,7 +373,7 @@ const CreateOrder = () => {
                                         <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Pieces</label>
                                             <div className="flex items-center justify-center">
-                                                <Check size={14} className="text-slate-400 mr-2" />
+                                                <Check size={14} className="text-slate-400 mr-1" />
                                                 <input
                                                     type="number"
                                                     min="0"
@@ -358,7 +398,7 @@ const CreateOrder = () => {
                 <div className="max-w-2xl mx-auto">
                     <div className="flex justify-between items-end mb-4 px-2">
                         <div>
-                            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Subtotal (Inc. 40% Tax)</p>
+                            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Subtotal (Inc. Tax)</p>
                             <span className="font-black text-slate-800 text-3xl leading-none tracking-tight">₹{calculateTotal().toLocaleString()}</span>
                         </div>
                         <div className="text-right">

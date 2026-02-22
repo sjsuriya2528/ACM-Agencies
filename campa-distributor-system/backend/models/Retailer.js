@@ -43,5 +43,23 @@ module.exports = (sequelize, DataTypes) => {
         },
     });
 
+    Retailer.updateCreditBalance = async function (retailerId) {
+        const { Invoice, Order } = sequelize.models;
+
+        // Find all orders for this retailer that have invoices
+        const outstandingAmount = await Invoice.sum('balanceAmount', {
+            include: [{
+                model: Order,
+                where: { retailerId },
+                attributes: [] // We only care about the join
+            }]
+        }) || 0;
+
+        await Retailer.update(
+            { creditBalance: outstandingAmount },
+            { where: { id: retailerId } }
+        );
+    };
+
     return Retailer;
 };

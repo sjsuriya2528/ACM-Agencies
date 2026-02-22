@@ -45,6 +45,7 @@ app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/invoices', require('./routes/invoiceRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Database Connection & Sync
 if (require.main === module) {

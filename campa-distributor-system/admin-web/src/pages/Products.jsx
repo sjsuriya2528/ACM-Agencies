@@ -7,7 +7,7 @@ const Products = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24 });
+    const [formData, setFormData] = useState({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 });
     const [editingId, setEditingId] = useState(null);
 
     // Quick Add Stock State
@@ -48,7 +48,8 @@ const Products = () => {
                 price: pricePerBottle,
                 stockQuantity: formData.stock,
                 groupName: formData.category, // Backend expects groupName
-                bottlesPerCrate: bpc
+                bottlesPerCrate: bpc,
+                gstPercentage: parseFloat(formData.gstPercentage) || 18.00
             };
 
             if (editingId) {
@@ -57,7 +58,7 @@ const Products = () => {
                 await api.post('/products', payload);
             }
             setIsModalOpen(false);
-            setFormData({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24 });
+            setFormData({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 });
             setEditingId(null);
             fetchProducts();
         } catch (error) {
@@ -86,7 +87,8 @@ const Products = () => {
             stock: product.stock,
             crates: (product.stock / bpc).toFixed(1), // Populate crates for edit
             category: product.category,
-            bottlesPerCrate: bpc
+            bottlesPerCrate: bpc,
+            gstPercentage: product.gstPercentage || 18.00
         });
         setEditingId(product.id);
         setIsModalOpen(true);
@@ -151,7 +153,7 @@ const Products = () => {
                         </svg>
                     </div>
                     <button
-                        onClick={() => { setIsModalOpen(true); setEditingId(null); setFormData({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24 }); }}
+                        onClick={() => { setIsModalOpen(true); setEditingId(null); setFormData({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 }); }}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-md transition-all transform hover:scale-105"
                     >
                         <Plus size={20} /> <span className="hidden sm:inline">Add Product</span>
@@ -170,6 +172,7 @@ const Products = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crates</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bottles</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -211,6 +214,11 @@ const Products = () => {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md border border-blue-100">
                                                 {product.category || 'Uncategorized'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="px-2 py-1 text-xs font-medium bg-orange-50 text-orange-600 rounded-md border border-orange-100">
+                                                {product.gstPercentage}%
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -283,9 +291,23 @@ const Products = () => {
                                 </div>
 
                                 {formData.cratePrice && formData.bottlesPerCrate && (
-                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex justify-between items-center text-sm">
-                                        <span className="text-blue-700 font-medium">Calculated Unit Price:</span>
-                                        <span className="text-blue-800 font-bold">₹{(parseFloat(formData.cratePrice) / parseInt(formData.bottlesPerCrate)).toFixed(2)} / bottle</span>
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 space-y-3">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-blue-700 font-medium">Taxable Unit Price:</span>
+                                            <span className="text-blue-800 font-bold">₹{(parseFloat(formData.cratePrice) / parseInt(formData.bottlesPerCrate)).toFixed(2)} / bottle</span>
+                                        </div>
+                                        {formData.gstPercentage && (
+                                            <>
+                                                <div className="flex justify-between items-center text-xs text-gray-500 border-t border-blue-100 pt-2">
+                                                    <span>GST Amount ({formData.gstPercentage}%):</span>
+                                                    <span>₹{((parseFloat(formData.cratePrice) / parseInt(formData.bottlesPerCrate)) * (parseFloat(formData.gstPercentage) / 100)).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm font-bold text-slate-900 pt-1">
+                                                    <span>Net Unit Price (incl. GST):</span>
+                                                    <span className="text-emerald-700">₹{((parseFloat(formData.cratePrice) / parseInt(formData.bottlesPerCrate)) * (1 + parseFloat(formData.gstPercentage) / 100)).toFixed(2)}</span>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 )}
 
@@ -341,6 +363,35 @@ const Products = () => {
                                         value={formData.category}
                                         onChange={e => setFormData({ ...formData, category: e.target.value })}
                                     />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Percentage (%)</label>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1 relative">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                                                placeholder="18.00"
+                                                value={formData.gstPercentage}
+                                                onChange={e => setFormData({ ...formData, gstPercentage: e.target.value })}
+                                                required
+                                            />
+                                            <span className="absolute right-3 top-2 text-gray-400">%</span>
+                                        </div>
+                                        <div className="flex gap-3 text-xs">
+                                            <div className="bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-md">
+                                                <span className="text-orange-600 block font-semibold">CGST</span>
+                                                <span className="text-orange-700">{(parseFloat(formData.gstPercentage || 0) / 2).toFixed(2)}%</span>
+                                            </div>
+                                            <div className="bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-md">
+                                                <span className="text-blue-600 block font-semibold">SGST</span>
+                                                <span className="text-blue-700">{(parseFloat(formData.gstPercentage || 0) / 2).toFixed(2)}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400">Total GST = CGST + SGST</p>
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-2">

@@ -1,11 +1,9 @@
 const { Order, OrderItem, Product, Invoice, User, Payment, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
-// Helper to get start of today
-const getStartOfToday = () => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    return start;
+// Helper to get today's date in YYYY-MM-DD format
+const getTodayDateString = () => {
+    return new Date().toISOString().split('T')[0];
 };
 
 // @desc    Get dashboard summary statistics
@@ -13,23 +11,23 @@ const getStartOfToday = () => {
 // @access  Private (Admin)
 const getDashboardSummary = async (req, res) => {
     try {
-        const today = getStartOfToday();
-
-        // 1. Total Orders Today
+        const todayStr = getTodayDateString();
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
         const totalOrdersToday = await Order.count({
             where: {
                 createdAt: {
-                    [Op.gte]: today
+                    [Op.gte]: todayStart
                 }
             }
         });
 
-        // 2. Total Sales Today (Using Invoices for accuracy)
+        // 2. Total Sales Today (Using invoiceDate)
         const totalSalesTodayResult = await Invoice.sum('netTotal', {
             where: {
-                createdAt: {
-                    [Op.gte]: today
-                }
+                invoiceDate: todayStr
             }
         });
         const totalSalesToday = totalSalesTodayResult || 0;
@@ -52,10 +50,20 @@ const getDashboardSummary = async (req, res) => {
             }
         });
 
+        // 6. Total Collection Today (Strictly today's date)
+        const totalCollectionTodayResult = await Payment.sum('amount', {
+            where: sequelize.where(
+                sequelize.fn('DATE', sequelize.col('paymentDate')),
+                todayStr
+            )
+        });
+        const totalCollectionToday = totalCollectionTodayResult || 0;
+
         res.json({
             today: {
                 totalOrders: totalOrdersToday,
-                totalSales: totalSalesToday
+                totalSales: totalSalesToday,
+                totalCollection: totalCollectionToday
             },
             overall: {
                 totalOrders: totalLifetimeOrders,
@@ -83,22 +91,19 @@ const getSalesTrend = async (req, res) => {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
-        const salesData = await Order.findAll({
+        const salesData = await Invoice.findAll({
             attributes: [
-                [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
-                [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalSales'],
+                ['invoiceDate', 'date'],
+                [sequelize.fn('SUM', sequelize.col('netTotal')), 'totalSales'],
                 [sequelize.fn('COUNT', sequelize.col('id')), 'orderCount']
             ],
             where: {
-                createdAt: {
-                    [Op.gte]: sevenDaysAgo
-                },
-                status: {
-                    [Op.ne]: 'Rejected'
+                invoiceDate: {
+                    [Op.gte]: sevenDaysAgo.toISOString().split('T')[0]
                 }
             },
-            group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
-            order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']]
+            group: ['invoiceDate'],
+            order: [['invoiceDate', 'ASC']]
         });
 
         res.json(salesData);
@@ -167,21 +172,27 @@ const getRepPerformance = async (req, res) => {
         });
 
         const performanceData = await Promise.all(reps.map(async (rep) => {
-            // Orders Today
+            const todayStr = getTodayDateString();
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            // Orders Today (Created)
             const ordersToday = await Order.count({
                 where: {
                     salesRepId: rep.id,
-                    createdAt: { [Op.gte]: today }
+                    createdAt: { [Op.gte]: todayStart }
                 }
             });
 
-            // Sales Today (Approved/Delivered/Dispatched/Requested - basically all valid orders)
-            // Or just Approved+? Let's stick to valid orders (not Rejected)
-            const salesTodayResult = await Order.sum('totalAmount', {
+            // Sales Today (Using Invoice.invoiceDate)
+            const salesTodayResult = await Invoice.sum('netTotal', {
+                include: [{
+                    model: Order,
+                    where: { salesRepId: rep.id },
+                    attributes: []
+                }],
                 where: {
-                    salesRepId: rep.id,
-                    createdAt: { [Op.gte]: today },
-                    status: { [Op.ne]: 'Rejected' }
+                    invoiceDate: todayStr
                 }
             });
             const salesToday = salesTodayResult || 0;
@@ -191,12 +202,13 @@ const getRepPerformance = async (req, res) => {
                 where: { salesRepId: rep.id }
             });
 
-            // Total Sales
-            const totalSalesResult = await Order.sum('totalAmount', {
-                where: {
-                    salesRepId: rep.id,
-                    status: { [Op.ne]: 'Rejected' }
-                }
+            // Total Sales (Lifetime Invoices)
+            const totalSalesResult = await Invoice.sum('netTotal', {
+                include: [{
+                    model: Order,
+                    where: { salesRepId: rep.id },
+                    attributes: []
+                }]
             });
             const totalSales = totalSalesResult || 0;
 

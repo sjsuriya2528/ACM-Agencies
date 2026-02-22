@@ -55,7 +55,7 @@ const getInvoiceById = async (req, res) => {
                         {
                             model: require('../models').OrderItem,
                             as: 'items',
-                            include: [{ model: require('../models').Product, attributes: ['name', 'price'] }]
+                            include: [{ model: require('../models').Product, attributes: ['name', 'price', 'gstPercentage', 'hsnCode'] }]
                         }
                     ]
                 },

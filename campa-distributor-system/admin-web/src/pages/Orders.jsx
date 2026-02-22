@@ -233,7 +233,8 @@ const Orders = () => {
         if (!product) return;
 
         const bottlesPerCrate = product.bottlesPerCrate || 24;
-        const currentTotal = cart[productId] || 0;
+        const currentData = cart[productId] || { quantity: 0, pricePerUnit: product.price };
+        const currentTotal = currentData.quantity;
 
         let currentCrates = Math.floor(currentTotal / bottlesPerCrate);
         let currentPieces = currentTotal % bottlesPerCrate;
@@ -251,25 +252,47 @@ const Orders = () => {
                 const { [productId]: _, ...rest } = prev;
                 return rest;
             }
-            return { ...prev, [productId]: newTotal };
+            return {
+                ...prev,
+                [productId]: {
+                    ...currentData,
+                    quantity: newTotal
+                }
+            };
         });
     };
 
+    const handlePriceChange = (productId, value) => {
+        setCart(prev => ({
+            ...prev,
+            [productId]: {
+                ...(prev[productId] || { quantity: 0 }),
+                pricePerUnit: value
+            }
+        }));
+    };
+
     const calculateTotal = () => {
-        return Object.entries(cart).reduce((total, [productId, qty]) => {
+        return Object.entries(cart).reduce((total, [productId, data]) => {
             const product = products.find(p => p.id === parseInt(productId));
-            return total + (product ? product.price * qty : 0);
+            if (!product) return total;
+
+            const price = parseFloat(data.pricePerUnit) || 0;
+            const taxable = price * data.quantity;
+            const gstRate = Number(product.gstPercentage || 18) / 100;
+            return total + (taxable * (1 + gstRate));
         }, 0);
     };
 
     const handleCreateOrderSubmit = async () => {
         if (!selectedRetailer) return alert("Please select a retailer");
-        const itemsCount = Object.values(cart).reduce((a, b) => a + b, 0);
+        const itemsCount = Object.values(cart).reduce((a, b) => a + b.quantity, 0);
         if (itemsCount === 0) return alert("Cart is empty");
 
-        const orderItems = Object.entries(cart).map(([productId, quantity]) => ({
+        const orderItems = Object.entries(cart).map(([productId, data]) => ({
             productId: parseInt(productId),
-            quantity
+            quantity: data.quantity,
+            pricePerUnit: parseFloat(data.pricePerUnit) || 0
         }));
 
         try {
@@ -311,174 +334,161 @@ const Orders = () => {
 
         // Calculations
         const totalAmount = parseFloat(order.totalAmount || 0);
-        const roundOff = (Math.round(totalAmount) - totalAmount).toFixed(2);
+        const roundOffVal = (Math.round(totalAmount) - totalAmount).toFixed(2);
         const netTotal = Math.round(totalAmount);
 
         const taxSummary = {};
-        let totalTaxableValue = 0;
-        let totalGSTValue = 0;
         let totalQty = 0;
+        let totalGSTValueCount = 0;
 
-        const enrichedItems = order.items.map(item => {
-            const qty = item.quantity;
+        const enrichedItems = (order.items || []).map(item => {
+            const qty = Number(item.quantity);
             totalQty += qty;
-            const total = parseFloat(item.totalPrice);
-            const gstRate = parseFloat(item.Product?.gstPercentage || 18);
 
-            const taxableValue = total / (1 + (gstRate / 100));
-            const gstAmount = total - taxableValue;
-            const taxableRate = taxableValue / qty;
+            const gstRate = Number(item.Product?.gstPercentage || 18);
+
+            // If item has netAmount, it's the new format (netAmount = Gross, totalPrice = Taxable)
+            // If not, totalPrice was the Gross total (legacy)
+            const hasTaxFields = item.netAmount !== undefined && item.netAmount !== null;
+
+            const totalGross = hasTaxFields ? Number(item.netAmount) : Number(item.totalPrice);
+            const taxableValue = hasTaxFields ? Number(item.totalPrice) : (totalGross / (1 + (gstRate / 100)));
+            const gstAmount = hasTaxFields ? Number(item.taxAmount) : (totalGross - taxableValue);
+            const grossRate = totalGross / qty;
 
             if (!taxSummary[gstRate]) taxSummary[gstRate] = { taxable: 0, cgst: 0, sgst: 0, igst: 0 };
             taxSummary[gstRate].taxable += taxableValue;
             taxSummary[gstRate].cgst += gstAmount / 2;
             taxSummary[gstRate].sgst += gstAmount / 2;
 
-            totalTaxableValue += taxableValue;
-            totalGSTValue += gstAmount;
+            totalGSTValueCount += gstAmount;
 
             return {
-                ...item,
+                description: item.Product?.name || item.productName || 'Unknown',
                 hsn: item.Product?.hsnCode || '',
+                qty,
+                rate: grossRate,
                 gstRate,
-                taxableRate,
-                taxableValue,
-                totalPrice: total
+                amount: totalGross
             };
         });
 
-        // HTML Content
         const invoiceContent = `
+            <!DOCTYPE html>
             <html>
             <head>
-                <title>Invoice #${order.Invoice?.invoiceNumber || order.id}</title>
+                <title>Bill #${order.Invoice?.invoiceNumber || order.id}</title>
                 <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-                    body { font-family: 'Inter', sans-serif; color: black; margin: 0; padding: 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 12px; }
-                    
-                    .container { max-width: 210mm; margin: 0 auto; border: 2px solid black; min-height: 225mm; display: flex; flex-direction: column; justify-content: space-between; }
-                    
-                    /* Header */
-                    .header { text-align: center; border-bottom: 2px solid black; padding: 10px; }
-                    .company-name { font-size: 24px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
-                    .address-line { font-size: 11px; font-weight: 600; }
-                    .gst-box { margin-top: 8px; font-size: 11px; font-weight: 700; }
-
-                    /* Details Grid */
-                    .details-grid { display: flex; border-bottom: 2px solid black; }
-                    .col-left { width: 50%; padding: 8px; border-right: 2px solid black; }
-                    .col-right { width: 50%; display: flex; flex-direction: column; }
-                    .col-right-top { flex: 1; padding: 8px; }
-                    
-                    .row { display: flex; margin-bottom: 4px; }
-                    .label { font-weight: 700; width: 80px; }
-                    .value { font-weight: 600; text-transform: uppercase; flex: 1; }
-                    
-                    .gst-invoice-badge { text-align: center; background: #f3f4f6; padding: 4px; font-weight: 700; border-top: 2px solid black; }
-
-                    /* Table */
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: sans-serif; font-size: 11px; color: #000; padding: 15px; }
+                    .bill-box { width: 100%; border: 1.5px solid #000; min-height: 270mm; display: flex; flex-direction: column; }
+                    .header { text-align: center; border-bottom: 1.5px solid #000; padding: 8px; }
+                    .company-name { font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+                    .header-details { font-weight: 700; font-size: 10px; line-height: 1.4; }
+                    .info-grid { display: flex; border-bottom: 1.5px solid #000; }
+                    .buyer-info { width: 62%; border-right: 1.5px solid #000; padding: 6px; }
+                    .invoice-info { width: 38%; }
+                    .info-row { display: flex; margin-bottom: 3px; font-weight: 700; }
+                    .info-label { width: 85px; }
+                    .info-value { flex: 1; text-transform: uppercase; }
+                    .invoice-info .info-row { border-bottom: 1.5px solid #000; padding: 4px 8px; margin-bottom: 0; }
+                    .invoice-info .info-row:last-child { border-bottom: none; }
+                    .gst-invoice-header { text-align: center; font-weight: 800; padding: 4.5px; }
                     table { width: 100%; border-collapse: collapse; }
-                    th { border-bottom: 2px solid black; border-right: 2px solid black; padding: 4px; background-color: transparent; text-align: center; font-weight: bold; }
-                    th:last-child { border-right: none; }
-                    td { border-bottom: 1px solid black; border-right: 2px solid black; padding: 4px; }
-                    td:last-child { border-right: none; }
+                    th, td { border-right: 1.5px solid #000; padding: 4px; font-weight: 700; }
+                    th { border-bottom: 1.5px solid #000; text-transform: uppercase; font-size: 10px; }
+                    th:last-child, td:last-child { border-right: none; }
+                    .items-table { flex-grow: 1; border-bottom: 1.5px solid #000; }
                     .text-center { text-align: center; }
                     .text-right { text-align: right; }
-                    .font-bold { font-weight: 700; }
-                    
-                    /* Footer */
-                    .footer-section { border-top: 2px solid black; }
-                    .total-row { display: flex; font-weight: 700; border-bottom: 2px solid black; }
-                    .total-label { flex: 1; text-align: right; padding: 4px; border-right: 2px solid black; }
-                    .total-qty { width: 48px; text-align: center; padding: 4px; border-right: 2px solid black; } /* w-12 = 48px */
-                    .total-val { width: 80px; text-align: right; padding: 4px; } /* w-20 = 80px */
-
-                    .summary-grid { display: flex; height: 128px; } /* h-32 = 128px */
-                    .tax-box { flex: 1; border-right: 2px solid black; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; }
-                    .amounts-box { width: 192px; padding: 4px; display: flex; flex-direction: column; justify-content: flex-end; } /* w-48 = 192px */
-                    
-                    .tax-table { width: 100%; font-size: 10px; text-align: center; }
-                    .tax-table th { border-bottom: 1px solid #ccc; font-weight: normal; }
-                    .words { font-weight: 700; text-transform: capitalize; border-top: 2px solid black; padding-top: 4px; margin-top: 4px; }
-
-                    /* pt-12 = 48px, h-24 = 96px */
-                    .signatures { display: flex; justify-content: space-between; align-items: flex-end; padding: 16px; padding-top: 48px; border-top: 2px solid black; height: 96px; box-sizing: border-box; } 
-                    .sig-block { text-align: center; font-weight: 700; font-size: 10px; }
-                    .sig-line { border-top: 1px solid black; padding-top: 4px; padding-left: 16px; padding-right: 16px; display: inline-block; }
-
-                    @media print {
-                        body { padding: 0; }
-                    }
+                    .footer { width: 100%; }
+                    .total-bar { display: flex; border-bottom: 1.5px solid #000; font-weight: 800; }
+                    .total-label { flex-grow: 1; padding: 4px 60px; border-right: 1.5px solid #000; }
+                    .total-qty { width: 50px; text-align: center; border-right: 1.5px solid #000; padding: 4px; }
+                    .total-amount { width: 95px; text-align: right; padding: 4px; }
+                    .summary-flex { display: flex; border-bottom: 1.5px solid #000; }
+                    .tax-summary-box { width: 70%; border-right: 1.5px solid #000; }
+                    .net-totals-box { width: 30%; padding: 4px; display: flex; flex-direction: column; justify-content: flex-end; }
+                    .tax-table th { font-size: 9px; }
+                    .tax-table td { font-size: 10px; border-bottom: 1px solid #000; }
+                    .tax-table tr:last-child td { border-bottom: none; }
+                    .amount-in-words { border-top: 1.5px solid #000; padding: 6px; font-weight: 700; font-size: 10px; }
+                    .net-totals-row { display: flex; justify-content: space-between; padding: 1px 0; font-weight: 800; }
+                    .net-total-cell { border-top: 1.5px solid #000; padding-top: 5px; margin-top: 3px; font-size: 15px; }
+                    .signatures { display: flex; min-height: 100px; }
+                    .sig-col { border-right: 1.5px solid #000; padding: 6px; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; text-align: center; font-weight: 700; font-size: 10px; }
+                    .sig-col:last-child { border-right: none; }
+                    .sig-col.gpay { align-items: flex-start; text-align: left; justify-content: flex-start; }
                 </style>
             </head>
             <body>
-                <div class="container">
-                    <div>
-                        <div class="header">
-                            <div class="company-name">A.C.M AGENCIES</div>
-                            <div class="address-line">9/141/D, SANKARANKOVIL MAIN ROAD</div>
-                            <div class="address-line">RAMAYANPATTI, TIRUNELVELI - 627538</div>
-                            <div class="gst-box">GSTIN: 33KFPP50618L1ZU &nbsp;|&nbsp; MOBILE: 9698511002, 9443333438</div>
+                <div class="bill-box">
+                    <div class="header">
+                        <div class="company-name">A.C.M AGENCIES</div>
+                        <div class="header-details">
+                            9/141/D, SANKARANKOVIL MAIN ROAD<br/>
+                            RAMAYANPATTI, TIRUNELVELI - 627538<br/>
+                            GSTIN : 33KFPP50618L1ZU<br/>
+                            MOBILE : 9698511002, 9443333438
                         </div>
-
-                        <div class="details-grid">
-                            <div class="col-left">
-                                <div class="row"><span class="label">Buyer Name</span><span class="value">: ${order.retailer?.shopName || 'Unknown'}</span></div>
-                                <div class="row"><span class="label">Address</span><span class="value">: ${order.retailer?.address || 'No Address'}</span></div>
-                                <div class="row"><span class="label">Mobile</span><span class="value">: ${order.retailer?.phone || ''}</span></div>
-                                <div class="row"><span class="label">Cust GSTin</span><span class="value">: ${order.retailer?.gstin || ''}</span></div>
-                            </div>
-                            <div class="col-right">
-                                <div class="col-right-top">
-                                    <div class="row"><span class="label">Invoice No</span><span class="value">: ${order.Invoice?.invoiceNumber || order.id}</span></div>
-                                    <div class="row"><span class="label">Date</span><span class="value">: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div>
-                                    <div class="row"><span class="label">Vehicle</span><span class="value">: </span></div>
-                                </div>
-                                <div class="gst-invoice-badge">GST INVOICE</div>
-                            </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="buyer-info">
+                            <div class="info-row"><span class="info-label">Buyer Name</span><span class="info-value">: ${order.retailer?.shopName || order.retailerName || ''}</span></div>
+                            <div class="info-row"><span class="info-label">Address</span><span class="info-value">: ${order.retailer?.address || ''}</span></div>
+                            <div class="info-row" style="margin-top: 15px;"><span class="info-label">Mobile</span><span class="info-value">: ${order.retailer?.phone || '0'}</span></div>
+                            <div class="info-row"><span class="info-label">Cust GSTin</span><span class="info-value">: ${order.retailer?.gstin || ''}</span></div>
                         </div>
-
+                        <div class="invoice-info">
+                            <div class="info-row"><span class="info-label">Invoice No</span><span class="info-value">: ${order.Invoice?.invoiceNumber || order.id}</span></div>
+                            <div class="info-row"><span class="info-label">Date</span><span class="info-value">: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div>
+                            <div class="info-row"><span class="info-label">Vehicle</span><span class="info-value">: </span></div>
+                            <div class="gst-invoice-header">GST INVOICE</div>
+                        </div>
+                    </div>
+                    <div class="items-table">
                         <table>
                             <thead>
                                 <tr>
-                                    <th style="width: 40px;">SNO</th>
+                                    <th width="40">SNO</th>
                                     <th style="text-align: left;">DESCRIPTION</th>
-                                    <th style="width: 60px;">HSN</th>
-                                    <th style="width: 40px;">Qty</th>
-                                    <th style="width: 70px; text-align: right;">RATE</th>
-                                    <th style="width: 50px;">GST%</th>
-                                    <th style="width: 80px; text-align: right;">Amount</th>
+                                    <th width="65">HSN</th>
+                                    <th width="50">Qty</th>
+                                    <th width="80" class="text-right">RATE</th>
+                                    <th width="60" class="text-center">GST %</th>
+                                    <th width="95" class="text-right">Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${enrichedItems.map((item, idx) => `
                                     <tr>
                                         <td class="text-center">${idx + 1}</td>
-                                        <td>${item.Product?.name || item.productName || 'Unknown'}</td>
+                                        <td>${item.description}</td>
                                         <td class="text-center">${item.hsn}</td>
-                                        <td class="text-center">${item.quantity}</td>
-                                        <td class="text-right">${item.taxableRate.toFixed(2)}</td>
+                                        <td class="text-center">${item.qty}</td>
+                                        <td class="text-right">${item.rate.toFixed(2)}</td>
                                         <td class="text-center">${item.gstRate}</td>
-                                        <td class="text-right" style="font-weight: 700; font-size: 14px;">${item.totalPrice.toFixed(2)}</td>
+                                        <td class="text-right">${item.amount.toFixed(2)}</td>
                                     </tr>
+                                `).join('')}
+                                ${Array(Math.max(0, 10 - enrichedItems.length)).fill(0).map(() => `
+                                    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
                                 `).join('')}
                             </tbody>
                         </table>
                     </div>
-
-                    <div class="footer-section">
-                        <div class="total-row">
+                    <div class="footer">
+                        <div class="total-bar">
                             <div class="total-label">Total</div>
                             <div class="total-qty">${totalQty}</div>
-                            <div class="total-val">${totalAmount.toFixed(2)}</div>
+                            <div class="total-amount">${totalAmount.toFixed(2)}</div>
                         </div>
-
-                        <div class="summary-grid">
-                            <div class="tax-box">
+                        <div class="summary-flex">
+                            <div class="tax-summary-box">
                                 <table class="tax-table">
                                     <thead>
                                         <tr>
-                                            <th>GST%</th>
+                                            <th width="60">GST%</th>
                                             <th>TAXABLE</th>
                                             <th>CGSTVAL</th>
                                             <th>SGSTVAL</th>
@@ -488,41 +498,28 @@ const Orders = () => {
                                     <tbody>
                                         ${Object.entries(taxSummary).map(([rate, vals]) => `
                                             <tr>
-                                                <td>${rate}</td>
-                                                <td>${vals.taxable.toFixed(2)}</td>
-                                                <td>${vals.cgst.toFixed(2)}</td>
-                                                <td>{vals.sgst.toFixed(2)}</td>
-                                                <td>${vals.igst.toFixed(2)}</td>
+                                                <td class="text-center">${rate}</td>
+                                                <td class="text-center">${vals.taxable.toFixed(2)}</td>
+                                                <td class="text-center">${vals.cgst.toFixed(2)}</td>
+                                                <td class="text-center">${vals.sgst.toFixed(2)}</td>
+                                                <td class="text-center">${vals.igst > 0 ? vals.igst.toFixed(2) : 'NaN'}</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
                                 </table>
-                                <div class="words">${numberToWords(netTotal)} Rupees Only</div>
+                                <div class="amount-in-words">${numberToWords(netTotal)} Rupees Only</div>
                             </div>
-                            <div class="amounts-box">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                                    <span class="font-bold">GST VALUE</span>
-                                    <span>${totalGSTValue.toFixed(2)}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                                    <span class="font-bold">DISCOUNT</span>
-                                    <span>0.00</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                                    <span class="font-bold">ROUND OFF</span>
-                                    <span>${roundOff}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-top: 4px; padding-top: 4px; border-top: 2px solid black; background-color: #f3f4f6;">
-                                    <span class="font-bold" style="font-size: 16px;">NET TOTAL</span>
-                                    <span class="font-bold" style="font-size: 18px;">${netTotal}</span>
-                                </div>
+                            <div class="net-totals-box">
+                                <div class="net-totals-row"><span>GST VALUE</span><span>${totalGSTValueCount.toFixed(2)}</span></div>
+                                <div class="net-totals-row"><span>DISCOUNT</span><span>0</span></div>
+                                <div class="net-totals-row"><span>ROUND OFF</span><span>${roundOffVal}</span></div>
+                                <div class="net-totals-row net-total-cell"><span>NET TOTAL</span><span>${netTotal}</span></div>
                             </div>
                         </div>
-
                         <div class="signatures">
-                            <div class="sig-block">Gpay No<br/>SURESH<br/>9698511002</div>
-                            <div class="sig-block"><div class="sig-line">Customer Signature</div></div>
-                            <div class="sig-block"><div class="sig-line">Authorised Signature</div></div>
+                            <div class="sig-col gpay">Gpay No<br/>SURESH<br/>9698511002</div>
+                            <div class="sig-col"><div style="border-top: 1px solid #000; width: 80%; padding-top: 4px;">Customer Signature</div></div>
+                            <div class="sig-col"><div style="border-top: 1px solid #000; width: 80%; padding-top: 4px;">Authorised Signature</div></div>
                         </div>
                     </div>
                 </div>
@@ -1140,73 +1137,94 @@ const Orders = () => {
                                         ) : (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
                                                 {(products || []).filter(p => (p.name || '').toLowerCase().includes((productSearchTerm || '').toLowerCase())).map(product => {
-                                                    const totalQty = cart[product.id] || 0;
+                                                    const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.price };
+                                                    const totalQty = cartData.quantity;
+                                                    const pricePerUnit = cartData.pricePerUnit;
                                                     const bottlesPerCrate = product.bottlesPerCrate || 24;
                                                     const crates = Math.floor(totalQty / bottlesPerCrate);
                                                     const pieces = totalQty % bottlesPerCrate;
+                                                    const gstRate = Number(product.gstPercentage || 18);
 
                                                     return (
                                                         <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-400/20 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300 shadow-sm'}`}>
                                                             <div className="flex justify-between items-start mb-4">
                                                                 <div className="space-y-1">
                                                                     <h4 className="font-black text-slate-800 leading-tight">{product.name}</h4>
-                                                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.price} / PC • 1 CR = {bottlesPerCrate}</p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.price} (Def) • 1 CR = {bottlesPerCrate}</ p>
+                                                                        <span className="text-[10x] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-black">GST: {gstRate}%</span>
+                                                                    </div>
                                                                 </div>
                                                                 {totalQty > 0 && (
-                                                                    <div className="px-2 py-1 bg-blue-600 rounded-lg text-white font-black text-[10px] animate-in zoom-in">
-                                                                        IN CART
+                                                                    <div className="text-right">
+                                                                        <p className="text-[10px] font-black text-slate-400 uppercase">Gross Total</p>
+                                                                        <p className="font-black text-blue-600">₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}</p>
                                                                     </div>
                                                                 )}
                                                             </div>
 
-                                                            <div className="grid grid-cols-2 gap-3">
+                                                            <div className="grid grid-cols-1 gap-3">
                                                                 <div className="space-y-1">
-                                                                    <label className="text-[10px] text-slate-400 uppercase font-black px-1">Crates</label>
+                                                                    <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Taxable)</label>
                                                                     <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                        <button
-                                                                            onClick={() => handleQuantityChange(product.id, 'crates', Math.max(0, crates - 1))}
-                                                                            className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                        >
-                                                                            <Minus size={14} />
-                                                                        </button>
+                                                                        <div className="pl-3 py-2 text-slate-400"><IndianRupee size={12} /></div>
                                                                         <input
                                                                             type="number"
+                                                                            step="0.01"
                                                                             className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                            value={crates || ''}
-                                                                            placeholder="0"
-                                                                            onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
+                                                                            value={pricePerUnit}
+                                                                            onChange={(e) => handlePriceChange(product.id, e.target.value)}
                                                                         />
-                                                                        <button
-                                                                            onClick={() => handleQuantityChange(product.id, 'crates', crates + 1)}
-                                                                            className="p-2 hover:bg-slate-50 text-slate-600"
-                                                                        >
-                                                                            <Plus size={14} />
-                                                                        </button>
                                                                     </div>
                                                                 </div>
-                                                                <div className="space-y-1">
-                                                                    <label className="text-[10px] text-slate-400 uppercase font-black px-1">Pieces</label>
-                                                                    <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                        <button
-                                                                            onClick={() => handleQuantityChange(product.id, 'pieces', Math.max(0, pieces - 1))}
-                                                                            className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                        >
-                                                                            <Minus size={14} />
-                                                                        </button>
-                                                                        <input
-                                                                            type="number"
-                                                                            className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                            value={pieces || ''}
-                                                                            placeholder="0"
-                                                                            max={bottlesPerCrate - 1}
-                                                                            onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
-                                                                        />
-                                                                        <button
-                                                                            onClick={() => handleQuantityChange(product.id, 'pieces', Math.min(bottlesPerCrate - 1, pieces + 1))}
-                                                                            className="p-2 hover:bg-slate-50 text-slate-600"
-                                                                        >
-                                                                            <Plus size={14} />
-                                                                        </button>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[10px] text-slate-400 uppercase font-black px-1">Crates</label>
+                                                                        <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                            <button
+                                                                                onClick={() => handleQuantityChange(product.id, 'crates', Math.max(0, crates - 1))}
+                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                            >
+                                                                                <Minus size={14} />
+                                                                            </button>
+                                                                            <input
+                                                                                type="number"
+                                                                                className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                value={crates || ''}
+                                                                                placeholder="0"
+                                                                                onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
+                                                                            />
+                                                                            <button
+                                                                                onClick={() => handleQuantityChange(product.id, 'crates', crates + 1)}
+                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                            >
+                                                                                <Plus size={14} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[10px] text-slate-400 uppercase font-black px-1">Pieces</label>
+                                                                        <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                            <button
+                                                                                onClick={() => handleQuantityChange(product.id, 'pieces', Math.max(0, pieces - 1))}
+                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                            >
+                                                                                <Minus size={14} />
+                                                                            </button>
+                                                                            <input
+                                                                                type="number"
+                                                                                className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                value={pieces || ''}
+                                                                                placeholder="0"
+                                                                                onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
+                                                                            />
+                                                                            <button
+                                                                                onClick={() => handleQuantityChange(product.id, 'pieces', pieces + 1)}
+                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                            >
+                                                                                <Plus size={14} />
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>

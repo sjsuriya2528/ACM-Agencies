@@ -9,6 +9,7 @@ import Users from './Users';
 import Orders from './Orders';
 import Payments from './Payments';
 import Deliveries from './Deliveries';
+import Reports from './Reports';
 
 const Dashboard = () => {
     return (
@@ -24,6 +25,7 @@ const Dashboard = () => {
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/deliveries" element={<Deliveries />} />
                     <Route path="/payments" element={<Payments />} />
+                    <Route path="/reports" element={<Reports />} />
                 </Routes>
             </div>
         </div>

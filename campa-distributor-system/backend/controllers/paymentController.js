@@ -17,41 +17,20 @@ const recordPayment = async (req, res) => {
         const startBalance = Number(invoice.balanceAmount);
         const paymentAmount = Number(amount);
 
-        if (paymentAmount > startBalance) {
+        if (paymentAmount > startBalance + 0.01) { // 0.01 buffer for float issues
             return res.status(400).json({ message: 'Payment amount exceeds balance' });
         }
 
-        const t = await Invoice.sequelize.transaction();
+        const payment = await Payment.create({
+            invoiceId,
+            amount: paymentAmount,
+            paymentMode,
+            transactionId,
+            collectedById,
+            retailerName: invoice.customerName // Denormalize
+        });
 
-        try {
-            const payment = await Payment.create({
-                invoiceId,
-                amount: paymentAmount,
-                paymentMode,
-                transactionId,
-                collectedById,
-            }, { transaction: t });
-
-            const newPaidAmount = Number(invoice.paidAmount) + paymentAmount;
-            const newBalance = Number(invoice.netTotal) - newPaidAmount;
-
-            invoice.paidAmount = newPaidAmount;
-            invoice.balanceAmount = newBalance;
-
-            if (newBalance <= 0) {
-                invoice.paymentStatus = 'Paid';
-            } else if (newPaidAmount > 0) {
-                invoice.paymentStatus = 'Partially Paid';
-            }
-
-            await invoice.save({ transaction: t });
-
-            await t.commit();
-            res.status(201).json(payment);
-        } catch (err) {
-            await t.rollback();
-            throw err;
-        }
+        res.status(201).json(payment);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -67,7 +46,7 @@ const getPayments = async (req, res) => {
                 { model: User, as: 'collectedBy', attributes: ['id', 'name'] },
                 {
                     model: Invoice,
-                    attributes: ['id', 'netTotal', 'balanceAmount'],
+                    attributes: ['id', 'netTotal', 'balanceAmount', 'customerName'],
                     include: [{
                         model: Order,
                         attributes: ['id'],
@@ -78,7 +57,18 @@ const getPayments = async (req, res) => {
             order: [['createdAt', 'DESC']],
         });
 
-        res.json(payments);
+        // If link is broken, use the denormalized field
+        const results = payments.map(p => {
+            const json = p.toJSON();
+            if (!json.retailerName && json.Invoice?.Order?.retailer?.shopName) {
+                json.retailerName = json.Invoice.Order.retailer.shopName;
+            } else if (!json.retailerName && json.Invoice?.customerName) {
+                json.retailerName = json.Invoice.customerName;
+            }
+            return json;
+        });
+
+        res.json(results);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -91,12 +91,56 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false
         }
     }, {
+        hooks: {
+            beforeCreate: (invoice) => {
+                if (invoice.balanceAmount === undefined || invoice.balanceAmount === null) {
+                    invoice.balanceAmount = invoice.netTotal;
+                }
+            },
+            afterCreate: async (invoice) => {
+                const { Order, Retailer } = sequelize.models;
+                const order = await Order.findByPk(invoice.orderId);
+                if (order && order.retailerId) {
+                    await Retailer.updateCreditBalance(order.retailerId);
+                }
+            },
+            afterUpdate: async (invoice) => {
+                const { Order, Retailer } = sequelize.models;
+                const order = await Order.findByPk(invoice.orderId);
+                if (order && order.retailerId) {
+                    await Retailer.updateCreditBalance(order.retailerId);
+                }
+            }
+        },
         indexes: [
             {
                 fields: ['orderId']
             }
         ]
     });
+
+    Invoice.updateBalance = async function (invoiceId) {
+        const { Payment } = sequelize.models;
+        const invoice = await this.findByPk(invoiceId);
+        if (!invoice) return;
+
+        const totalPaid = await Payment.sum('amount', { where: { invoiceId } }) || 0;
+        const netTotal = Number(invoice.netTotal);
+        const newBalance = netTotal - totalPaid;
+
+        let status = 'Pending';
+        if (newBalance <= 0) {
+            status = 'Paid';
+        } else if (totalPaid > 0) {
+            status = 'Partially Paid';
+        }
+
+        await invoice.update({
+            paidAmount: totalPaid,
+            balanceAmount: newBalance,
+            paymentStatus: status
+        });
+    };
 
     return Invoice;
 };

@@ -14,22 +14,43 @@ const createOrder = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
-        let totalAmount = 0;
+        const processedItems = [];
+        let orderTotalGross = 0;
 
-        // Calculate total amount safely
+        // 1. Process items and calculate totals
         for (const item of items) {
             const product = await Product.findByPk(item.productId);
             if (!product) {
                 throw new Error(`Product not found: ${item.productId}`);
             }
-            totalAmount += Number(item.quantity) * Number(product.price); // Assuming price is in Product
+
+            // Taxable price per unit: either provided (override) or from product table (default)
+            const taxablePricePerUnit = item.pricePerUnit !== undefined ? Number(item.pricePerUnit) : Number(product.price);
+            const quantity = Number(item.quantity);
+            const gstPercentage = Number(product.gstPercentage || 18);
+
+            const totalTaxable = taxablePricePerUnit * quantity;
+            const taxAmount = totalTaxable * (gstPercentage / 100);
+            const netAmount = totalTaxable + taxAmount;
+
+            orderTotalGross += netAmount;
+
+            processedItems.push({
+                productId: item.productId,
+                quantity,
+                productName: product.name,
+                pricePerUnit: taxablePricePerUnit,
+                totalPrice: totalTaxable.toFixed(2), // Taxable Value
+                taxAmount: taxAmount.toFixed(2),
+                netAmount: netAmount.toFixed(2)
+            });
         }
 
-
+        // 2. Create Order with correct Gross Total
         const order = await Order.create({
             retailerId,
             salesRepId: req.user.id,
-            totalAmount,
+            totalAmount: orderTotalGross.toFixed(2),
             status: 'Requested',
             billNumber,
             remarks,
@@ -38,16 +59,11 @@ const createOrder = async (req, res) => {
             paymentMode: paymentMode || 'Credit'
         }, { transaction: t });
 
-        for (const item of items) {
-            const product = await Product.findByPk(item.productId);
-            // Ensure product exists (already checked but safe to double check or use found instance)
+        // 3. Create OrderItems
+        for (const pItem of processedItems) {
             await OrderItem.create({
-                orderId: order.id,
-                productId: item.productId,
-                quantity: item.quantity,
-                productName: product.name, // Snapshot name
-                pricePerUnit: product.price, // Snapshot price
-                totalPrice: Number(item.quantity) * Number(product.price)
+                ...pItem,
+                orderId: order.id
             }, { transaction: t });
         }
 
@@ -56,6 +72,7 @@ const createOrder = async (req, res) => {
 
     } catch (error) {
         await t.rollback();
+        console.error('Order Creation Error:', error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -115,11 +132,11 @@ const getOrders = async (req, res) => {
                     model: OrderItem,
                     as: 'items',
                     separate: true,
-                    include: [{ model: Product, attributes: ['id', 'name'] }]
+                    include: [{ model: Product, attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }]
                 },
                 { model: Invoice },
             ],
-            order: [['createdAt', 'DESC']],
+            order: [['createdAt', 'DESC'], ['id', 'DESC']],
         });
 
         res.json(orders);
@@ -249,10 +266,29 @@ const assignDriver = async (req, res) => {
 
 // Helper to generate Invoice Data
 const generateInvoiceData = (order) => {
-    const netTotal = Number(order.totalAmount);
-    const taxRate = 0.05; // 5%
-    const taxableValue = netTotal / (1 + taxRate);
-    const gstTotal = netTotal - taxableValue;
+    const items = order.items || [];
+
+    let subTotal = 0; // Taxable Value
+    let gstTotal = 0;
+    let netTotal = 0;
+    let totalQuantity = 0;
+
+    items.forEach(item => {
+        subTotal += Number(item.totalPrice || 0);
+        gstTotal += Number(item.taxAmount || 0);
+        netTotal += Number(item.netAmount || 0);
+        totalQuantity += Number(item.quantity || 0);
+    });
+
+    // Fallback for legacy data if sums are zero but header has amount
+    if (netTotal === 0 && Number(order.totalAmount) > 0) {
+        netTotal = Number(order.totalAmount);
+        // Default back-calculation for legacy
+        const taxRate = 0.40;
+        subTotal = netTotal / (1 + taxRate);
+        gstTotal = netTotal - subTotal;
+    }
+
     const cgst = gstTotal / 2;
     const sgst = gstTotal / 2;
 
@@ -264,14 +300,14 @@ const generateInvoiceData = (order) => {
         customerAddress: order.retailer?.address,
         customerGSTIN: order.retailer?.gstin,
         customerPhone: order.retailer?.ownerPhone,
-        totalQuantity: order.items?.reduce((acc, item) => acc + item.quantity, 0) || 0,
-        subTotal: taxableValue.toFixed(2),
+        totalQuantity,
+        subTotal: subTotal.toFixed(2),
         cgstTotal: cgst.toFixed(2),
         sgstTotal: sgst.toFixed(2),
         gstTotal: gstTotal.toFixed(2),
         netTotal: netTotal.toFixed(2),
         paymentStatus: 'Pending',
-        balanceAmount: netTotal.toFixed(2) // Initial balance is full amount
+        balanceAmount: netTotal.toFixed(2)
     };
 };
 
@@ -387,9 +423,9 @@ const getCancelledOrders = async (req, res) => {
             include: [
                 { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'phone'] },
                 { model: User, as: 'salesRep', attributes: ['id', 'name'] },
-                { model: CancelledOrderItem, as: 'items', include: [{ model: Product, attributes: ['id', 'name'] }] }
+                { model: CancelledOrderItem, as: 'items', include: [{ model: Product, attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }] }
             ],
-            order: [['cancelledAt', 'DESC']],
+            order: [['cancelledAt', 'DESC'], ['id', 'DESC']],
         });
 
         res.json(orders);

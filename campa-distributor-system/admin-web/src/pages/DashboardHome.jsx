@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import { SalesLineChart, ProductBarChart } from '../components/SalesChart';
 import {
     ShoppingBag,
@@ -12,8 +13,9 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const DashboardHome = () => {
+    const { user } = useAuth();
     const [stats, setStats] = useState({
-        today: { totalOrders: 0, totalSales: 0 },
+        today: { totalOrders: 0, totalSales: 0, totalCollection: 0 },
         overall: { totalOrders: 0, totalSales: 0 },
         inventory: { totalProducts: 0, lowStockCount: 0 }
     });
@@ -46,6 +48,13 @@ const DashboardHome = () => {
         fetchDashboardData();
     }, []);
 
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good Morning";
+        if (hour < 17) return "Good Afternoon";
+        return "Good Evening";
+    };
+
     const StatCard = ({ title, value, icon: Icon, color, subtext }) => (
         <div className={`relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
             {/* Background Decoration */}
@@ -72,8 +81,10 @@ const DashboardHome = () => {
         <div className="p-2 animate-fade-in-up space-y-8">
             <header className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">Dashboard</h1>
-                    <p className="text-slate-500 mt-1">Overview of your distribution performance</p>
+                    <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">
+                        {getGreeting()}, {user?.name || 'Admin'}
+                    </h1>
+                    <p className="text-slate-500 mt-1">Here's what's happening today</p>
                 </div>
                 <div className="text-sm bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 text-slate-600 font-medium">
                     {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -102,6 +113,13 @@ const DashboardHome = () => {
                     icon={IndianRupee}
                     color="bg-emerald-500"
                     subtext="Revenue"
+                />
+                <StatCard
+                    title="Today Collection"
+                    value={`₹ ${Number(stats.today.totalCollection).toLocaleString()}`}
+                    icon={IndianRupee}
+                    color="bg-amber-500"
+                    subtext="Cash/UPI/Bank"
                 />
                 <StatCard
                     title="Total Products"

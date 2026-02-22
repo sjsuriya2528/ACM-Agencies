@@ -32,6 +32,32 @@ module.exports = (sequelize, DataTypes) => {
         collectedById: {
             type: DataTypes.INTEGER,
             allowNull: false
+        },
+        retailerName: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            comment: 'Denormalized field for easier reporting'
+        }
+    }, {
+        hooks: {
+            afterCreate: async (payment) => {
+                const { Invoice } = sequelize.models;
+                if (payment.invoiceId) {
+                    await Invoice.updateBalance(payment.invoiceId);
+                }
+            },
+            afterUpdate: async (payment) => {
+                const { Invoice } = sequelize.models;
+                if (payment.invoiceId) {
+                    await Invoice.updateBalance(payment.invoiceId);
+                }
+            },
+            afterDestroy: async (payment) => {
+                const { Invoice } = sequelize.models;
+                if (payment.invoiceId) {
+                    await Invoice.updateBalance(payment.invoiceId);
+                }
+            }
         }
     });
 

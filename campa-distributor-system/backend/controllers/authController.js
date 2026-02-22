@@ -55,11 +55,14 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
+    console.log(`Login attempt for email: ${email}`);
 
     try {
         const user = await User.findOne({ where: { email } });
+        console.log(`User found: ${user ? 'Yes' : 'No'}`);
 
         if (user && (await bcrypt.compare(password, user.password))) {
+            console.log('Password match: Yes');
             res.json({
                 id: user.id,
                 name: user.name,
@@ -68,9 +71,11 @@ const loginUser = async (req, res) => {
                 token: generateToken(user.id),
             });
         } else {
+            console.log('Password match or user found: No');
             res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
+        console.error('Login Error:', error);
         res.status(500).json({ message: error.message });
     }
 };
