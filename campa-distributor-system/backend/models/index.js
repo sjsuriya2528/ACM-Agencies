@@ -89,6 +89,8 @@ db.User.hasMany(db.Delivery, { as: 'deliveries', foreignKey: 'driverId' });
 db.Delivery.belongsTo(db.User, { as: 'driver', foreignKey: 'driverId' });
 db.User.hasMany(db.Payment, { as: 'paymentsCollected', foreignKey: 'collectedById' });
 db.Payment.belongsTo(db.User, { as: 'collectedBy', foreignKey: 'collectedById' });
+db.User.hasMany(db.Payment, { as: 'paymentsApproved', foreignKey: 'approvedById' });
+db.Payment.belongsTo(db.User, { as: 'approvedBy', foreignKey: 'approvedById' });
 db.CancelledOrder.hasMany(db.CancelledOrderItem, { as: 'items', foreignKey: 'cancelledOrderId' });
 db.CancelledOrderItem.belongsTo(db.CancelledOrder, { foreignKey: 'cancelledOrderId' });
 db.CancelledOrder.belongsTo(db.Retailer, { as: 'retailer', foreignKey: 'retailerId' });

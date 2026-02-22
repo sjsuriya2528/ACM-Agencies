@@ -78,7 +78,7 @@ const CollectPayment = () => {
                 paymentMode: data.paymentMode,
                 transactionId: data.transactionId
             });
-            alert("Payment recorded successfully!");
+            alert("✅ Payment submitted for admin approval!\n\nThe invoice balance will update once the admin approves it.");
             // Refresh list
             await fetchInvoices();
             // Clear successful payment data and collapse

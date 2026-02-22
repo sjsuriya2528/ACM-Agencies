@@ -37,25 +37,46 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: true,
             comment: 'Denormalized field for easier reporting'
+        },
+        approvalStatus: {
+            type: DataTypes.ENUM('Pending', 'Approved', 'Rejected'),
+            defaultValue: 'Pending',
+            allowNull: false,
+        },
+        approvedById: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            comment: 'Admin who approved/rejected this payment'
+        },
+        approvalNote: {
+            type: DataTypes.STRING,
+            allowNull: true,
         }
     }, {
         hooks: {
             afterCreate: async (payment) => {
-                const { Invoice } = sequelize.models;
-                if (payment.invoiceId) {
-                    await Invoice.updateBalance(payment.invoiceId);
+                // Only update invoice balance when payment is Approved
+                if (payment.approvalStatus === 'Approved') {
+                    const { Invoice } = sequelize.models;
+                    if (payment.invoiceId) {
+                        await Invoice.updateBalance(payment.invoiceId);
+                    }
                 }
             },
             afterUpdate: async (payment) => {
+                // Trigger balance recalculation when approvalStatus changes
                 const { Invoice } = sequelize.models;
-                if (payment.invoiceId) {
+                if (payment.invoiceId && payment.changed('approvalStatus')) {
                     await Invoice.updateBalance(payment.invoiceId);
                 }
             },
             afterDestroy: async (payment) => {
-                const { Invoice } = sequelize.models;
-                if (payment.invoiceId) {
-                    await Invoice.updateBalance(payment.invoiceId);
+                // Only if the payment was approved (otherwise balance not affected)
+                if (payment.approvalStatus === 'Approved') {
+                    const { Invoice } = sequelize.models;
+                    if (payment.invoiceId) {
+                        await Invoice.updateBalance(payment.invoiceId);
+                    }
                 }
             }
         }

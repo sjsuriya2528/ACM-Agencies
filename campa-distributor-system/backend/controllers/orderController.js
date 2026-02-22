@@ -326,33 +326,37 @@ const deleteOrder = async (req, res) => {
             return res.status(404).json({ message: 'Order not found' });
         }
 
-        // 1. Move to Cancelled Tables
-        const cancelledOrder = await CancelledOrder.create({
-            id: order.id,
-            retailerId: order.retailerId,
-            salesRepId: order.salesRepId,
-            status: order.status,
-            paymentMode: order.paymentMode,
-            totalAmount: order.totalAmount,
-            billNumber: order.billNumber,
-            remarks: order.remarks,
-            gpsLatitude: order.gpsLatitude,
-            gpsLongitude: order.gpsLongitude,
-            originalCreatedAt: order.createdAt,
-            cancelledAt: new Date()
-        }, { transaction });
+        // 1. Move to Cancelled Tables (Check if already exists to avoid conflict)
+        const existingCancelled = await CancelledOrder.findByPk(order.id, { transaction });
 
-        for (const item of order.items) {
-            await CancelledOrderItem.create({
-                cancelledOrderId: cancelledOrder.id,
-                productId: item.productId,
-                productName: item.productName,
-                quantity: item.quantity,
-                pricePerUnit: item.pricePerUnit,
-                totalPrice: item.totalPrice,
-                taxAmount: item.taxAmount,
-                netAmount: item.netAmount
+        if (!existingCancelled) {
+            const cancelledOrder = await CancelledOrder.create({
+                id: order.id,
+                retailerId: order.retailerId,
+                salesRepId: order.salesRepId,
+                status: order.status,
+                paymentMode: order.paymentMode,
+                totalAmount: order.totalAmount,
+                billNumber: order.billNumber,
+                remarks: order.remarks,
+                gpsLatitude: order.gpsLatitude,
+                gpsLongitude: order.gpsLongitude,
+                originalCreatedAt: order.createdAt,
+                cancelledAt: new Date()
             }, { transaction });
+
+            for (const item of order.items) {
+                await CancelledOrderItem.create({
+                    cancelledOrderId: cancelledOrder.id,
+                    productId: item.productId,
+                    productName: item.productName,
+                    quantity: item.quantity,
+                    pricePerUnit: item.pricePerUnit,
+                    totalPrice: item.totalPrice,
+                    taxAmount: item.taxAmount,
+                    netAmount: item.netAmount
+                }, { transaction });
+            }
         }
 
         // 2. Restore Stock if Approved/Dispatched/Delivered (Items were deducted)

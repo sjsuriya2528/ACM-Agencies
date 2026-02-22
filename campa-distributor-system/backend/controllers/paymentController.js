@@ -1,11 +1,12 @@
 const { Payment, Invoice, User, Retailer, Order } = require('../models');
 
-// @desc    Record a payment
+// @desc    Record a payment (submitted as Pending for non-admin, Approved for admin)
 // @route   POST /api/payments
-// @access  Private (Driver/Collector/Admin)
+// @access  Private (Driver/Collector/Admin/SalesRep)
 const recordPayment = async (req, res) => {
     const { invoiceId, amount, paymentMode, transactionId } = req.body;
     const collectedById = req.user.id;
+    const isAdmin = req.user.role === 'admin';
 
     try {
         const invoice = await Invoice.findByPk(invoiceId);
@@ -17,9 +18,12 @@ const recordPayment = async (req, res) => {
         const startBalance = Number(invoice.balanceAmount);
         const paymentAmount = Number(amount);
 
-        if (paymentAmount > startBalance + 0.01) { // 0.01 buffer for float issues
+        if (paymentAmount > startBalance + 0.01) {
             return res.status(400).json({ message: 'Payment amount exceeds balance' });
         }
+
+        // Admin-recorded payments are immediately Approved; employees submit as Pending
+        const approvalStatus = isAdmin ? 'Approved' : 'Pending';
 
         const payment = await Payment.create({
             invoiceId,
@@ -27,7 +31,9 @@ const recordPayment = async (req, res) => {
             paymentMode,
             transactionId,
             collectedById,
-            retailerName: invoice.customerName // Denormalize
+            retailerName: invoice.customerName,
+            approvalStatus,
+            approvedById: isAdmin ? req.user.id : null,
         });
 
         res.status(201).json(payment);
@@ -36,14 +42,15 @@ const recordPayment = async (req, res) => {
     }
 };
 
-// @desc    Get payments
+// @desc    Get all payments
 // @route   GET /api/payments
 // @access  Private (Admin)
 const getPayments = async (req, res) => {
     try {
         const payments = await Payment.findAll({
             include: [
-                { model: User, as: 'collectedBy', attributes: ['id', 'name'] },
+                { model: User, as: 'collectedBy', attributes: ['id', 'name', 'role'] },
+                { model: User, as: 'approvedBy', attributes: ['id', 'name'] },
                 {
                     model: Invoice,
                     attributes: ['id', 'netTotal', 'balanceAmount', 'customerName'],
@@ -57,7 +64,6 @@ const getPayments = async (req, res) => {
             order: [['createdAt', 'DESC']],
         });
 
-        // If link is broken, use the denormalized field
         const results = payments.map(p => {
             const json = p.toJSON();
             if (!json.retailerName && json.Invoice?.Order?.retailer?.shopName) {
@@ -74,7 +80,81 @@ const getPayments = async (req, res) => {
     }
 };
 
+// @desc    Approve a pending payment
+// @route   PATCH /api/payments/:id/approve
+// @access  Private (Admin only)
+const approvePayment = async (req, res) => {
+    try {
+        const payment = await Payment.findByPk(req.params.id);
+        if (!payment) return res.status(404).json({ message: 'Payment not found' });
+        if (payment.approvalStatus !== 'Pending') {
+            return res.status(400).json({ message: `Payment is already ${payment.approvalStatus}` });
+        }
+
+        await payment.update({
+            approvalStatus: 'Approved',
+            approvedById: req.user.id,
+            approvalNote: req.body.note || null,
+        });
+        // Invoice.updateBalance is triggered via afterUpdate hook (changed('approvalStatus'))
+
+        res.json({ message: 'Payment approved successfully', payment });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Reject a pending payment
+// @route   PATCH /api/payments/:id/reject
+// @access  Private (Admin only)
+const rejectPayment = async (req, res) => {
+    try {
+        const payment = await Payment.findByPk(req.params.id);
+        if (!payment) return res.status(404).json({ message: 'Payment not found' });
+        if (payment.approvalStatus !== 'Pending') {
+            return res.status(400).json({ message: `Payment is already ${payment.approvalStatus}` });
+        }
+
+        await payment.update({
+            approvalStatus: 'Rejected',
+            approvedById: req.user.id,
+            approvalNote: req.body.note || null,
+        });
+        // No balance change — payment was never approved
+
+        res.json({ message: 'Payment rejected', payment });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Cancel an approved payment (reverts invoice balance)
+// @route   PATCH /api/payments/:id/cancel
+// @access  Private (Admin only)
+const cancelPayment = async (req, res) => {
+    try {
+        const payment = await Payment.findByPk(req.params.id);
+        if (!payment) return res.status(404).json({ message: 'Payment not found' });
+        if (payment.approvalStatus !== 'Approved') {
+            return res.status(400).json({ message: 'Only approved payments can be cancelled' });
+        }
+
+        await payment.update({
+            approvalStatus: 'Rejected',
+            approvalNote: req.body.note || 'Cancelled by admin',
+        });
+        // afterUpdate hook will re-calculate invoice balance, effectively reverting the payment
+
+        res.json({ message: 'Payment cancelled and invoice balance reverted', payment });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     recordPayment,
     getPayments,
+    approvePayment,
+    rejectPayment,
+    cancelPayment,
 };

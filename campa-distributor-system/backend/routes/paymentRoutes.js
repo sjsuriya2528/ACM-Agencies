@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { recordPayment, getPayments } = require('../controllers/paymentController');
+const { recordPayment, getPayments, approvePayment, rejectPayment, cancelPayment } = require('../controllers/paymentController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 router.route('/')
     .post(protect, authorize('admin', 'driver', 'collection_agent', 'sales_rep'), recordPayment)
     .get(protect, getPayments);
+
+router.patch('/:id/approve', protect, authorize('admin'), approvePayment);
+router.patch('/:id/reject', protect, authorize('admin'), rejectPayment);
+router.patch('/:id/cancel', protect, authorize('admin'), cancelPayment);
 
 module.exports = router;
