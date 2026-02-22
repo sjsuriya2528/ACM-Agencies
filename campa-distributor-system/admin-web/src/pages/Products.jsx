@@ -162,18 +162,17 @@ const Products = () => {
             </div>
 
             {loading ? <LoadingSpinner /> : (
-                <div className="bg-white rounded-lg shadow overflow-x-auto">
-                    <table className="w-full min-w-[900px] divide-y divide-gray-200">
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <table className="w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crates</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bottles</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">ID</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -190,41 +189,43 @@ const Products = () => {
 
                                 return (
                                     <tr key={product.id} className="hover:bg-slate-50 transition-colors duration-150">
-                                        <td className="px-6 py-4 whitespace-nowrap">{product.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.id}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">{product.name}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-bold text-slate-900">
                                                     ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-500 font-normal">/ crate</span>
                                                 </span>
-                                                <span className="text-xs text-slate-500">
-                                                    ₹{product.price} <span className="text-[10px] text-slate-400">/ unit</span>
+                                                <span className="text-xs text-slate-400">
+                                                    ₹{product.price} <span className="text-[10px]">/ unit</span>
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-700">{crates}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${bottles > 100 ? 'bg-green-100 text-green-800' :
-                                                bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
-                                                    'bg-red-100 text-red-800'
-                                                }`}>
-                                                {bottles} Bottles
-                                            </span>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${bottles > 100 ? 'bg-green-100 text-green-800' :
+                                                        bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-red-100 text-red-800'
+                                                    }`}>{bottles} btls</span>
+                                                <span className="text-xs text-slate-400 mt-0.5">{isSingle ? '—' : `${crates} crates`}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-3 whitespace-nowrap">
                                             <span className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md border border-blue-100">
                                                 {product.category || 'Uncategorized'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-3 whitespace-nowrap">
                                             <span className="px-2 py-1 text-xs font-medium bg-orange-50 text-orange-600 rounded-md border border-orange-100">
                                                 {product.gstPercentage}%
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button onClick={() => handleAddStockClick(product)} className="text-emerald-600 hover:text-emerald-900 mr-3 p-1 hover:bg-emerald-50 rounded-full transition-colors" title="Add Stock"><Plus size={18} /></button>
-                                            <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 mr-3 p-1 hover:bg-indigo-50 rounded-full transition-colors"><Edit size={18} /></button>
-                                            <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={18} /></button>
+                                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <button onClick={() => handleAddStockClick(product)} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
+                                                <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
+                                                <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
