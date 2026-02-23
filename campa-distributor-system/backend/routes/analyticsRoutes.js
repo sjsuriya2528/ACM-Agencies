@@ -8,13 +8,15 @@ const {
     getRepPerformance,
     getEmployeeStats,
     getRepList,
-    getRepHistory
+    getRepHistory,
+    getCollectionTrend
 } = require('../controllers/analyticsController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 router.get('/summary', protect, authorize('admin'), getDashboardSummary);
 router.get('/employee-stats', protect, authorize('admin', 'driver', 'collection_agent', 'sales_rep'), getEmployeeStats);
 router.get('/sales-trend', protect, authorize('admin'), getSalesTrend);
+router.get('/collection-trend', protect, authorize('admin'), getCollectionTrend);
 router.get('/product-sales', protect, authorize('admin'), getProductSales);
 router.get('/stock', protect, authorize('admin'), getStockData);
 router.get('/performance', protect, authorize('admin'), getRepPerformance);

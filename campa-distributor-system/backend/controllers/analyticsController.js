@@ -81,34 +81,101 @@ const getDashboardSummary = async (req, res) => {
     }
 };
 
-// @desc    Get Sales Analysis (Day-wise for last 7 days)
-// @route   GET /api/analytics/sales-trend
+// Helper to get group by and format based on timeframe
+const getTimeframeLogic = (timeframe, dateCol) => {
+    let groupBy, attributes, where = {};
+    const today = new Date();
+
+    switch (timeframe) {
+        case 'weekly':
+            // Group by Week (Postgres: to_char YYYY-WW)
+            groupBy = [sequelize.fn('to_char', sequelize.col(dateCol), 'IYYY-"W"IW')];
+            attributes = [
+                [sequelize.fn('to_char', sequelize.col(dateCol), 'IYYY-"W"IW'), 'date']
+            ];
+            break;
+        case 'monthly':
+            // Group by Month (Postgres: to_char YYYY-MM)
+            groupBy = [sequelize.fn('to_char', sequelize.col(dateCol), 'YYYY-MM')];
+            attributes = [
+                [sequelize.fn('to_char', sequelize.col(dateCol), 'YYYY-MM'), 'date']
+            ];
+            break;
+        case 'yearly':
+            // Group by Year (Postgres: to_char YYYY)
+            groupBy = [sequelize.fn('to_char', sequelize.col(dateCol), 'YYYY')];
+            attributes = [
+                [sequelize.fn('to_char', sequelize.col(dateCol), 'YYYY'), 'date']
+            ];
+            break;
+        case 'daily':
+        default:
+            // Group by Date (Default Daily)
+            groupBy = [sequelize.fn('DATE', sequelize.col(dateCol))];
+            attributes = [
+                [sequelize.fn('DATE', sequelize.col(dateCol)), 'date']
+            ];
+            // Last 30 days for daily
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            where = { [Op.gte]: thirtyDaysAgo.toISOString().split('T')[0] };
+            break;
+    }
+
+    return { groupBy, attributes, where };
+};
+
+// @desc    Get Sales Analysis with Timeframe support
+// @route   GET /api/analytics/sales-trend?timeframe=daily|weekly|monthly|yearly
 // @access  Private (Admin)
 const getSalesTrend = async (req, res) => {
     try {
-        // Last 7 days
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        const { timeframe = 'daily' } = req.query;
+        const logic = getTimeframeLogic(timeframe, 'invoiceDate');
 
         const salesData = await Invoice.findAll({
             attributes: [
-                ['invoiceDate', 'date'],
+                ...logic.attributes,
                 [sequelize.fn('SUM', sequelize.col('netTotal')), 'totalSales'],
                 [sequelize.fn('COUNT', sequelize.col('id')), 'orderCount']
             ],
-            where: {
-                invoiceDate: {
-                    [Op.gte]: sevenDaysAgo.toISOString().split('T')[0]
-                }
-            },
-            group: ['invoiceDate'],
-            order: [['invoiceDate', 'ASC']]
+            where: Object.keys(logic.where).length ? { invoiceDate: logic.where } : {},
+            group: logic.groupBy,
+            order: [[sequelize.col('date'), 'ASC']]
         });
 
         res.json(salesData);
     } catch (error) {
         console.error('Error fetching sales trend:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
+// @desc    Get Collection Analysis with Timeframe support
+// @route   GET /api/analytics/collection-trend?timeframe=daily|weekly|monthly|yearly
+// @access  Private (Admin)
+const getCollectionTrend = async (req, res) => {
+    try {
+        const { timeframe = 'daily' } = req.query;
+        const logic = getTimeframeLogic(timeframe, 'paymentDate');
+
+        const collectionData = await Payment.findAll({
+            attributes: [
+                ...logic.attributes,
+                [sequelize.fn('SUM', sequelize.col('amount')), 'totalCollection'],
+                [sequelize.fn('COUNT', sequelize.col('id')), 'paymentCount']
+            ],
+            where: {
+                approvalStatus: 'Approved',
+                ...(Object.keys(logic.where).length ? { paymentDate: logic.where } : {})
+            },
+            group: logic.groupBy,
+            order: [[sequelize.col('date'), 'ASC']]
+        });
+
+        res.json(collectionData);
+    } catch (error) {
+        console.error('Error fetching collection trend:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
@@ -397,5 +464,6 @@ module.exports = {
     getRepPerformance,
     getEmployeeStats,
     getRepList,
-    getRepHistory
+    getRepHistory,
+    getCollectionTrend
 };
