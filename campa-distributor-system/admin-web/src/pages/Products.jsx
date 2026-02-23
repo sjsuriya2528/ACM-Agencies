@@ -7,7 +7,7 @@ const Products = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 });
+    const [formData, setFormData] = useState({ name: '', purchaseCratePrice: '', sellingCratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 });
     const [editingId, setEditingId] = useState(null);
 
     // Quick Add Stock State
@@ -41,13 +41,17 @@ const Products = () => {
         setIsSubmitting(true);
         try {
             const bpc = parseInt(formData.bottlesPerCrate) || 24;
-            const pricePerBottle = (parseFloat(formData.cratePrice) / bpc).toFixed(4);
+            const purchasePricePerBottle = (parseFloat(formData.purchaseCratePrice) / bpc).toFixed(4);
+            const sellingPricePerBottle = formData.sellingCratePrice
+                ? (parseFloat(formData.sellingCratePrice) / bpc).toFixed(4)
+                : null;
 
             const payload = {
                 name: formData.name,
-                price: pricePerBottle,
+                price: purchasePricePerBottle,
+                sellingPrice: sellingPricePerBottle,
                 stockQuantity: formData.stock,
-                groupName: formData.category, // Backend expects groupName
+                groupName: formData.category,
                 bottlesPerCrate: bpc,
                 gstPercentage: parseFloat(formData.gstPercentage) || 18.00
             };
@@ -58,7 +62,7 @@ const Products = () => {
                 await api.post('/products', payload);
             }
             setIsModalOpen(false);
-            setFormData({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 });
+            setFormData({ name: '', purchaseCratePrice: '', sellingCratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 });
             setEditingId(null);
             fetchProducts();
         } catch (error) {
@@ -83,9 +87,10 @@ const Products = () => {
         const bpc = product.bottlesPerCrate || 24;
         setFormData({
             name: product.name,
-            cratePrice: (product.price * bpc).toFixed(2),
+            purchaseCratePrice: (product.price * bpc).toFixed(2),
+            sellingCratePrice: product.sellingPrice ? (product.sellingPrice * bpc).toFixed(2) : '',
             stock: product.stock,
-            crates: (product.stock / bpc).toFixed(1), // Populate crates for edit
+            crates: (product.stock / bpc).toFixed(1),
             category: product.category,
             bottlesPerCrate: bpc,
             gstPercentage: product.gstPercentage || 18.00
@@ -153,7 +158,7 @@ const Products = () => {
                         </svg>
                     </div>
                     <button
-                        onClick={() => { setIsModalOpen(true); setEditingId(null); setFormData({ name: '', cratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 }); }}
+                        onClick={() => { setIsModalOpen(true); setEditingId(null); setFormData({ name: '', purchaseCratePrice: '', sellingCratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 }); }}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-md transition-all transform hover:scale-105"
                     >
                         <Plus size={20} /> <span className="hidden sm:inline">Add Product</span>
@@ -168,7 +173,12 @@ const Products = () => {
                             <tr>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">ID</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <span className="text-orange-600">Purchase Price</span>
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <span className="text-emerald-600">Selling Price</span>
+                                </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
@@ -191,21 +201,37 @@ const Products = () => {
                                     <tr key={product.id} className="hover:bg-slate-50 transition-colors duration-150">
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.id}</td>
                                         <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">{product.name}</td>
+                                        {/* Purchase Price */}
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-slate-900">
-                                                    ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-500 font-normal">/ crate</span>
+                                                <span className="text-sm font-bold text-orange-700">
+                                                    ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
                                                 </span>
                                                 <span className="text-xs text-slate-400">
-                                                    ₹{product.price} <span className="text-[10px]">/ unit</span>
+                                                    ₹{Number(product.price).toFixed(4)} <span className="text-[10px]">/ btl</span>
                                                 </span>
                                             </div>
+                                        </td>
+                                        {/* Selling Price */}
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            {product.sellingPrice ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-emerald-700">
+                                                        ₹{(product.sellingPrice * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">
+                                                        ₹{Number(product.sellingPrice).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-300 italic">Not set</span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${bottles > 100 ? 'bg-green-100 text-green-800' :
-                                                        bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-red-100 text-red-800'
+                                                    bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-red-100 text-red-800'
                                                     }`}>{bottles} btls</span>
                                                 <span className="text-xs text-slate-400 mt-0.5">{isSingle ? '—' : `${crates} crates`}</span>
                                             </div>
@@ -264,21 +290,52 @@ const Products = () => {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-5">
+                                    {/* Purchase Price */}
                                     <div className="relative">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Price Per Crate (₹)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Purchase Price / Crate <span className="text-orange-500 text-xs">(from trader)</span>
+                                        </label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-2 text-gray-400">₹</span>
                                             <input
-                                                type="number"
-                                                step="0.01"
-                                                className="w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                                                type="number" step="0.01"
+                                                className="w-full pl-7 pr-4 py-2 border border-orange-200 bg-orange-50/30 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all outline-none"
                                                 placeholder="0.00"
-                                                value={formData.cratePrice}
-                                                onChange={e => setFormData({ ...formData, cratePrice: e.target.value })}
+                                                value={formData.purchaseCratePrice}
+                                                onChange={e => setFormData({ ...formData, purchaseCratePrice: e.target.value })}
                                                 required
                                             />
                                         </div>
+                                        {formData.purchaseCratePrice && formData.bottlesPerCrate && (
+                                            <p className="text-xs text-orange-600 mt-1">
+                                                ₹{(parseFloat(formData.purchaseCratePrice) / (parseInt(formData.bottlesPerCrate) || 24)).toFixed(4)}/btl
+                                            </p>
+                                        )}
                                     </div>
+                                    {/* Selling Price */}
+                                    <div className="relative">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Selling Price / Crate <span className="text-emerald-500 text-xs">(to retailers)</span>
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-2 text-gray-400">₹</span>
+                                            <input
+                                                type="number" step="0.01"
+                                                className="w-full pl-7 pr-4 py-2 border border-emerald-200 bg-emerald-50/30 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition-all outline-none"
+                                                placeholder="0.00"
+                                                value={formData.sellingCratePrice}
+                                                onChange={e => setFormData({ ...formData, sellingCratePrice: e.target.value })}
+                                            />
+                                        </div>
+                                        {formData.sellingCratePrice && formData.bottlesPerCrate && (
+                                            <p className="text-xs text-emerald-600 mt-1">
+                                                ₹{(parseFloat(formData.sellingCratePrice) / (parseInt(formData.bottlesPerCrate) || 24)).toFixed(4)}/btl
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Bottles per crate + price summary */}
+                                <div className="grid grid-cols-2 gap-5 items-start">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Bottles per Crate</label>
                                         <input
@@ -289,28 +346,23 @@ const Products = () => {
                                             required
                                         />
                                     </div>
+                                    {/* Margin preview */}
+                                    {formData.purchaseCratePrice && formData.sellingCratePrice && (
+                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-xs">
+                                            <p className="font-semibold text-slate-600 mb-1">Margin / Crate</p>
+                                            <p className={`font-bold text-base ${parseFloat(formData.sellingCratePrice) >= parseFloat(formData.purchaseCratePrice)
+                                                ? 'text-emerald-700' : 'text-red-600'
+                                                }`}>
+                                                ₹{(parseFloat(formData.sellingCratePrice) - parseFloat(formData.purchaseCratePrice)).toFixed(2)}
+                                            </p>
+                                            <p className="text-slate-400">
+                                                {((parseFloat(formData.sellingCratePrice) - parseFloat(formData.purchaseCratePrice)) / parseFloat(formData.purchaseCratePrice) * 100).toFixed(1)}% margin
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {formData.cratePrice && formData.bottlesPerCrate && (
-                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 space-y-3">
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-blue-700 font-medium">Taxable Unit Price:</span>
-                                            <span className="text-blue-800 font-bold">₹{(parseFloat(formData.cratePrice) / parseInt(formData.bottlesPerCrate)).toFixed(2)} / bottle</span>
-                                        </div>
-                                        {formData.gstPercentage && (
-                                            <>
-                                                <div className="flex justify-between items-center text-xs text-gray-500 border-t border-blue-100 pt-2">
-                                                    <span>GST Amount ({formData.gstPercentage}%):</span>
-                                                    <span>₹{((parseFloat(formData.cratePrice) / parseInt(formData.bottlesPerCrate)) * (parseFloat(formData.gstPercentage) / 100)).toFixed(2)}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-sm font-bold text-slate-900 pt-1">
-                                                    <span>Net Unit Price (incl. GST):</span>
-                                                    <span className="text-emerald-700">₹{((parseFloat(formData.cratePrice) / parseInt(formData.bottlesPerCrate)) * (1 + parseFloat(formData.gstPercentage) / 100)).toFixed(2)}</span>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+
 
                                 <div className="border-t border-gray-100 pt-4">
                                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Initial Stock</h3>

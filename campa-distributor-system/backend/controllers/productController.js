@@ -33,13 +33,14 @@ const getProductById = async (req, res) => {
 // @route   POST /api/products
 // @access  Private (Admin)
 const createProduct = async (req, res) => {
-    const { name, sku, price, gstPercentage, stockQuantity, groupName, bottlesPerCrate } = req.body;
+    const { name, sku, price, sellingPrice, gstPercentage, stockQuantity, groupName, bottlesPerCrate } = req.body;
 
     try {
         const product = await Product.create({
             name,
             sku,
             price,
+            sellingPrice: sellingPrice || null,
             gstPercentage,
             stockQuantity,
             groupName,
@@ -63,6 +64,7 @@ const updateProduct = async (req, res) => {
             product.name = req.body.name || product.name;
             product.sku = req.body.sku || product.sku;
             product.price = req.body.price || product.price;
+            product.sellingPrice = req.body.sellingPrice !== undefined ? (req.body.sellingPrice || null) : product.sellingPrice;
             product.gstPercentage = req.body.gstPercentage || product.gstPercentage;
             product.stockQuantity = req.body.stockQuantity !== undefined ? req.body.stockQuantity : product.stockQuantity;
             product.groupName = req.body.groupName || product.groupName;

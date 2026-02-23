@@ -16,6 +16,13 @@ module.exports = (sequelize, DataTypes) => {
         price: {
             type: DataTypes.DECIMAL(10, 4),
             allowNull: false,
+            comment: 'Purchase price per bottle (cost from trader)',
+        },
+        sellingPrice: {
+            type: DataTypes.DECIMAL(10, 4),
+            allowNull: true,
+            defaultValue: null,
+            comment: 'Selling price per bottle (charged to retailers)',
         },
         gstPercentage: {
             type: DataTypes.DECIMAL(5, 2),

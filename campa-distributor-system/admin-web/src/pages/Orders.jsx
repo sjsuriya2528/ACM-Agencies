@@ -233,7 +233,7 @@ const Orders = () => {
         if (!product) return;
 
         const bottlesPerCrate = product.bottlesPerCrate || 24;
-        const currentData = cart[productId] || { quantity: 0, pricePerUnit: product.price };
+        const currentData = cart[productId] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
         const currentTotal = currentData.quantity;
 
         let currentCrates = Math.floor(currentTotal / bottlesPerCrate);
@@ -1137,7 +1137,7 @@ const Orders = () => {
                                         ) : (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
                                                 {(products || []).filter(p => (p.name || '').toLowerCase().includes((productSearchTerm || '').toLowerCase())).map(product => {
-                                                    const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.price };
+                                                    const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
                                                     const totalQty = cartData.quantity;
                                                     const pricePerUnit = cartData.pricePerUnit;
                                                     const bottlesPerCrate = product.bottlesPerCrate || 24;
@@ -1151,7 +1151,7 @@ const Orders = () => {
                                                                 <div className="space-y-1">
                                                                     <h4 className="font-black text-slate-800 leading-tight">{product.name}</h4>
                                                                     <div className="flex items-center gap-2">
-                                                                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.price} (Def) • 1 CR = {bottlesPerCrate}</ p>
+                                                                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.sellingPrice ?? product.price} (Sell) • 1 CR = {bottlesPerCrate}</ p>
                                                                         <span className="text-[10x] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-black">GST: {gstRate}%</span>
                                                                     </div>
                                                                 </div>
@@ -1267,7 +1267,7 @@ const Orders = () => {
                                                                 </p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="font-black text-slate-800">₹{(qty * product.price).toFixed(2)}</p>
+                                                                <p className="font-black text-slate-800">₹{(qty * (product.sellingPrice ?? product.price)).toFixed(2)}</p>
                                                                 <button
                                                                     onClick={() => {
                                                                         const { [pId]: _, ...rest } = cart;

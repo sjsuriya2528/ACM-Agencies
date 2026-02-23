@@ -60,13 +60,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// ── DB Sync (runs on module load — works in Vercel serverless AND local) ──────
-// alter:true safely creates missing tables/columns without touching existing data
-db.sequelize.sync({ alter: true })
-  .then(() => console.log('✅ Database synced'))
-  .catch(err => console.error('⚠️  Database sync error:', err.message));
-
-// ── Local server startup (skipped on Vercel — Vercel exports the app directly) ──
+// ── Local server startup (Vercel exports the app directly, skips this) ────────
 if (require.main === module) {
   db.authenticate()
     .then(() => {
@@ -79,4 +73,5 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
 
