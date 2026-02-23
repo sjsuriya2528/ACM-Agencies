@@ -249,7 +249,7 @@ const Payments = () => {
                                                 <Calendar size={14} />
                                             </div>
                                             <span className="text-sm font-medium text-slate-600">
-                                                {new Date(payment.createdAt).toLocaleDateString()}
+                                                {new Date(payment.paymentDate || payment.createdAt).toLocaleDateString('en-IN')}
                                             </span>
                                         </div>
                                     </td>
