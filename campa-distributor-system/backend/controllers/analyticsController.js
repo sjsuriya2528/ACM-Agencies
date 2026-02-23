@@ -1,20 +1,34 @@
 const { Order, OrderItem, Product, Invoice, User, Payment, Retailer, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
-// Helper to get today's date in YYYY-MM-DD format (Local Time)
+// Helper to get today's date in YYYY-MM-DD format (IST Timezone)
 const getTodayDateString = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
 };
 
-// Helper to get start of today in local time
+// Helper to get start of today in IST
 const getStartOfToday = () => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    }).formatToParts(now);
+
+    const map = {};
+    parts.forEach(p => map[p.type] = p.value);
+
+    return new Date(`${map.year}-${map.month}-${map.day}T00:00:00+05:30`);
 };
 
 // @desc    Get dashboard summary statistics
@@ -124,14 +138,15 @@ const getTimeframeLogic = (timeframe, dateCol) => {
             attributes = [
                 [sequelize.fn('DATE', sequelize.col(dateCol)), 'date']
             ];
-            // Last 30 days for daily (Local Date)
-            const thirtyDaysAgo = new Date();
+            // Last 30 days for daily (IST Aware)
+            const istNowStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+            const thirtyDaysAgo = new Date(istNowStr);
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
             const y = thirtyDaysAgo.getFullYear();
             const m = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
-            const d = String(thirtyDaysAgo.getDate()).padStart(2, '0');
-            where = { [Op.gte]: `${y}-${m}-${d}` };
+            const dVal = String(thirtyDaysAgo.getDate()).padStart(2, '0');
+            where = { [Op.gte]: `${y}-${m}-${dVal}` };
             break;
     }
 
