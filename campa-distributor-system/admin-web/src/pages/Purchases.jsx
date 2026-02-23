@@ -56,7 +56,7 @@ const PrintTemplate = ({ bill }) => {
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>SNO</th>
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'left' }}>DESCRIPTION</th>
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>Qty (Crates)</th>
-                        <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>RATE</th>
+                        <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>RATE/BTL</th>
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'right' }}>Amount</th>
                     </tr>
                 </thead>
@@ -190,14 +190,18 @@ const Purchases = () => {
                 const prod = products.find(p => String(p.id) === String(val));
                 if (prod) {
                     copy[idx].description = prod.name;
-                    copy[idx].rate = prod.price || '';
+                    copy[idx].rate = prod.price || '';       // rate per bottle
+                    copy[idx]._bpc = prod.bottlesPerCrate || 1;
+                } else {
+                    copy[idx]._bpc = 1;
                 }
             }
 
-            // Recalc amount
-            const qty = Number(copy[idx].quantity) || 0;
+            // Amount = crates × bottlesPerCrate × rate/bottle
+            const bpc = copy[idx]._bpc || 1;
+            const bottles = (Number(copy[idx].quantity) || 0) * bpc;
             const rate = Number(copy[idx].rate) || 0;
-            copy[idx].amount = +(qty * rate).toFixed(2);
+            copy[idx].amount = +(bottles * rate).toFixed(2);
             return copy;
         });
     };
@@ -486,7 +490,7 @@ const Purchases = () => {
                                             <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase min-w-[200px]">Description</th>
                                             <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase min-w-[160px]">Link Product (opt.)</th>
                                             <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500 uppercase w-24">Qty (Crates)</th>
-                                            <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500 uppercase w-28">Rate</th>
+                                            <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500 uppercase w-28">Rate/Bottle</th>
                                             <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500 uppercase w-28">Amount</th>
                                             <th className="px-3 py-2 w-10"></th>
                                         </tr>
