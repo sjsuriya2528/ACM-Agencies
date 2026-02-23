@@ -92,6 +92,21 @@ const Payments = () => {
         }
     };
 
+    const handleBulkApprove = async () => {
+        if (!window.confirm(`Approve all ${pendingCount} pending payments? This will update all related invoice balances.`)) return;
+
+        setIsSubmitting(true);
+        try {
+            await api.patch('/payments/bulk-approve');
+            alert('All pending payments approved successfully!');
+            fetchPayments();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to bulk approve payments');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleRecordPayment = async (e) => {
         e.preventDefault();
         if (!selectedInvoice) return;
@@ -172,6 +187,16 @@ const Payments = () => {
                             <span className="text-2xl font-bold">{totalApproved.toLocaleString()}</span>
                         </div>
                     </div>
+
+                    {pendingCount > 0 && (
+                        <button
+                            onClick={handleBulkApprove}
+                            disabled={isSubmitting}
+                            className={`bg-emerald-600 text-white px-6 py-4 rounded-2xl flex items-center gap-2 hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all active:scale-95 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <ThumbsUp size={20} /> Bulk Approve All ({pendingCount})
+                        </button>
+                    )}
 
                     <button
                         onClick={() => { setShowRecordModal(true); fetchPendingInvoices(); }}

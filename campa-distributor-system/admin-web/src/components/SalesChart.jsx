@@ -36,148 +36,137 @@ const formatLabel = (label) => {
             return new Date(label + '-01').toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
         }
     }
-    return label; // Return as is for W or Y
+    return label;
 };
 
-export const SalesLineChart = ({ data, title = 'Sales Trend' }) => {
-    const options = {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top',
-                labels: { font: { weight: 'bold' } }
-            },
-            title: {
-                display: false,
-            },
-            tooltip: {
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                padding: 12,
-                titleFont: { size: 14, weight: 'bold' },
-                bodyFont: { size: 13 },
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                borderWidth: 1,
+const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            display: true,
+            position: 'top',
+            align: 'end',
+            labels: {
+                usePointStyle: true,
+                pointStyle: 'circle',
+                padding: 20,
+                font: { size: 10, weight: 'bold', family: "'Outfit', sans-serif" },
+                color: '#64748b'
             }
         },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: { color: 'rgba(241, 245, 249, 1)' },
-                ticks: {
-                    callback: (value) => `₹${value.toLocaleString()}`
-                }
-            },
-            x: {
-                grid: { display: false }
+        tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            padding: 12,
+            titleFont: { size: 14, weight: 'bold', family: "'Outfit', sans-serif" },
+            bodyFont: { size: 13, family: "'Outfit', sans-serif" },
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: 1,
+            displayColors: false,
+            cornerRadius: 12,
+        }
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(241, 245, 249, 0.5)', drawBorder: false },
+            ticks: {
+                font: { size: 10, weight: '500' },
+                color: '#94a3b8',
+                callback: (value) => value >= 1000 ? `₹${(value / 1000).toFixed(1)}k` : `₹${value}`
+            }
+        },
+        x: {
+            grid: { display: false },
+            ticks: {
+                font: { size: 10, weight: '500' },
+                color: '#94a3b8'
             }
         }
-    };
+    }
+};
 
+export const SalesLineChart = ({ data }) => {
     const chartData = {
         labels: data.map(item => formatLabel(item.date)),
         datasets: [
             {
-                label: 'Total Sales',
+                label: 'Sales Revenue',
                 data: data.map(item => item.totalSales),
                 borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                backgroundColor: (context) => {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
+                    gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
+                    return gradient;
+                },
                 fill: true,
-                tension: 0.4,
+                tension: 0.45,
                 pointBackgroundColor: '#2563eb',
                 pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
+                pointBorderWidth: 3,
+                pointRadius: 0,
                 pointHoverRadius: 6,
+                borderWidth: 3,
             },
         ],
     };
 
-    return <Line options={options} data={chartData} />;
+    return <Line options={commonOptions} data={chartData} />;
 };
 
 export const CollectionLineChart = ({ data }) => {
-    const options = {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top',
-                labels: { font: { weight: 'bold' } }
-            },
-            title: {
-                display: false,
-            },
-            tooltip: {
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                padding: 12,
-                titleFont: { size: 14, weight: 'bold' },
-                bodyFont: { size: 13 },
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                borderWidth: 1,
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: { color: 'rgba(241, 245, 249, 1)' },
-                ticks: {
-                    callback: (value) => `₹${value.toLocaleString()}`
-                }
-            },
-            x: {
-                grid: { display: false }
-            }
-        }
-    };
-
     const chartData = {
         labels: data.map(item => formatLabel(item.date)),
         datasets: [
             {
-                label: 'Total Collections',
+                label: 'Collections',
                 data: data.map(item => item.totalCollection),
                 borderColor: '#059669',
-                backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                backgroundColor: (context) => {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, 'rgba(5, 150, 105, 0.2)');
+                    gradient.addColorStop(1, 'rgba(5, 150, 105, 0)');
+                    return gradient;
+                },
                 fill: true,
-                tension: 0.4,
+                tension: 0.45,
                 pointBackgroundColor: '#059669',
                 pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
+                pointBorderWidth: 3,
+                pointRadius: 0,
                 pointHoverRadius: 6,
+                borderWidth: 3,
             },
         ],
     };
 
-    return <Line options={options} data={chartData} />;
+    return <Line options={commonOptions} data={chartData} />;
 };
 
 export const ProductBarChart = ({ data }) => {
     const options = {
+        ...commonOptions,
         indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
         plugins: {
-            legend: {
-                display: false,
-            },
-            title: {
-                display: false,
-            },
+            ...commonOptions.plugins,
+            legend: { display: false }
         },
         scales: {
             x: {
-                beginAtZero: true,
-                grid: { color: 'rgba(241, 245, 249, 1)' }
+                grid: { color: 'rgba(241, 245, 249, 0.5)' },
+                ticks: { font: { size: 10 }, color: '#94a3b8' }
             },
             y: {
                 grid: { display: false },
                 ticks: {
+                    font: { size: 10, weight: 'bold' },
+                    color: '#475569',
                     callback: function (value) {
                         const label = this.getLabelForValue(value);
-                        if (typeof label === 'string' && label.length > 15) {
-                            return label.substr(0, 15) + '...';
-                        }
-                        return label;
+                        return label.length > 12 ? label.substr(0, 12) + '...' : label;
                     }
                 }
             }
@@ -188,11 +177,12 @@ export const ProductBarChart = ({ data }) => {
         labels: data.map(item => item.Product?.name || 'Unknown'),
         datasets: [
             {
-                label: 'Quantity Sold',
+                label: 'Qty Sold',
                 data: data.map(item => item.totalQuantity),
                 backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                borderRadius: 8,
-                barThickness: 20
+                hoverBackgroundColor: '#6366f1',
+                borderRadius: 10,
+                barThickness: 15
             },
         ],
     };

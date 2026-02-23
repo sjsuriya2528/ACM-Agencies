@@ -155,10 +155,38 @@ const cancelPayment = async (req, res) => {
     }
 };
 
+// @desc    Bulk approve all pending payments
+// @route   PATCH /api/payments/bulk-approve
+// @access  Private (Admin only)
+const bulkApprovePayments = async (req, res) => {
+    try {
+        const pendingCount = await Payment.count({ where: { approvalStatus: 'Pending' } });
+        if (pendingCount === 0) {
+            return res.status(400).json({ message: 'No pending payments to approve' });
+        }
+
+        // Update all pending payments to Approved
+        // individualHooks: true ensures that Invoice.updateBalance is called for each updated payment
+        await Payment.update({
+            approvalStatus: 'Approved',
+            approvedById: req.user.id,
+            approvalNote: 'Bulk approved by admin',
+        }, {
+            where: { approvalStatus: 'Pending' },
+            individualHooks: true
+        });
+
+        res.json({ message: `Successfully approved ${pendingCount} payments` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     recordPayment,
     getPayments,
     approvePayment,
     rejectPayment,
     cancelPayment,
+    bulkApprovePayments,
 };

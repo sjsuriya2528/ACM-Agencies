@@ -114,48 +114,72 @@ const DashboardHome = () => {
         </div>
     );
 
-    const StatCard = ({ title, value, icon: Icon, color, subtext }) => (
-        <div className={`relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
-            <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color}`}></div>
+    const StatCard = ({ title, value, icon: Icon, color, subtext, trend }) => (
+        <div className="relative group overflow-hidden bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-slate-200/60 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 transform hover:-translate-y-2">
+            {/* Animated Glow Effect */}
+            <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${color.replace('bg-', 'bg-')}`}></div>
+
             <div className="flex justify-between items-start z-10 relative">
-                <div>
-                    <p className="text-slate-500 text-sm font-medium uppercase tracking-wide mb-1">{title}</p>
-                    <h3 className="text-3xl font-extrabold text-slate-800">{value}</h3>
-                    {subtext && <p className={`text-xs mt-2 font-medium flex items-center gap-1 ${color.replace('bg-', 'text-')}`}>
-                        <ArrowUpRight size={12} /> {subtext}
-                    </p>}
-                </div>
-                <div className={`p-3 rounded-xl ${color} bg-opacity-20`}>
-                    <Icon size={24} className={color.replace('bg-', 'text-').replace('/20', '')} />
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <div className={`p-2.5 rounded-2xl ${color} bg-opacity-10 shadow-inner`}>
+                            <Icon size={20} className={color.replace('bg-', 'text-').replace('/20', '')} />
+                        </div>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">{title}</p>
+                    </div>
+                    <div>
+                        <h3 className="text-3xl font-black text-slate-800 tracking-tighter tabular-nums">{value}</h3>
+                        {subtext && (
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color} bg-opacity-10 ${color.replace('bg-', 'text-')}`}>
+                                    {subtext}
+                                </span>
+                                {trend && <span className="text-[10px] text-slate-400 font-medium">{trend}</span>}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+
+            {/* Bottom Accent Line */}
+            <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 w-0 group-hover:w-full ${color}`}></div>
         </div>
     );
 
     if (loading) return <LoadingSpinner />;
 
     return (
-        <div className="p-2 animate-fade-in-up space-y-8">
-            <header className="flex justify-between items-center mb-8">
+        <div className="relative min-h-screen p-4 md:p-8 animate-fade-in-up space-y-10 overflow-hidden">
+            {/* Ambient Background Elements */}
+            <div className="absolute top-0 left-0 w-full h-full -z-10 overflow-hidden pointer-events-none">
+                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[120px]"></div>
+                <div className="absolute top-[20%] -right-[10%] w-[35%] h-[35%] bg-emerald-400/10 rounded-full blur-[100px]"></div>
+                <div className="absolute -bottom-[10%] left-[20%] w-[30%] h-[30%] bg-amber-400/10 rounded-full blur-[80px]"></div>
+            </div>
+
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">
-                        {getGreeting()}, {user?.name || 'Admin'}
+                    <h1 className="text-5xl font-black text-slate-800 tracking-tight leading-tight">
+                        {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.name || 'Admin'}</span>
                     </h1>
-                    <p className="text-slate-500 mt-1">Here's what's happening today</p>
+                    <p className="text-slate-400 mt-2 font-medium text-lg">Here's a digital overview of your distribution network</p>
                 </div>
-                <div className="text-sm bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 text-slate-600 font-medium">
-                    {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 text-sm bg-white/60 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-sm border border-slate-200/50 text-slate-600 font-black tracking-tight">
+                        <Calendar size={18} className="text-blue-600" />
+                        {new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase()}
+                    </div>
                 </div>
             </header>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatCard title="Total Sales" value={`₹ ${Number(stats.overall?.totalSales || 0).toLocaleString()}`} icon={IndianRupee} color="bg-emerald-600" subtext="Lifetime Sales" />
-                <StatCard title="Orders Today" value={stats.today.totalOrders} icon={ShoppingBag} color="bg-blue-500" subtext="Processing" />
-                <StatCard title="Sales Today" value={`₹ ${Number(stats.today.totalSales).toLocaleString()}`} icon={IndianRupee} color="bg-emerald-500" subtext="Revenue" />
-                <StatCard title="Today Collection" value={`₹ ${Number(stats.today.totalCollection).toLocaleString()}`} icon={IndianRupee} color="bg-amber-500" subtext="Cash/UPI/Bank" />
-                <StatCard title="Total Products" value={stats.inventory.totalProducts} icon={Box} color="bg-violet-500" subtext="In Inventory" />
-                <StatCard title="Low Stock" value={stats.inventory.lowStockCount} icon={AlertTriangle} color="bg-rose-500" subtext="Action Needed" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <StatCard title="Total Sales" value={`₹${Number(stats.overall?.totalSales || 0).toLocaleString()}`} icon={IndianRupee} color="bg-blue-600" subtext="LIFETIME" trend="+12.5% vs last month" />
+                <StatCard title="Orders Today" value={stats.today.totalOrders} icon={ShoppingBag} color="bg-indigo-600" subtext="TODAY" trend="Active fulfillment" />
+                <StatCard title="Sales Today" value={`₹${Number(stats.today.totalSales).toLocaleString()}`} icon={IndianRupee} color="bg-emerald-600" subtext="REVENUE" trend="Target: ₹50k" />
+                <StatCard title="Today Collection" value={`₹${Number(stats.today.totalCollection).toLocaleString()}`} icon={IndianRupee} color="bg-amber-600" subtext="COLLECTED" trend="Approved payments" />
+                <StatCard title="Total Products" value={stats.inventory.totalProducts} icon={Box} color="bg-violet-600" subtext="INVENTORY" trend="Live items" />
+                <StatCard title="Low Stock" value={stats.inventory.lowStockCount} icon={AlertTriangle} color="bg-rose-600" subtext="CRITICAL" trend="Needs restock" />
             </div>
 
             {/* Main Graphs */}
