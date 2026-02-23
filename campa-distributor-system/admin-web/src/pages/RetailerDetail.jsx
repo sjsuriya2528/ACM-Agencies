@@ -58,9 +58,9 @@ const RetailerDetail = () => {
         };
 
         // Calculations
-        const totalAmount = parseFloat(order.totalAmount || 0);
-        const roundOff = (Math.round(totalAmount) - totalAmount).toFixed(2);
-        const netTotal = Math.round(totalAmount);
+        const savedTotal = parseFloat(order.totalAmount || 0);
+        const roundOff = (Math.round(savedTotal) - savedTotal).toFixed(2);
+        const netTotal = Math.round(savedTotal);
 
         const taxSummary = {};
         let totalTaxableValue = 0;
@@ -197,7 +197,7 @@ const RetailerDetail = () => {
                         <div class="total-row">
                             <div class="total-label">Total</div>
                             <div class="total-qty">${totalQty}</div>
-                            <div class="total-val">${totalAmount.toFixed(2)}</div>
+                            <div class="total-val">${savedTotal.toFixed(2)}</div>
                         </div>
                         <div class="summary-grid">
                             <div class="tax-box">

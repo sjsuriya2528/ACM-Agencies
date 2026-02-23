@@ -517,7 +517,7 @@ const Orders = () => {
                         <div class="total-bar">
                             <div class="total-label">Total</div>
                             <div class="total-qty">${totalQty}</div>
-                            <div class="total-amount">${totalAmount.toFixed(2)}</div>
+                            <div class="total-amount">${savedTotal.toFixed(2)}</div>
                         </div>
                         <div class="summary-flex">
                             <div class="tax-summary-box">
