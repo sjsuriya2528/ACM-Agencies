@@ -62,6 +62,7 @@ const Orders = () => {
     }, [showCreateModal]);
     const [productSearchTerm, setProductSearchTerm] = useState('');
     const [paymentMode, setPaymentMode] = useState('Credit');
+    const [isRounded, setIsRounded] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [fetchError, setFetchError] = useState(null);
 
@@ -296,11 +297,15 @@ const Orders = () => {
         }));
 
         try {
+            const totalAmount = calculateTotal();
+            const roundOffValue = isRounded ? (Math.round(totalAmount) - totalAmount) : 0;
+
             await api.post('/orders', {
                 retailerId: selectedRetailer.id,
                 items: orderItems,
-                totalAmount: calculateTotal(),
+                totalAmount: totalAmount + roundOffValue,
                 paymentMode,
+                roundOff: roundOffValue,
                 status: 'Approved' // Admin created orders are automatically approved
             }, {
                 headers: { 'x-loading-term': 'Placing Order' }
@@ -309,6 +314,7 @@ const Orders = () => {
             setShowCreateModal(false);
             setCart({});
             setSelectedRetailer(null);
+            setIsRounded(false);
             fetchOrders(); // Refresh list
         } catch (error) {
             console.error("Order failed", error);
@@ -1331,11 +1337,40 @@ const Orders = () => {
                                                 </div>
                                             </div>
 
+                                            {/* Round Off Toggle */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                                                            <RefreshCw size={14} />
+                                                        </div>
+                                                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Round Off Total</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setIsRounded(!isRounded)}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isRounded ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                                    >
+                                                        <span
+                                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRounded ? 'translate-x-6' : 'translate-x-1'}`}
+                                                        />
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             <div className="p-6 bg-slate-900 rounded-3xl text-white shadow-2xl shadow-slate-400">
                                                 <div className="flex justify-between items-end mb-6">
                                                     <div>
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Payable</p>
-                                                        <p className="text-4xl font-black tracking-tighter">₹{calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                            {isRounded ? 'Total Payable (Rounded)' : 'Total Payable'}
+                                                        </p>
+                                                        <p className="text-4xl font-black tracking-tighter">
+                                                            ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </p>
+                                                        {isRounded && (
+                                                            <p className="text-[10px] text-slate-400 mt-1 font-bold">
+                                                                Round off adjustment: ₹{(Math.round(calculateTotal()) - calculateTotal()).toFixed(2)}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <button
@@ -1363,7 +1398,9 @@ const Orders = () => {
                             <div className="lg:hidden p-6 bg-white border-t border-slate-100 flex justify-between items-center shadow-2xl sticky bottom-0 z-20">
                                 <div>
                                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Order Total</p>
-                                    <p className="text-2xl font-black text-slate-900">₹{calculateTotal().toLocaleString()}</p>
+                                    <p className="text-2xl font-black text-slate-900">
+                                        ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
                                 </div>
                                 <button
                                     onClick={handleCreateOrderSubmit}
