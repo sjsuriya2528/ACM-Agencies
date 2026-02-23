@@ -4,7 +4,7 @@ const { Payment, Invoice, User, Retailer, Order } = require('../models');
 // @route   POST /api/payments
 // @access  Private (Driver/Collector/Admin/SalesRep)
 const recordPayment = async (req, res) => {
-    const { invoiceId, amount, paymentMode, transactionId } = req.body;
+    const { invoiceId, amount, paymentMode, transactionId, paymentDate } = req.body;
     const collectedById = req.user.id;
     const isAdmin = req.user.role === 'admin';
 
@@ -30,6 +30,7 @@ const recordPayment = async (req, res) => {
             amount: paymentAmount,
             paymentMode,
             transactionId,
+            paymentDate: paymentDate || new Date().toISOString().split('T')[0],
             collectedById,
             retailerName: invoice.customerName,
             approvalStatus,

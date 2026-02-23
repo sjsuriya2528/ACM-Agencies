@@ -41,7 +41,7 @@ const Payments = () => {
     const [invoices, setInvoices] = useState([]);
     const [searchInvoice, setSearchInvoice] = useState('');
     const [selectedInvoice, setSelectedInvoice] = useState(null);
-    const [paymentData, setPaymentData] = useState({ amount: '', paymentMode: 'Cash', transactionId: '' });
+    const [paymentData, setPaymentData] = useState({ amount: '', paymentMode: 'Cash', transactionId: '', paymentDate: new Date().toISOString().split('T')[0] });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loadingInvoices, setLoadingInvoices] = useState(false);
     const [actionLoading, setActionLoading] = useState(null); // paymentId being actioned
@@ -107,10 +107,11 @@ const Payments = () => {
                 amount: paymentData.amount,
                 paymentMode: paymentData.paymentMode,
                 transactionId: paymentData.transactionId,
+                paymentDate: paymentData.paymentDate,
             });
             setShowRecordModal(false);
             setSelectedInvoice(null);
-            setPaymentData({ amount: '', paymentMode: 'Cash', transactionId: '' });
+            setPaymentData({ amount: '', paymentMode: 'Cash', transactionId: '', paymentDate: new Date().toISOString().split('T')[0] });
             alert('Payment recorded successfully!');
             fetchPayments();
         } catch (error) {
@@ -251,7 +252,9 @@ const Payments = () => {
                                             <span className="text-sm font-medium text-slate-600">
                                                 {(() => {
                                                     const raw = payment.paymentDate || payment.createdAt;
-                                                    const [y, m, d] = (raw || '').slice(0, 10).split('-').map(Number);
+                                                    if (!raw) return '—';
+                                                    const dateStr = raw.includes('T') ? raw.split('T')[0] : raw;
+                                                    const [y, m, d] = dateStr.split('-').map(Number);
                                                     return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
                                                 })()}
                                             </span>
@@ -411,9 +414,15 @@ const Payments = () => {
                                             </div>
                                             <div className="p-2 bg-white rounded-lg"><CreditCard className="text-blue-500" size={20} /></div>
                                         </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Amount</label>
-                                            <input type="number" step="0.01" required value={paymentData.amount} onChange={e => setPaymentData({ ...paymentData, amount: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-blue-100 font-bold text-slate-700" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Payment Date</label>
+                                                <input type="date" required value={paymentData.paymentDate} onChange={e => setPaymentData({ ...paymentData, paymentDate: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-blue-100 font-bold text-slate-700" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Amount</label>
+                                                <input type="number" step="0.01" required value={paymentData.amount} onChange={e => setPaymentData({ ...paymentData, amount: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-blue-100 font-bold text-slate-700" />
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Payment Mode</label>

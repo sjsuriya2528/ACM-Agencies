@@ -33,6 +33,13 @@ const Reports = () => {
         setFilters({ ...filters, [e.target.name]: e.target.value });
     };
 
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '—';
+        const raw = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+        const [y, m, d] = raw.split('-').map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
     const fetchReportData = async () => {
         setFetchStatus('loading');
         setReportData(null);
@@ -109,7 +116,7 @@ const Reports = () => {
 
             } else {
                 const tableData = data.map(p => [
-                    new Date(p.paymentDate).toLocaleDateString('en-IN'),
+                    formatDate(p.paymentDate),
                     p.Invoice?.Order?.billNumber || p.Invoice?.invoiceNumber || 'N/A',
                     p.retailerName || 'N/A',
                     p.paymentMode,
@@ -353,7 +360,7 @@ const Reports = () => {
                                     reportData.slice(0, 5).map((p, idx) => (
                                         <tr key={`p-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
                                             <td className="px-6 py-4">{p.Invoice?.Order?.billNumber || p.Invoice?.invoiceNumber || 'N/A'}</td>
-                                            <td className="px-6 py-4">{new Date(p.paymentDate).toLocaleDateString('en-CA')}</td>
+                                            <td className="px-6 py-4">{formatDate(p.paymentDate)}</td>
                                             <td className="px-6 py-4">{p.retailerName || 'N/A'}</td>
                                             <td className="px-6 py-4"><span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-xs">{p.paymentMode}</span></td>
                                             <td className="px-6 py-4 text-right">Rs. {Number(p.amount).toLocaleString()}</td>

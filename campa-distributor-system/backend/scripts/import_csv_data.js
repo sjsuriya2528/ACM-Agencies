@@ -61,6 +61,16 @@ const parseDate = (str) => {
     return new Date(str);
 };
 
+const parseDateOnly = (str) => {
+    if (!str || str.trim() === '') return null;
+    if (str.includes('/')) {
+        const [datePart] = str.split(' ');
+        const [day, month, year] = datePart.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    return str.split('T')[0];
+};
+
 const processRetailer = (row) => ({
     id: parseInt(row.id),
     shopName: row.shopName,
@@ -133,7 +143,7 @@ const processInvoice = (row) => ({
     createdAt: parseDate(row.createdAt),
     updatedAt: parseDate(row.updatedAt),
     orderId: parseNullableInt(row.orderId),
-    invoiceDate: parseDate(row.invoiceDate),
+    invoiceDate: parseDateOnly(row.invoiceDate),
     invoiceNumber: parseNullableString(row.invoiceNumber),
     customerName: row.customerName,
     customerAddress: row.customerAddress,
@@ -156,7 +166,7 @@ const processPayment = (row) => ({
     amount: parseFloat(row.amount),
     paymentMode: row.paymentMode,
     transactionId: row.transactionId,
-    paymentDate: parseDate(row.paymentDate),
+    paymentDate: parseDateOnly(row.paymentDate),
     invoiceId: parseNullableInt(row.invoiceId),
     collectedById: parseNullableInt(row.collectedById),
     retailerName: row.retailerName

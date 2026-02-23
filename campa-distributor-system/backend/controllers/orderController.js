@@ -213,12 +213,22 @@ const updateOrderStatus = async (req, res) => {
 
             if (status === 'Approved' && order.status !== 'Approved') {
                 for (const item of order.items) {
-                    const product = item.Product;
+                    const product = item.Product || await Product.findByPk(item.productId);
                     if (product) {
                         if (product.stockQuantity < item.quantity) {
                             return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
                         }
                         await product.decrement('stockQuantity', { by: item.quantity });
+                    }
+                }
+            }
+
+            // Restore stock if cancelled from a post-approval state (stock was already deducted)
+            if (status === 'Cancelled' && ['Approved', 'Dispatched', 'Delivered'].includes(order.status)) {
+                for (const item of order.items) {
+                    const product = item.Product || await Product.findByPk(item.productId);
+                    if (product) {
+                        await product.increment('stockQuantity', { by: item.quantity });
                     }
                 }
             }
@@ -362,8 +372,9 @@ const deleteOrder = async (req, res) => {
         // 2. Restore Stock if Approved/Dispatched/Delivered (Items were deducted)
         if (['Approved', 'Dispatched', 'Delivered'].includes(order.status)) {
             for (const item of order.items) {
-                if (item.Product) {
-                    await item.Product.increment('stockQuantity', { by: item.quantity, transaction });
+                const product = item.Product || await Product.findByPk(item.productId, { transaction });
+                if (product) {
+                    await product.increment('stockQuantity', { by: item.quantity, transaction });
                 }
             }
         }

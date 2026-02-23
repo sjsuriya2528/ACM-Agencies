@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
             comment: 'Cheque No, UPI Ref, etc.',
         },
         paymentDate: {
-            type: DataTypes.DATE,
+            type: DataTypes.DATEONLY,
             defaultValue: DataTypes.NOW,
         },
         invoiceId: {

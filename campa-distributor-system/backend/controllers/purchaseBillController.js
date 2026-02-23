@@ -89,23 +89,41 @@ const createPurchaseBill = async (req, res) => {
 // @access Private (admin)
 const getAllPurchaseBills = async (req, res) => {
     try {
-        const { page = 1, limit = 30, search = '' } = req.query;
+        const { page = 1, limit = 30, search = '', startDate, endDate, withItems } = req.query;
         const offset = (Number(page) - 1) * Number(limit);
 
-        const where = search ? {
-            [Op.or]: [
+        const where = {};
+
+        if (search) {
+            where[Op.or] = [
                 { supplierName: { [Op.iLike]: `%${search}%` } },
                 { invoiceNo: { [Op.iLike]: `%${search}%` } },
                 { billNo: { [Op.iLike]: `%${search}%` } },
-            ]
-        } : {};
+            ];
+        }
+
+        if (startDate && endDate) {
+            where.billDate = { [Op.between]: [startDate, endDate] };
+        } else if (startDate) {
+            where.billDate = { [Op.gte]: startDate };
+        } else if (endDate) {
+            where.billDate = { [Op.lte]: endDate };
+        }
+
+        const includeArr = [{ model: User, as: 'createdBy', attributes: ['id', 'name'] }];
+
+        if (withItems === 'true') {
+            includeArr.push({
+                model: PurchaseBillItem,
+                as: 'items',
+                include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'sku'] }]
+            });
+        }
 
         const { count, rows } = await PurchaseBill.findAndCountAll({
             where,
-            include: [
-                { model: User, as: 'createdBy', attributes: ['id', 'name'] }
-            ],
-            order: [['billDate', 'DESC'], ['id', 'DESC']],
+            include: includeArr,
+            order: [['billDate', 'ASC'], ['id', 'ASC']],
             limit: Number(limit),
             offset,
         });

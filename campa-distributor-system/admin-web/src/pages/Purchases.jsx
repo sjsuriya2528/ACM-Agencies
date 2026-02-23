@@ -6,6 +6,7 @@ import {
     Building2, Hash, FileText, ShoppingBag, Truck,
     TrendingUp, AlertTriangle, CheckCircle, ArrowLeft,
     IndianRupee, Box, Layers, ChevronLeft, ChevronRight as ChevRight,
+    Download,
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -126,6 +127,11 @@ const Purchases = () => {
     const [viewBill, setViewBill] = useState(null);
     const [viewLoading, setViewLoading] = useState(false);
 
+    // ── Report date range ─────────────────────────────────────────────────────
+    const [reportFrom, setReportFrom] = useState(new Date().toISOString().split('T')[0]);
+    const [reportTo, setReportTo] = useState(new Date().toISOString().split('T')[0]);
+    const [reportLoading, setReportLoading] = useState(false);
+
     // ── Fetch ─────────────────────────────────────────────────────────────────
     const fetchBills = async () => {
         setLoading(true);
@@ -231,6 +237,171 @@ const Purchases = () => {
             fetchBills();
             if (activeTab === 'stock') fetchStock();
         } catch (err) { alert(err.response?.data?.message || 'Delete failed'); }
+    };
+
+    // ── Generate InvoiceWise Stock Purchase Report ────────────────────────────
+    const generateReport = async () => {
+        if (!reportFrom || !reportTo) return alert('Please select a date range');
+        setReportLoading(true);
+        try {
+            const res = await api.get('/purchase-bills', {
+                params: { page: 1, limit: 1000, startDate: reportFrom, endDate: reportTo, withItems: 'true' }
+            });
+            const billsData = res.data.bills || [];
+            if (billsData.length === 0) {
+                alert('No purchase bills found for the selected date range.');
+                return;
+            }
+
+            const fmtN = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const fmtDate = (s) => s ? new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+
+            let grandSubTotal = 0, grandCgst = 0, grandSgst = 0, grandNet = 0, grandCrates = 0;
+
+            const billSections = billsData.map((bill, bIdx) => {
+                const items = bill.items || [];
+                const totalCratesInBill = items.reduce((s, i) => s + Number(i.quantity || 0), 0);
+                grandSubTotal += Number(bill.subTotal || 0);
+                grandCgst += Number(bill.cgstAmount || 0);
+                grandSgst += Number(bill.sgstAmount || 0);
+                grandNet += Number(bill.netTotal || 0);
+                grandCrates += totalCratesInBill;
+
+                const rows = items.map((item, idx) => `
+                    <tr>
+                        <td style="border:1px solid #ccc;padding:4px 8px;text-align:center">${idx + 1}</td>
+                        <td style="border:1px solid #ccc;padding:4px 8px">${item.description || item.product?.name || '—'}</td>
+                        <td style="border:1px solid #ccc;padding:4px 8px;text-align:center">${item.quantity}</td>
+                        <td style="border:1px solid #ccc;padding:4px 8px;text-align:right">${fmtN(item.rate)}</td>
+                        <td style="border:1px solid #ccc;padding:4px 8px;text-align:right">${fmtN(item.amount)}</td>
+                    </tr>`).join('');
+
+                return `
+                <div style="margin-bottom:28px;page-break-inside:avoid">
+                    <table style="width:100%;border-collapse:collapse;margin-bottom:6px;font-size:12px">
+                        <tbody>
+                            <tr>
+                                <td style="padding:4px 8px;font-weight:bold;width:120px;border:1px solid #ccc;background:#f0f0f0">Bill No</td>
+                                <td style="padding:4px 8px;border:1px solid #ccc">${bill.billNo}</td>
+                                <td style="padding:4px 8px;font-weight:bold;border:1px solid #ccc;background:#f0f0f0">Bill Date</td>
+                                <td style="padding:4px 8px;border:1px solid #ccc">${fmtDate(bill.billDate)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:4px 8px;font-weight:bold;border:1px solid #ccc;background:#f0f0f0">Invoice No</td>
+                                <td style="padding:4px 8px;border:1px solid #ccc">${bill.invoiceNo}</td>
+                                <td style="padding:4px 8px;font-weight:bold;border:1px solid #ccc;background:#f0f0f0">Supplier</td>
+                                <td style="padding:4px 8px;font-weight:bold;border:1px solid #ccc">${bill.supplierName}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px">
+                        <thead>
+                            <tr style="background:#e8e8e8">
+                                <th style="border:1px solid #ccc;padding:5px 8px;text-align:center;width:40px">S.No</th>
+                                <th style="border:1px solid #ccc;padding:5px 8px;text-align:left">Description</th>
+                                <th style="border:1px solid #ccc;padding:5px 8px;text-align:center;width:70px">Qty (Crates)</th>
+                                <th style="border:1px solid #ccc;padding:5px 8px;text-align:right;width:110px">Rate / Crate</th>
+                                <th style="border:1px solid #ccc;padding:5px 8px;text-align:right;width:110px">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                            <tr style="font-weight:bold;background:#f8f8f8">
+                                <td colspan="2" style="border:1px solid #ccc;padding:5px 8px;text-align:right">Total</td>
+                                <td style="border:1px solid #ccc;padding:5px 8px;text-align:center">${totalCratesInBill}</td>
+                                <td style="border:1px solid #ccc;"></td>
+                                <td style="border:1px solid #ccc;padding:5px 8px;text-align:right">${fmtN(bill.subTotal)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table style="width:260px;margin-left:auto;font-size:12px;border-collapse:collapse">
+                        <tbody>
+                            ${Number(bill.cgstAmount) ? `<tr><td style="padding:2px 8px;font-weight:bold">CGST :</td><td style="padding:2px 8px;text-align:right">${fmtN(bill.cgstAmount)}</td></tr>` : ''}
+                            ${Number(bill.sgstAmount) ? `<tr><td style="padding:2px 8px;font-weight:bold">SGST :</td><td style="padding:2px 8px;text-align:right">${fmtN(bill.sgstAmount)}</td></tr>` : ''}
+                            ${Number(bill.roundOff) ? `<tr><td style="padding:2px 8px;font-weight:bold">Round Off :</td><td style="padding:2px 8px;text-align:right">${fmtN(bill.roundOff)}</td></tr>` : ''}
+                            <tr style="border-top:2px solid #333">
+                                <td style="padding:6px 8px;font-weight:bold;font-size:14px">Net Total :</td>
+                                <td style="padding:6px 8px;text-align:right;font-weight:bold;font-size:14px">${fmtN(bill.netTotal)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>`;
+            }).join('<hr style="border:none;border-top:1px dashed #ccc;margin:20px 0">');
+
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Purchase InvoiceWise Report — ${fmtDate(reportFrom)} to ${fmtDate(reportTo)}</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #000; padding: 20px; }
+        @media print { button { display:none } }
+        h2 { font-size:13px; font-weight:bold; }
+    </style>
+</head>
+<body>
+    <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px">
+        <div style="font-size:22px;font-weight:bold;letter-spacing:1px">A.C.M AGENCIES</div>
+        <div style="font-size:11px;color:#333">9/141/D, SANKARANKOVIL MAIN ROAD, RAMAYANPATTI, TIRUNELVELI - 627538</div>
+        <div style="font-size:11px;color:#333">GSTIN : 33KFPPSO618L1ZU &nbsp;|&nbsp; MOBILE : 9698511002, 9443333438</div>
+    </div>
+    <div style="text-align:center;font-weight:bold;font-size:15px;border:1px solid #333;padding:5px;margin-bottom:18px;background:#f4f4f4;letter-spacing:2px">
+        STOCK PURCHASE INVOICE WISE REPORT
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px;font-size:12px;font-weight:bold">
+        <span>Period: ${fmtDate(reportFrom)} to ${fmtDate(reportTo)}</span>
+        <span>Total Invoices: ${billsData.length}</span>
+    </div>
+
+    ${billSections}
+
+    <div style="margin-top:30px;border-top:3px double #000;padding-top:10px">
+        <div style="text-align:center;font-weight:bold;font-size:14px;letter-spacing:1px;margin-bottom:10px">GRAND TOTAL SUMMARY</div>
+        <table style="width:340px;margin:0 auto;border-collapse:collapse;font-size:13px">
+            <tr style="background:#e8e8e8">
+                <td style="padding:6px 12px;border:1px solid #ccc;font-weight:bold">Total Invoices</td>
+                <td style="padding:6px 12px;border:1px solid #ccc;text-align:right;font-weight:bold">${billsData.length}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 12px;border:1px solid #ccc;font-weight:bold">Total Crates</td>
+                <td style="padding:6px 12px;border:1px solid #ccc;text-align:right">${grandCrates}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 12px;border:1px solid #ccc;font-weight:bold">Sub Total</td>
+                <td style="padding:6px 12px;border:1px solid #ccc;text-align:right">${fmtN(grandSubTotal)}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 12px;border:1px solid #ccc;font-weight:bold">CGST</td>
+                <td style="padding:6px 12px;border:1px solid #ccc;text-align:right">${fmtN(grandCgst)}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 12px;border:1px solid #ccc;font-weight:bold">SGST</td>
+                <td style="padding:6px 12px;border:1px solid #ccc;text-align:right">${fmtN(grandSgst)}</td>
+            </tr>
+            <tr style="border-top:2px solid #000;background:#f0f0f0">
+                <td style="padding:8px 12px;border:1px solid #ccc;font-weight:bold;font-size:15px">Net Grand Total</td>
+                <td style="padding:8px 12px;border:1px solid #ccc;text-align:right;font-weight:bold;font-size:15px">${fmtN(grandNet)}</td>
+            </tr>
+        </table>
+        <div style="text-align:center;font-weight:bold;font-size:18px;border-top:2px solid #000;padding-top:8px;margin-top:10px">
+            RS. ${Number(grandNet).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+        </div>
+    </div>
+    <script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+
+            const win = window.open('', '_blank');
+            win.document.write(html);
+            win.document.close();
+        } catch (err) {
+            console.error('Report generation failed', err);
+            alert('Failed to generate report. Please try again.');
+        } finally {
+            setReportLoading(false);
+        }
     };
 
     // ── Print ──────────────────────────────────────────────────────────────────
@@ -548,12 +719,43 @@ const Purchases = () => {
             {/* ════ BILLS TAB ════ */}
             {activeTab === 'bills' && (
                 <div className="space-y-4">
-                    {/* Search */}
-                    <div className="relative w-full max-w-sm">
-                        <Search size={15} className="absolute left-4 top-3.5 text-slate-400" />
-                        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                            placeholder="Search bill no, supplier, invoice..."
-                            className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none text-sm bg-white shadow-sm" />
+                    {/* Search + Report Row */}
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3 justify-between">
+                        <div className="relative w-full max-w-sm">
+                            <Search size={15} className="absolute left-4 top-3.5 text-slate-400" />
+                            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                                placeholder="Search bill no, supplier, invoice..."
+                                className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none text-sm bg-white shadow-sm" />
+                        </div>
+
+                        {/* InvoiceWise Report Generator */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white border border-indigo-100 rounded-2xl px-4 py-3 shadow-sm w-full lg:w-auto">
+                            <div className="flex items-center gap-1.5">
+                                <FileText size={14} className="text-indigo-500 shrink-0" />
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Invoice Report</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                                    <Calendar size={12} className="text-slate-400" />
+                                    <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)}
+                                        className="bg-transparent border-none text-xs font-medium text-slate-700 focus:ring-0 outline-none w-28" />
+                                </div>
+                                <span className="text-slate-400 font-bold text-xs">→</span>
+                                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                                    <Calendar size={12} className="text-slate-400" />
+                                    <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)}
+                                        className="bg-transparent border-none text-xs font-medium text-slate-700 focus:ring-0 outline-none w-28" />
+                                </div>
+                                <button
+                                    onClick={generateReport}
+                                    disabled={reportLoading}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                                >
+                                    {reportLoading ? <span className="animate-spin">⟳</span> : <Printer size={13} />}
+                                    Print Report
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {loading ? (
