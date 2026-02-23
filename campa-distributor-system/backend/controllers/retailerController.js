@@ -59,7 +59,7 @@ const getRetailerById = async (req, res) => {
 // @route   POST /api/retailers
 // @access  Private (Admin/Sales Rep)
 const createRetailer = async (req, res) => {
-    const { shopName, ownerName, phone, address, gpsLatitude, gpsLongitude } = req.body;
+    const { shopName, ownerName, phone, address, gstin, gpsLatitude, gpsLongitude } = req.body;
 
     try {
         const retailer = await Retailer.create({
@@ -67,6 +67,7 @@ const createRetailer = async (req, res) => {
             ownerName,
             phone,
             address,
+            gstin,
             gpsLatitude,
             gpsLongitude,
         });
@@ -92,6 +93,7 @@ const updateRetailer = async (req, res) => {
             retailer.ownerName = req.body.ownerName || retailer.ownerName;
             retailer.phone = req.body.phone || retailer.phone;
             retailer.address = req.body.address || retailer.address;
+            retailer.gstin = req.body.gstin !== undefined ? req.body.gstin : retailer.gstin;
             retailer.gpsLatitude = req.body.gpsLatitude || retailer.gpsLatitude;
             retailer.gpsLongitude = req.body.gpsLongitude || retailer.gpsLongitude;
             retailer.isActive = req.body.isActive !== undefined ? req.body.isActive : retailer.isActive;

@@ -18,6 +18,10 @@ module.exports = (sequelize, DataTypes) => {
         address: {
             type: DataTypes.TEXT,
         },
+        gstin: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
         gpsLatitude: {
             type: DataTypes.FLOAT,
         },

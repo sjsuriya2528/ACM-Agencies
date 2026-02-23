@@ -8,7 +8,7 @@ const Retailers = () => {
     const [retailers, setRetailers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ shopName: '', ownerName: '', phone: '', address: '' });
+    const [formData, setFormData] = useState({ shopName: '', ownerName: '', phone: '', address: '', gstin: '' });
     const [editingId, setEditingId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -56,7 +56,13 @@ const Retailers = () => {
     };
 
     const startEdit = (retailer) => {
-        setFormData({ shopName: retailer.shopName, ownerName: retailer.ownerName, phone: retailer.phone, address: retailer.address });
+        setFormData({
+            shopName: retailer.shopName,
+            ownerName: retailer.ownerName,
+            phone: retailer.phone,
+            address: retailer.address,
+            gstin: retailer.gstin || ''
+        });
         setEditingId(retailer.id);
         setIsModalOpen(true);
     };
@@ -96,7 +102,7 @@ const Retailers = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner / GSTIN</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -122,7 +128,8 @@ const Retailers = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900">{retailer.ownerName}</div>
+                                        <div className="text-sm text-gray-900 font-bold">{retailer.ownerName}</div>
+                                        <div className="text-[10px] text-gray-400 font-mono tracking-tighter">{retailer.gstin || 'NO GSTIN'}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -148,6 +155,7 @@ const Retailers = () => {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input type="text" placeholder="Shop Name" className="w-full border p-2 rounded" value={formData.shopName} onChange={e => setFormData({ ...formData, shopName: e.target.value })} required />
                             <input type="text" placeholder="Owner Name" className="w-full border p-2 rounded" value={formData.ownerName} onChange={e => setFormData({ ...formData, ownerName: e.target.value })} required />
+                            <input type="text" placeholder="GSTIN (Optional)" className="w-full border p-2 rounded" value={formData.gstin || ''} onChange={e => setFormData({ ...formData, gstin: e.target.value })} />
                             <input type="text" placeholder="Mobile Number" className="w-full border p-2 rounded" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} required />
                             <input type="text" placeholder="Address" className="w-full border p-2 rounded" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} required />
                             <div className="flex justify-end gap-2 mt-4">

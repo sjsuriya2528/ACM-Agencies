@@ -77,6 +77,7 @@ const processRetailer = (row) => ({
     ownerName: parseNullableString(row.ownerName),
     phone: parseNullableString(row.phone),
     address: parseNullableString(row.address),
+    gstin: parseNullableString(row.gstin),
     gpsLatitude: parseNullableFloat(row.gpsLatitude),
     gpsLongitude: parseNullableFloat(row.gpsLongitude),
     creditBalance: parseNullableFloat(row.creditBalance) || 0.0,
@@ -113,6 +114,7 @@ const processOrderItem = (row) => ({
     updatedAt: parseDate(row.updatedAt),
     orderId: parseNullableInt(row.orderId),
     productId: parseNullableInt(row.productId),
+    gstPercentage: parseNullableFloat(row.gstPercentage) || 18,
     taxAmount: parseNullableFloat(row.taxAmount),
     netAmount: parseNullableFloat(row.netAmount),
     productName: row.productName

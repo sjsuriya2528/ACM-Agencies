@@ -21,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
         },
+        gstPercentage: {
+            type: DataTypes.DECIMAL(5, 2),
+            defaultValue: 18.00,
+        },
         totalPrice: {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,

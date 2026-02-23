@@ -337,6 +337,10 @@ const Orders = () => {
         const roundOffVal = (Math.round(totalAmount) - totalAmount).toFixed(2);
         const netTotal = Math.round(totalAmount);
 
+        // Detect if Inter-State (Inter-State if Retailer GSTIN prefix is not 33)
+        // 33 is Tamil Nadu prefix. If no GSTIN, assume local.
+        const isInterState = order.retailer?.gstin && !order.retailer.gstin.startsWith('33');
+
         const taxSummary = {};
         let totalQty = 0;
         let totalGSTValueCount = 0;
@@ -345,21 +349,29 @@ const Orders = () => {
             const qty = Number(item.quantity);
             totalQty += qty;
 
-            const gstRate = Number(item.Product?.gstPercentage || 18);
+            // Use item.gstPercentage (current) or product.gstPercentage (fallback) or 18 (legacy)
+            const gstRate = Number(item.gstPercentage || item.Product?.gstPercentage || 18);
 
             // If item has netAmount, it's the new format (netAmount = Gross, totalPrice = Taxable)
             // If not, totalPrice was the Gross total (legacy)
-            const hasTaxFields = item.netAmount !== undefined && item.netAmount !== null;
+            const hasTaxFields = item.netAmount !== undefined && item.netAmount !== null && Number(item.netAmount) !== 0;
 
             const totalGross = hasTaxFields ? Number(item.netAmount) : Number(item.totalPrice);
             const taxableValue = hasTaxFields ? Number(item.totalPrice) : (totalGross / (1 + (gstRate / 100)));
             const gstAmount = hasTaxFields ? Number(item.taxAmount) : (totalGross - taxableValue);
-            const grossRate = totalGross / qty;
+
+            // Rate to show in items table is Rate per unit (Taxable Value / Qty)
+            const taxableRatePerUnit = taxableValue / qty;
 
             if (!taxSummary[gstRate]) taxSummary[gstRate] = { taxable: 0, cgst: 0, sgst: 0, igst: 0 };
             taxSummary[gstRate].taxable += taxableValue;
-            taxSummary[gstRate].cgst += gstAmount / 2;
-            taxSummary[gstRate].sgst += gstAmount / 2;
+
+            if (isInterState) {
+                taxSummary[gstRate].igst += gstAmount;
+            } else {
+                taxSummary[gstRate].cgst += gstAmount / 2;
+                taxSummary[gstRate].sgst += gstAmount / 2;
+            }
 
             totalGSTValueCount += gstAmount;
 
@@ -367,9 +379,13 @@ const Orders = () => {
                 description: item.Product?.name || item.productName || 'Unknown',
                 hsn: item.Product?.hsnCode || '',
                 qty,
-                rate: grossRate,
+                rate: taxableRatePerUnit, // Show Taxable Rate
                 gstRate,
-                amount: totalGross
+                amount: taxableValue // Show Taxable Amount in row? Or Net? 
+                // In usual Bharat invoices: SNO | Description | HSN | Qty | Rate | GST | Amount (Taxable)
+                // Let's stick to showing Taxable Value in the "Amount" column and add a separate total.
+                // Wait, the previous code showed totalGross in "amount" column. 
+                // Usually "Amount" in items table is taxable value. 
             };
         });
 
@@ -456,7 +472,7 @@ const Orders = () => {
                                     <th width="50">Qty</th>
                                     <th width="80" class="text-right">RATE</th>
                                     <th width="60" class="text-center">GST %</th>
-                                    <th width="95" class="text-right">Amount</th>
+                                    <th width="95" class="text-right">Taxable Val</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -496,13 +512,13 @@ const Orders = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        ${Object.entries(taxSummary).map(([rate, vals]) => `
+                                        ${Object.entries(taxSummary).sort(([r1], [r2]) => Number(r1) - Number(r2)).map(([rate, vals]) => `
                                             <tr>
-                                                <td class="text-center">${rate}</td>
+                                                <td class="text-center">${rate}%</td>
                                                 <td class="text-center">${vals.taxable.toFixed(2)}</td>
                                                 <td class="text-center">${vals.cgst.toFixed(2)}</td>
                                                 <td class="text-center">${vals.sgst.toFixed(2)}</td>
-                                                <td class="text-center">${vals.igst > 0 ? vals.igst.toFixed(2) : 'NaN'}</td>
+                                                <td class="text-center">${vals.igst.toFixed(2)}</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
@@ -513,7 +529,7 @@ const Orders = () => {
                                 <div class="net-totals-row"><span>GST VALUE</span><span>${totalGSTValueCount.toFixed(2)}</span></div>
                                 <div class="net-totals-row"><span>DISCOUNT</span><span>0</span></div>
                                 <div class="net-totals-row"><span>ROUND OFF</span><span>${roundOffVal}</span></div>
-                                <div class="net-totals-row net-total-cell"><span>NET TOTAL</span><span>${netTotal}</span></div>
+                                <div class="net-total-cell net-totals-row"><span style="font-size: 15px">NET TOTAL</span><span style="font-size: 15px">${netTotal}</span></div>
                             </div>
                         </div>
                         <div class="signatures">

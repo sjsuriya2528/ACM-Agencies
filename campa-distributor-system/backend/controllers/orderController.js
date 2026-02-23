@@ -61,8 +61,10 @@ const createOrder = async (req, res) => {
 
         // 3. Create OrderItems
         for (const pItem of processedItems) {
+            const product = await Product.findByPk(pItem.productId);
             await OrderItem.create({
                 ...pItem,
+                gstPercentage: product?.gstPercentage || 18,
                 orderId: order.id
             }, { transaction: t });
         }
@@ -279,28 +281,33 @@ const generateInvoiceData = (order) => {
     const items = order.items || [];
 
     let subTotal = 0; // Taxable Value
-    let gstTotal = 0;
-    let netTotal = 0;
+    let totalGST = 0;
+    let cgstTotal = 0;
+    let sgstTotal = 0;
+    let igstTotal = 0;
     let totalQuantity = 0;
 
+    // Detect if Inter-State (Inter-State if Retailer GSTIN prefix is not 33)
+    // 33 is Tamil Nadu prefix
+    const isInterState = order.retailer?.gstin && !order.retailer.gstin.startsWith('33');
+
     items.forEach(item => {
-        subTotal += Number(item.totalPrice || 0);
-        gstTotal += Number(item.taxAmount || 0);
-        netTotal += Number(item.netAmount || 0);
+        const taxableVal = Number(item.totalPrice || 0);
+        const taxVal = Number(item.taxAmount || 0);
+
+        subTotal += taxableVal;
+        totalGST += taxVal;
         totalQuantity += Number(item.quantity || 0);
+
+        if (isInterState) {
+            igstTotal += taxVal;
+        } else {
+            cgstTotal += taxVal / 2;
+            sgstTotal += taxVal / 2;
+        }
     });
 
-    // Fallback for legacy data if sums are zero but header has amount
-    if (netTotal === 0 && Number(order.totalAmount) > 0) {
-        netTotal = Number(order.totalAmount);
-        // Default back-calculation for legacy
-        const taxRate = 0.40;
-        subTotal = netTotal / (1 + taxRate);
-        gstTotal = netTotal - subTotal;
-    }
-
-    const cgst = gstTotal / 2;
-    const sgst = gstTotal / 2;
+    const netTotal = subTotal + totalGST;
 
     return {
         orderId: order.id,
@@ -309,15 +316,16 @@ const generateInvoiceData = (order) => {
         customerName: order.retailer?.shopName || 'Unknown Customer',
         customerAddress: order.retailer?.address,
         customerGSTIN: order.retailer?.gstin,
-        customerPhone: order.retailer?.ownerPhone,
+        customerPhone: order.retailer?.phone,
         totalQuantity,
         subTotal: subTotal.toFixed(2),
-        cgstTotal: cgst.toFixed(2),
-        sgstTotal: sgst.toFixed(2),
-        gstTotal: gstTotal.toFixed(2),
-        netTotal: netTotal.toFixed(2),
+        cgstTotal: cgstTotal.toFixed(2),
+        sgstTotal: sgstTotal.toFixed(2),
+        igstTotal: igstTotal.toFixed(2),
+        gstTotal: totalGST.toFixed(2),
+        netTotal: Math.round(netTotal).toFixed(0), // Final Payable as Interger/Round
         paymentStatus: 'Pending',
-        balanceAmount: netTotal.toFixed(2)
+        balanceAmount: Math.round(netTotal).toFixed(0)
     };
 };
 
@@ -495,5 +503,6 @@ module.exports = {
     assignDriver,
     deleteOrder,
     getCancelledOrders,
-    getCancelledOrderById
+    getCancelledOrderById,
+    generateInvoiceData
 };
