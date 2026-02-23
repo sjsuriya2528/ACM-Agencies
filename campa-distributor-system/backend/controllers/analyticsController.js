@@ -1,9 +1,20 @@
 const { Order, OrderItem, Product, Invoice, User, Payment, Retailer, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
-// Helper to get today's date in YYYY-MM-DD format
+// Helper to get today's date in YYYY-MM-DD format (Local Time)
 const getTodayDateString = () => {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// Helper to get start of today in local time
+const getStartOfToday = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
 };
 
 // @desc    Get dashboard summary statistics
@@ -12,10 +23,8 @@ const getTodayDateString = () => {
 const getDashboardSummary = async (req, res) => {
     try {
         const todayStr = getTodayDateString();
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
+        const todayStart = getStartOfToday();
+
         const totalOrdersToday = await Order.count({
             where: {
                 createdAt: {
@@ -115,10 +124,14 @@ const getTimeframeLogic = (timeframe, dateCol) => {
             attributes = [
                 [sequelize.fn('DATE', sequelize.col(dateCol)), 'date']
             ];
-            // Last 30 days for daily
+            // Last 30 days for daily (Local Date)
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            where = { [Op.gte]: thirtyDaysAgo.toISOString().split('T')[0] };
+
+            const y = thirtyDaysAgo.getFullYear();
+            const m = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
+            const d = String(thirtyDaysAgo.getDate()).padStart(2, '0');
+            where = { [Op.gte]: `${y}-${m}-${d}` };
             break;
     }
 

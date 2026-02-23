@@ -42,6 +42,10 @@ const formatLabel = (label) => {
 const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+        mode: 'index',
+        intersect: false,
+    },
     plugins: {
         legend: {
             display: true,
@@ -64,6 +68,22 @@ const commonOptions = {
             borderWidth: 1,
             displayColors: false,
             cornerRadius: 12,
+            callbacks: {
+                label: function (context) {
+                    let label = context.dataset.label || '';
+                    if (label) {
+                        label += ': ';
+                    }
+                    if (context.parsed.y !== null) {
+                        label += new Intl.NumberFormat('en-IN', {
+                            style: 'currency',
+                            currency: 'INR',
+                            maximumFractionDigits: 0
+                        }).format(context.parsed.y);
+                    }
+                    return label;
+                }
+            }
         }
     },
     scales: {
@@ -91,7 +111,7 @@ export const SalesLineChart = ({ data }) => {
         labels: data.map(item => formatLabel(item.date)),
         datasets: [
             {
-                label: 'Sales Revenue',
+                label: 'Total Sales',
                 data: data.map(item => item.totalSales),
                 borderColor: '#2563eb',
                 backgroundColor: (context) => {
@@ -121,7 +141,7 @@ export const CollectionLineChart = ({ data }) => {
         labels: data.map(item => formatLabel(item.date)),
         datasets: [
             {
-                label: 'Collections',
+                label: 'Total Collection',
                 data: data.map(item => item.totalCollection),
                 borderColor: '#059669',
                 backgroundColor: (context) => {
@@ -152,7 +172,15 @@ export const ProductBarChart = ({ data }) => {
         indexAxis: 'y',
         plugins: {
             ...commonOptions.plugins,
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+                ...commonOptions.plugins.tooltip,
+                callbacks: {
+                    label: function (context) {
+                        return `Total Quantity: ${context.parsed.x}`;
+                    }
+                }
+            }
         },
         scales: {
             x: {
@@ -177,7 +205,7 @@ export const ProductBarChart = ({ data }) => {
         labels: data.map(item => item.Product?.name || 'Unknown'),
         datasets: [
             {
-                label: 'Qty Sold',
+                label: 'Total Quantity',
                 data: data.map(item => item.totalQuantity),
                 backgroundColor: 'rgba(99, 102, 241, 0.8)',
                 hoverBackgroundColor: '#6366f1',

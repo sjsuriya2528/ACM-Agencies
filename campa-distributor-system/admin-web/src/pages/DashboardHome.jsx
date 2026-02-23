@@ -115,34 +115,37 @@ const DashboardHome = () => {
     );
 
     const StatCard = ({ title, value, icon: Icon, color, subtext, trend }) => (
-        <div className="relative group overflow-hidden bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-slate-200/60 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 transform hover:-translate-y-2">
-            {/* Animated Glow Effect */}
-            <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${color.replace('bg-', 'bg-')}`}></div>
+        <div className="relative group bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-500 overflow-hidden">
+            {/* Subtle Gradient Backdrop */}
+            <div className={`absolute inset-0 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-500 ${color}`}></div>
 
-            <div className="flex justify-between items-start z-10 relative">
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <div className={`p-2.5 rounded-2xl ${color} bg-opacity-10 shadow-inner`}>
-                            <Icon size={20} className={color.replace('bg-', 'text-').replace('/20', '')} />
+            <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                    <div className={`p-3 rounded-2xl ${color} bg-opacity-10 border border-slate-100`}>
+                        <Icon size={22} className={color.replace('bg-', 'text-').replace('/20', '')} />
+                    </div>
+                    {trend && (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-100 rounded-full">
+                            <ArrowUpRight size={12} className="text-emerald-500" />
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{trend}</span>
                         </div>
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">{title}</p>
-                    </div>
-                    <div>
-                        <h3 className="text-3xl font-black text-slate-800 tracking-tighter tabular-nums">{value}</h3>
-                        {subtext && (
-                            <div className="flex items-center gap-2 mt-2">
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color} bg-opacity-10 ${color.replace('bg-', 'text-')}`}>
-                                    {subtext}
-                                </span>
-                                {trend && <span className="text-[10px] text-slate-400 font-medium">{trend}</span>}
-                            </div>
-                        )}
-                    </div>
+                    )}
                 </div>
-            </div>
 
-            {/* Bottom Accent Line */}
-            <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 w-0 group-hover:w-full ${color}`}></div>
+                <div className="space-y-1">
+                    <p className="text-slate-400 text-[11px] font-bold uppercase tracking-[0.15em]">{title}</p>
+                    <h3 className="text-3xl font-bold text-slate-800 tracking-tight tabular-nums">
+                        {value}
+                    </h3>
+                </div>
+
+                {subtext && (
+                    <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{subtext}</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${color}`}></div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 

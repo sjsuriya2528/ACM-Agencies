@@ -77,7 +77,9 @@ const importCsv = (filePath, validInvoiceIds, validUserIds) => {
                     updatedAt: parseDate(row.updatedAt) || new Date(),
                     invoiceId: finalInvoiceId,
                     collectedById: finalCollectedById,
-                    retailerName: parseNullableString(row.retailerName)
+                    retailerName: parseNullableString(row.retailerName),
+                    approvalStatus: 'Approved', // Ensure all imported payments are approved
+                    approvedById: null // System import
                 });
             })
             .on('end', () => {
@@ -97,7 +99,7 @@ const run = async () => {
         // 0. Fetch valid IDs to avoid FK violations
         const invoices = await db.Invoice.findAll({ attributes: ['id'] });
         const validInvoiceIds = new Set(invoices.map(i => i.id));
-        const users = await db.User.findAll({ attributes: ['id'] });
+        const users = await db.User.findAll({ attributes: ['id', 'role'] });
         const validUserIds = new Set(users.map(u => u.id));
 
         // 1. Clear payments table
@@ -113,13 +115,38 @@ const run = async () => {
         // 3. Bulk create
         console.log('Importing payments incrementally...');
         const batchSize = 100;
+        const affectedInvoiceIds = new Set();
         for (let i = 0; i < payments.length; i += batchSize) {
             const batch = payments.slice(i, i + batchSize);
             await db.Payment.bulkCreate(batch);
+            batch.forEach(p => { if (p.invoiceId) affectedInvoiceIds.add(p.invoiceId); });
             console.log(`Imported ${i + batch.length}/${payments.length} records.`);
         }
 
-        console.log('✅ Import completed successfully.');
+        // 4. Update balances for all affected invoices
+        console.log(`Updating balances for ${affectedInvoiceIds.size} invoices...`);
+        const invArray = Array.from(affectedInvoiceIds);
+        for (let i = 0; i < invArray.length; i++) {
+            await db.Invoice.updateBalance(invArray[i]);
+            if ((i + 1) % 50 === 0) console.log(`Updated ${i + 1}/${invArray.length} invoice balances.`);
+        }
+
+        // 5. Update retailer credit balances
+        // We can just update ALL retailers since many might be affected
+        console.log('Updating retailer credit balances...');
+        const retailers = await db.Retailer.findAll({ attributes: ['id'] });
+        for (let i = 0; i < retailers.length; i++) {
+            await db.Retailer.updateCreditBalance(retailers[i].id);
+            if ((i + 1) % 50 === 0) console.log(`Updated ${i + 1}/${retailers.length} retailers.`);
+        }
+
+        // 6. Reset sequence
+        console.log('Resetting "Payments_id_seq"...');
+        const [result] = await db.sequelize.query(`SELECT MAX(id) FROM "Payments"`);
+        const maxId = result[0].max || 0;
+        await db.sequelize.query(`ALTER SEQUENCE "Payments_id_seq" RESTART WITH ${maxId + 1}`);
+
+        console.log('✅ Import and balance sync completed successfully.');
         process.exit(0);
 
     } catch (error) {
