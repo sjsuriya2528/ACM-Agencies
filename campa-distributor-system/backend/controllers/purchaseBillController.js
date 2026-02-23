@@ -57,11 +57,13 @@ const createPurchaseBill = async (req, res) => {
             { transaction: t }
         );
 
-        // Update stock for matched products
+        // Update stock: quantity is in CRATES, stockQuantity is in BOTTLES
         for (const item of items) {
             if (item.productId) {
+                const product = await Product.findByPk(item.productId, { attributes: ['bottlesPerCrate'] });
+                const bottlesPerCrate = product?.bottlesPerCrate || 1;
                 await Product.increment('stockQuantity', {
-                    by: Number(item.quantity),
+                    by: Number(item.quantity) * bottlesPerCrate,
                     where: { id: item.productId },
                     transaction: t,
                 });
@@ -154,11 +156,13 @@ const deletePurchaseBill = async (req, res) => {
             return res.status(404).json({ message: 'Purchase bill not found' });
         }
 
-        // Reverse stock for each item with a productId
+        // Reverse stock: quantity is in CRATES, stockQuantity is in BOTTLES
         for (const item of bill.items) {
             if (item.productId) {
+                const product = await Product.findByPk(item.productId, { attributes: ['bottlesPerCrate'] });
+                const bottlesPerCrate = product?.bottlesPerCrate || 1;
                 await Product.decrement('stockQuantity', {
-                    by: item.quantity,
+                    by: item.quantity * bottlesPerCrate,
                     where: { id: item.productId },
                     transaction: t,
                 });

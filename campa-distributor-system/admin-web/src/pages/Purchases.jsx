@@ -55,7 +55,7 @@ const PrintTemplate = ({ bill }) => {
                     <tr style={{ background: '#f0f0f0' }}>
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>SNO</th>
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'left' }}>DESCRIPTION</th>
-                        <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>Qty</th>
+                        <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>Qty (Crates)</th>
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'center' }}>RATE</th>
                         <th style={{ border: '1px solid #ccc', padding: '4px 6px', textAlign: 'right' }}>Amount</th>
                     </tr>
@@ -485,7 +485,7 @@ const Purchases = () => {
                                             <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase w-8">SNO</th>
                                             <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase min-w-[200px]">Description</th>
                                             <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase min-w-[160px]">Link Product (opt.)</th>
-                                            <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500 uppercase w-24">Qty</th>
+                                            <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500 uppercase w-24">Qty (Crates)</th>
                                             <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500 uppercase w-28">Rate</th>
                                             <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500 uppercase w-28">Amount</th>
                                             <th className="px-3 py-2 w-10"></th>
@@ -524,6 +524,14 @@ const Purchases = () => {
                                                         placeholder="0"
                                                         className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm text-center focus:ring-1 focus:ring-indigo-400 outline-none"
                                                     />
+                                                    {item.productId && (() => {
+                                                        const prod = products.find(p => String(p.id) === String(item.productId));
+                                                        const bpc = prod?.bottlesPerCrate || 1;
+                                                        const bottles = (Number(item.quantity) || 0) * bpc;
+                                                        return bottles > 0
+                                                            ? <div className="text-center text-xs text-indigo-500 mt-0.5">{bottles} btls</div>
+                                                            : null;
+                                                    })()}
                                                 </td>
                                                 <td className="px-2 py-2">
                                                     <input
