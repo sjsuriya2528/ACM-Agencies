@@ -69,6 +69,8 @@ db.Delivery = require('./Delivery')(sequelize, Sequelize);
 db.Payment = require('./Payment')(sequelize, Sequelize);
 db.CancelledOrder = require('./CancelledOrder')(sequelize, Sequelize);
 db.CancelledOrderItem = require('./CancelledOrderItem')(sequelize, Sequelize);
+db.PurchaseBill = require('./PurchaseBill')(sequelize, Sequelize);
+db.PurchaseBillItem = require('./PurchaseBillItem')(sequelize, Sequelize);
 
 // Associations
 db.User.hasMany(db.Order, { as: 'orders', foreignKey: 'salesRepId' });
@@ -97,6 +99,13 @@ db.CancelledOrder.belongsTo(db.Retailer, { as: 'retailer', foreignKey: 'retailer
 db.CancelledOrder.belongsTo(db.User, { as: 'salesRep', foreignKey: 'salesRepId' });
 db.Product.hasMany(db.CancelledOrderItem, { foreignKey: 'productId' });
 db.CancelledOrderItem.belongsTo(db.Product, { foreignKey: 'productId' });
+
+// PurchaseBill associations
+db.PurchaseBill.hasMany(db.PurchaseBillItem, { as: 'items', foreignKey: 'purchaseBillId', onDelete: 'CASCADE' });
+db.PurchaseBillItem.belongsTo(db.PurchaseBill, { foreignKey: 'purchaseBillId' });
+db.PurchaseBillItem.belongsTo(db.Product, { as: 'product', foreignKey: 'productId' });
+db.Product.hasMany(db.PurchaseBillItem, { foreignKey: 'productId' });
+db.PurchaseBill.belongsTo(db.User, { as: 'createdBy', foreignKey: 'createdById' });
 
 // Note: models are initialized synchronously at the top level
 // The authenticate function just verifies the connection.

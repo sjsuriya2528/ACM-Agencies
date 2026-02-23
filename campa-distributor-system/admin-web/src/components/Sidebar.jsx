@@ -10,7 +10,9 @@ import {
     Truck,
     CreditCard,
     LogOut,
-    FileText
+    FileText,
+    BarChart2,
+    ClipboardList
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -26,6 +28,8 @@ const Sidebar = () => {
         { path: '/deliveries', label: 'Deliveries', icon: <Truck size={20} /> },
         { path: '/payments', label: 'Payments', icon: <CreditCard size={20} /> },
         { path: '/reports', label: 'Reports', icon: <FileText size={20} /> },
+        { path: '/purchases', label: 'Purchases & Stock', icon: <ClipboardList size={20} /> },
+        { path: '/rep-performance', label: 'Rep Performance', icon: <BarChart2 size={20} /> },
     ];
 
     return (

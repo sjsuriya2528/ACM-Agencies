@@ -48,6 +48,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/invoices', require('./routes/invoiceRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/purchase-bills', require('./routes/purchaseBillRoutes'));
 
 // Diagnostic route
 app.get('/api/health', async (req, res) => {
@@ -62,7 +63,10 @@ app.get('/api/health', async (req, res) => {
 // Database Connection & Sync
 if (require.main === module) {
   db.authenticate()
-    .then(() => {
+    .then(async () => {
+      // Sync models — creates missing tables and adds missing columns safely
+      await db.sequelize.sync({ alter: true });
+      console.log('✅ Database synced');
       app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
       });

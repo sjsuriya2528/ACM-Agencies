@@ -6,7 +6,9 @@ const {
     getProductSales,
     getStockData,
     getRepPerformance,
-    getEmployeeStats
+    getEmployeeStats,
+    getRepList,
+    getRepHistory
 } = require('../controllers/analyticsController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -16,5 +18,7 @@ router.get('/sales-trend', protect, authorize('admin'), getSalesTrend);
 router.get('/product-sales', protect, authorize('admin'), getProductSales);
 router.get('/stock', protect, authorize('admin'), getStockData);
 router.get('/performance', protect, authorize('admin'), getRepPerformance);
+router.get('/rep-list', protect, authorize('admin'), getRepList);
+router.get('/rep-history', protect, authorize('admin'), getRepHistory);
 
 module.exports = router;

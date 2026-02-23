@@ -1,4 +1,4 @@
-const { Order, OrderItem, Product, Invoice, User, Payment, sequelize } = require('../models');
+const { Order, OrderItem, Product, Invoice, User, Payment, Retailer, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Helper to get today's date in YYYY-MM-DD format
@@ -282,11 +282,120 @@ const getEmployeeStats = async (req, res) => {
     }
 };
 
+// @desc    Get list of all reps (sales_rep, driver, collection_agent)
+// @route   GET /api/analytics/rep-list
+// @access  Private (Admin)
+const getRepList = async (req, res) => {
+    try {
+        const reps = await User.findAll({
+            where: {
+                role: ['sales_rep', 'driver', 'collection_agent'],
+                isActive: true
+            },
+            attributes: ['id', 'name', 'role', 'email'],
+            order: [['name', 'ASC']]
+        });
+        res.json(reps);
+    } catch (error) {
+        console.error('Error fetching rep list:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
+// @desc    Get daily sales and collections history for a specific rep
+// @route   GET /api/analytics/rep-history?repId=&startDate=&endDate=
+// @access  Private (Admin)
+const getRepHistory = async (req, res) => {
+    try {
+        const { repId, startDate, endDate } = req.query;
+        if (!repId) return res.status(400).json({ message: 'repId is required' });
+
+        const start = startDate || new Date().toISOString().split('T')[0];
+        const end = endDate || new Date().toISOString().split('T')[0];
+
+        // ---- Sales per day (Invoice.netTotal via Order.salesRepId) ----
+        const salesRows = await Invoice.findAll({
+            attributes: [
+                ['invoiceDate', 'date'],
+                [sequelize.fn('SUM', sequelize.col('Invoice.netTotal')), 'sales'],
+                [sequelize.fn('COUNT', sequelize.col('Invoice.id')), 'orders']
+            ],
+            include: [{
+                model: Order,
+                attributes: [],
+                where: { salesRepId: repId }
+            }],
+            where: {
+                invoiceDate: { [Op.between]: [start, end] }
+            },
+            group: ['invoiceDate'],
+            order: [['invoiceDate', 'ASC']],
+            raw: true
+        });
+
+        // ---- Collections per day (Payment.amount via collectedById) ----
+        const collectionRows = await Payment.findAll({
+            attributes: [
+                [sequelize.fn('DATE', sequelize.col('paymentDate')), 'date'],
+                [sequelize.fn('SUM', sequelize.col('amount')), 'collections']
+            ],
+            where: {
+                collectedById: repId,
+                approvalStatus: 'Approved',
+                paymentDate: {
+                    [Op.between]: [
+                        new Date(start + 'T00:00:00.000Z'),
+                        new Date(end + 'T23:59:59.999Z')
+                    ]
+                }
+            },
+            group: [sequelize.fn('DATE', sequelize.col('paymentDate'))],
+            order: [[sequelize.fn('DATE', sequelize.col('paymentDate')), 'ASC']],
+            raw: true
+        });
+
+        // ---- Merge into unified day-keyed map ----
+        const dayMap = {};
+
+        salesRows.forEach(row => {
+            const d = row.date;
+            if (!dayMap[d]) dayMap[d] = { date: d, sales: 0, collections: 0, orders: 0 };
+            dayMap[d].sales = Number(row.sales) || 0;
+            dayMap[d].orders = Number(row.orders) || 0;
+        });
+
+        collectionRows.forEach(row => {
+            const d = row.date;
+            if (!dayMap[d]) dayMap[d] = { date: d, sales: 0, collections: 0, orders: 0 };
+            dayMap[d].collections = Number(row.collections) || 0;
+        });
+
+        const result = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+
+        // ---- Totals ----
+        const totals = result.reduce(
+            (acc, row) => ({
+                totalSales: acc.totalSales + row.sales,
+                totalCollections: acc.totalCollections + row.collections,
+                totalOrders: acc.totalOrders + row.orders
+            }),
+            { totalSales: 0, totalCollections: 0, totalOrders: 0 }
+        );
+
+        res.json({ rows: result, totals });
+    } catch (error) {
+        console.error('Error fetching rep history:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
 module.exports = {
     getDashboardSummary,
     getSalesTrend,
     getProductSales,
     getStockData,
     getRepPerformance,
-    getEmployeeStats
+    getEmployeeStats,
+    getRepList,
+    getRepHistory
 };

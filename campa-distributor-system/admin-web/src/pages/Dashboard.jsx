@@ -10,6 +10,8 @@ import Orders from './Orders';
 import Payments from './Payments';
 import Deliveries from './Deliveries';
 import Reports from './Reports';
+import RepPerformance from './RepPerformance';
+import Purchases from './Purchases';
 
 const Dashboard = () => {
     return (
@@ -26,6 +28,8 @@ const Dashboard = () => {
                     <Route path="/deliveries" element={<Deliveries />} />
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/reports" element={<Reports />} />
+                    <Route path="/rep-performance" element={<RepPerformance />} />
+                    <Route path="/purchases" element={<Purchases />} />
                 </Routes>
             </div>
         </div>
