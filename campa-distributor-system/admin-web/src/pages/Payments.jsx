@@ -249,7 +249,11 @@ const Payments = () => {
                                                 <Calendar size={14} />
                                             </div>
                                             <span className="text-sm font-medium text-slate-600">
-                                                {new Date(payment.paymentDate || payment.createdAt).toLocaleDateString('en-IN')}
+                                                {(() => {
+                                                    const raw = payment.paymentDate || payment.createdAt;
+                                                    const [y, m, d] = (raw || '').slice(0, 10).split('-').map(Number);
+                                                    return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                                })()}
                                             </span>
                                         </div>
                                     </td>
