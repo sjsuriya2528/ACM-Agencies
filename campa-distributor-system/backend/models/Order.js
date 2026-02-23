@@ -35,6 +35,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DECIMAL(10, 2),
             defaultValue: 0.00,
         },
+        roundOff: {
+            type: DataTypes.DECIMAL(10, 2),
+            defaultValue: 0.00,
+        },
         remarks: {
             type: DataTypes.TEXT,
             comment: 'For special notes or damages',

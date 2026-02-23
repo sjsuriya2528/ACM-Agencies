@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 // @route   POST /api/orders
 // @access  Private (Sales Rep, Driver)
 const createOrder = async (req, res) => {
-    const { retailerId, items, billNumber, remarks, gpsLatitude, gpsLongitude, paymentMode } = req.body;
+    const { retailerId, items, billNumber, remarks, gpsLatitude, gpsLongitude, paymentMode, roundOff } = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ message: 'No order items' });
@@ -56,7 +56,8 @@ const createOrder = async (req, res) => {
             remarks,
             gpsLatitude,
             gpsLongitude,
-            paymentMode: paymentMode || 'Credit'
+            paymentMode: paymentMode || 'Credit',
+            roundOff: roundOff || 0
         }, { transaction: t });
 
         // 3. Create OrderItems
@@ -307,7 +308,9 @@ const generateInvoiceData = (order) => {
         }
     });
 
-    const netTotal = subTotal + totalGST;
+    const rawNetTotal = subTotal + totalGST;
+    const finalNetTotal = Math.round(rawNetTotal + Number(order.roundOff || 0));
+    const roundOffAmount = finalNetTotal - rawNetTotal;
 
     return {
         orderId: order.id,
@@ -323,9 +326,10 @@ const generateInvoiceData = (order) => {
         sgstTotal: sgstTotal.toFixed(2),
         igstTotal: igstTotal.toFixed(2),
         gstTotal: totalGST.toFixed(2),
-        netTotal: Math.round(netTotal).toFixed(0), // Final Payable as Interger/Round
+        roundOff: roundOffAmount.toFixed(2),
+        netTotal: finalNetTotal.toFixed(0), // Final Payable as Interger
         paymentStatus: 'Pending',
-        balanceAmount: Math.round(netTotal).toFixed(0)
+        balanceAmount: finalNetTotal.toFixed(0)
     };
 };
 

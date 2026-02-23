@@ -16,6 +16,7 @@ const CreateOrder = () => {
     const [selectedRetailer, setSelectedRetailer] = useState(null);
     const [showNewRetailerModal, setShowNewRetailerModal] = useState(false);
     const [paymentMode, setPaymentMode] = useState('Credit'); // Default to Credit
+    const [isRounded, setIsRounded] = useState(false); // Round Off ToggleState
 
     // New Retailer Form State
     const [newRetailer, setNewRetailer] = useState({
@@ -150,13 +151,17 @@ const CreateOrder = () => {
             }));
 
             try {
+                const totalAmount = calculateTotal();
+                const roundOffValue = isRounded ? (Math.round(totalAmount) - totalAmount) : 0;
+
                 await api.post('/orders', {
                     retailerId: selectedRetailer.id,
                     items: orderItems,
-                    totalAmount: calculateTotal(),
+                    totalAmount: totalAmount + roundOffValue,
                     paymentMode, // Include selected mode
                     gpsLatitude: latitude,
-                    gpsLongitude: longitude
+                    gpsLongitude: longitude,
+                    roundOff: roundOffValue
                 }, {
                     headers: { 'x-loading-term': 'Placing Order' }
                 });
@@ -293,6 +298,22 @@ const CreateOrder = () => {
                         ))}
                     </div>
                 </div>
+                {/* Round Off Toggle */}
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100/60">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <Check size={14} className="text-emerald-500" /> Round Off Total
+                        </h2>
+                        <button
+                            onClick={() => setIsRounded(!isRounded)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isRounded ? 'bg-blue-600' : 'bg-slate-200'}`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRounded ? 'translate-x-6' : 'translate-x-1'}`}
+                            />
+                        </button>
+                    </div>
+                </div>
 
                 {/* Products Section */}
                 <div className="space-y-4">
@@ -398,8 +419,17 @@ const CreateOrder = () => {
                 <div className="max-w-2xl mx-auto">
                     <div className="flex justify-between items-end mb-4 px-2">
                         <div>
-                            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Subtotal (Inc. Tax)</p>
-                            <span className="font-black text-slate-800 text-3xl leading-none tracking-tight">₹{calculateTotal().toLocaleString()}</span>
+                            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">
+                                {isRounded ? 'Net Total (Rounded)' : 'Subtotal (Inc. Tax)'}
+                            </p>
+                            <span className="font-black text-slate-800 text-3xl leading-none tracking-tight">
+                                ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            {isRounded && (
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    Round off: ₹{(Math.round(calculateTotal()) - calculateTotal()).toFixed(2)}
+                                </p>
+                            )}
                         </div>
                         <div className="text-right">
                             <span className="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold">

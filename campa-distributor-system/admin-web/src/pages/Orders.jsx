@@ -333,9 +333,13 @@ const Orders = () => {
         };
 
         // Calculations
-        const totalAmount = parseFloat(order.totalAmount || 0);
-        const roundOffVal = (Math.round(totalAmount) - totalAmount).toFixed(2);
-        const netTotal = Math.round(totalAmount);
+        const savedTotal = parseFloat(order.totalAmount || 0);
+        const explicitRoundOff = parseFloat(order.roundOff || 0);
+
+        // If explicit roundOff exists, rawTotal was savedTotal - roundOff
+        // Otherwise, assume it was auto-rounded and calculate the difference
+        const roundOffVal = explicitRoundOff !== 0 ? explicitRoundOff.toFixed(2) : (Math.round(savedTotal) - savedTotal).toFixed(2);
+        const netTotal = Math.round(savedTotal);
 
         // Detect if Inter-State (Inter-State if Retailer GSTIN prefix is not 33)
         // 33 is Tamil Nadu prefix. If no GSTIN, assume local.
@@ -349,16 +353,30 @@ const Orders = () => {
             const qty = Number(item.quantity);
             totalQty += qty;
 
-            // Use item.gstPercentage (current) or product.gstPercentage (fallback) or 18 (legacy)
-            const gstRate = Number(item.gstPercentage || item.Product?.gstPercentage || 18);
+            // Priority: Snapshot (if not default 18), then Product, then 18
+            const snapshotRate = Number(item.gstPercentage || 0);
+            const productRate = Number(item.Product?.gstPercentage || 0);
 
-            // If item has netAmount, it's the new format (netAmount = Gross, totalPrice = Taxable)
-            // If not, totalPrice was the Gross total (legacy)
-            const hasTaxFields = item.netAmount !== undefined && item.netAmount !== null && Number(item.netAmount) !== 0;
+            let gstRate = 18;
+            if (snapshotRate !== 0 && snapshotRate !== 18) {
+                gstRate = snapshotRate;
+            } else if (productRate !== 0) {
+                gstRate = productRate;
+            } else if (snapshotRate === 18) {
+                gstRate = 18;
+            }
 
-            const totalGross = hasTaxFields ? Number(item.netAmount) : Number(item.totalPrice);
-            const taxableValue = hasTaxFields ? Number(item.totalPrice) : (totalGross / (1 + (gstRate / 100)));
-            const gstAmount = hasTaxFields ? Number(item.taxAmount) : (totalGross - taxableValue);
+            // Trust tax fields ONLY if taxAmount is non-zero
+            const taxableValue = Number(item.totalPrice || 0);
+            const isNewFormat = Number(item.taxAmount || 0) !== 0 && Number(item.netAmount || 0) !== 0;
+
+            let gstAmount;
+            if (isNewFormat) {
+                gstAmount = Number(item.taxAmount);
+            } else {
+                // Calculation fallback
+                gstAmount = taxableValue * (gstRate / 100);
+            }
 
             // Rate to show in items table is Rate per unit (Taxable Value / Qty)
             const taxableRatePerUnit = taxableValue / qty;
@@ -381,11 +399,7 @@ const Orders = () => {
                 qty,
                 rate: taxableRatePerUnit, // Show Taxable Rate
                 gstRate,
-                amount: taxableValue // Show Taxable Amount in row? Or Net? 
-                // In usual Bharat invoices: SNO | Description | HSN | Qty | Rate | GST | Amount (Taxable)
-                // Let's stick to showing Taxable Value in the "Amount" column and add a separate total.
-                // Wait, the previous code showed totalGross in "amount" column. 
-                // Usually "Amount" in items table is taxable value. 
+                amount: taxableValue // Show Taxable Amount in row
             };
         });
 
