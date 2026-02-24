@@ -37,9 +37,12 @@ const Orders = () => {
     const [drivers, setDrivers] = useState([]);
     const [assigningOrder, setAssigningOrder] = useState(null); // ID of order being assigned
 
-    // Date Range State
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    // Edit Order State
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingOrder, setEditingOrder] = useState(null);
 
     // Create Order State
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -62,6 +65,7 @@ const Orders = () => {
     }, [showCreateModal]);
     const [productSearchTerm, setProductSearchTerm] = useState('');
     const [paymentMode, setPaymentMode] = useState('Credit');
+    const [remarks, setRemarks] = useState('');
     const [isRounded, setIsRounded] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [fetchError, setFetchError] = useState(null);
@@ -305,6 +309,7 @@ const Orders = () => {
                 items: orderItems,
                 totalAmount: totalAmount + roundOffValue,
                 paymentMode,
+                remarks,
                 roundOff: roundOffValue,
                 status: 'Approved' // Admin created orders are automatically approved
             }, {
@@ -314,11 +319,72 @@ const Orders = () => {
             setShowCreateModal(false);
             setCart({});
             setSelectedRetailer(null);
+            setRemarks('');
             setIsRounded(false);
             fetchOrders(); // Refresh list
         } catch (error) {
             console.error("Order failed", error);
             alert("Failed to place order");
+        }
+    };
+
+    const startEditOrder = async (order) => {
+        setEditingOrder(order);
+        // Pre-fill cart from order items
+        const initialCart = {};
+        order.items.forEach(item => {
+            initialCart[item.productId] = {
+                quantity: item.quantity,
+                pricePerUnit: item.pricePerUnit
+            };
+        });
+        setCart(initialCart);
+        setSelectedRetailer(order.retailer);
+        setPaymentMode(order.paymentMode);
+        setRemarks(order.remarks || '');
+        setIsRounded(order.roundOff !== 0);
+
+        // Ensure catalog data is loaded
+        if (products.length === 0) {
+            await fetchCreateOrderData();
+        }
+
+        setShowEditModal(true);
+    };
+
+    const handleEditOrderSubmit = async () => {
+        const itemsCount = Object.values(cart).reduce((a, b) => a + b.quantity, 0);
+        if (itemsCount === 0) return alert("Cart is empty");
+
+        const orderItems = Object.entries(cart).map(([productId, data]) => ({
+            productId: parseInt(productId),
+            quantity: data.quantity,
+            pricePerUnit: parseFloat(data.pricePerUnit) || 0
+        }));
+
+        try {
+            const totalAmount = calculateTotal();
+            const roundOffValue = isRounded ? (Math.round(totalAmount) - totalAmount) : 0;
+
+            await api.put(`/orders/${editingOrder.id}`, {
+                retailerId: selectedRetailer.id,
+                items: orderItems,
+                paymentMode,
+                roundOff: roundOffValue,
+                remarks: remarks
+            }, {
+                headers: { 'x-loading-term': 'Updating Order' }
+            });
+            alert("Order updated successfully!");
+            setShowEditModal(false);
+            setCart({});
+            setSelectedRetailer(null);
+            setRemarks('');
+            setEditingOrder(null);
+            fetchOrders();
+        } catch (error) {
+            console.error("Order update failed", error);
+            alert(error.response?.data?.message || "Failed to update order");
         }
     };
 
@@ -788,6 +854,16 @@ const Orders = () => {
                                                         </div>
 
                                                         <div className="flex items-center gap-3">
+                                                            {/* Edit Action - Only for Requested Orders */}
+                                                            {filterStatus !== 'Cancelled' && order.status === 'Requested' && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); startEditOrder(order); }}
+                                                                    className="flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                                                                >
+                                                                    <RefreshCw size={16} /> Edit Order
+                                                                </button>
+                                                            )}
+
                                                             {/* View Bill Action - Only for Active Orders */}
                                                             {filterStatus !== 'Cancelled' && ['Approved', 'Dispatched', 'Delivered'].includes(order.status) && (
                                                                 <button
@@ -966,8 +1042,8 @@ const Orders = () => {
                 </table>
             </div>
 
-            {/* Create Order Modal - "The Sales Station" */}
-            {showCreateModal && createPortal(
+            {/* Create/Edit Order Modal - "The Sales Station" */}
+            {(showCreateModal || showEditModal) && createPortal(
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] overflow-y-auto">
                     <div className="min-h-screen px-4 text-center">
                         {/* Overlay ghost element to center content vertically */}
@@ -981,12 +1057,12 @@ const Orders = () => {
                                         <ShoppingCart size={24} />
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold text-slate-800">Sales Station</h2>
-                                        <p className="text-xs font-medium text-slate-400 uppercase tracking-tighter">Create & Place New Order</p>
+                                        <h2 className="text-xl font-bold text-slate-800">{showEditModal ? 'Edit Order Station' : 'Sales Station'}</h2>
+                                        <p className="text-xs font-medium text-slate-400 uppercase tracking-tighter">{showEditModal ? `Modifying Order #${editingOrder?.id}` : 'Create & Place New Order'}</p>
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => { setShowCreateModal(false); setFetchError(null); }}
+                                    onClick={() => { setShowCreateModal(false); setShowEditModal(false); setEditingOrder(null); setCart({}); setSelectedRetailer(null); setFetchError(null); }}
                                     className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
                                 >
                                     <XCircle size={28} strokeWidth={1.5} />
@@ -1337,6 +1413,18 @@ const Orders = () => {
                                                 </div>
                                             </div>
 
+                                            {/* Remarks */}
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Order Remarks</label>
+                                                <textarea
+                                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 text-sm shadow-sm"
+                                                    rows="2"
+                                                    placeholder="Add any special instructions or billing notes..."
+                                                    value={remarks}
+                                                    onChange={(e) => setRemarks(e.target.value)}
+                                                />
+                                            </div>
+
                                             {/* Round Off Toggle */}
                                             <div className="space-y-3">
                                                 <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
@@ -1374,7 +1462,7 @@ const Orders = () => {
                                                     </div>
                                                 </div>
                                                 <button
-                                                    onClick={handleCreateOrderSubmit}
+                                                    onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
                                                     disabled={Object.keys(cart).length === 0 || !selectedRetailer}
                                                     className={`w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 ${Object.keys(cart).length === 0 || !selectedRetailer
                                                         ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-100' // Keeping it visible but clearly disabled style
@@ -1385,7 +1473,7 @@ const Orders = () => {
                                                     ) : Object.keys(cart).length === 0 ? (
                                                         <>Add Items to Cart <ShoppingCart size={20} className="opacity-50" /></>
                                                     ) : (
-                                                        <>Place Order <Truck size={20} /></>
+                                                        <>{showEditModal ? 'Update Order' : 'Place Order'} <Truck size={20} /></>
                                                     )}
                                                 </button>
                                             </div>
@@ -1403,13 +1491,13 @@ const Orders = () => {
                                     </p>
                                 </div>
                                 <button
-                                    onClick={handleCreateOrderSubmit}
+                                    onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
                                     disabled={Object.keys(cart).length === 0 || !selectedRetailer}
                                     className={`px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${Object.keys(cart).length === 0 || !selectedRetailer
                                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                         : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                                 >
-                                    {!selectedRetailer ? 'Select Retailer' : Object.keys(cart).length === 0 ? 'Add Items' : 'Place Order'}
+                                    {!selectedRetailer ? 'Select Retailer' : Object.keys(cart).length === 0 ? 'Add Items' : (showEditModal ? 'Update Order' : 'Place Order')}
                                     {!selectedRetailer || Object.keys(cart).length === 0 ? <AlertCircle size={18} /> : <Truck size={18} />}
                                 </button>
                             </div>

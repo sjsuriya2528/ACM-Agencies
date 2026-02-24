@@ -1,4 +1,4 @@
-const { Product } = require('../models');
+const { Product, StockAdjustment, sequelize } = require('../models');
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -99,10 +99,68 @@ const deleteProduct = async (req, res) => {
     }
 };
 
+// @desc    Adjust product stock manually
+// @route   POST /api/products/:id/adjust-stock
+// @access  Private (Admin)
+const adjustStock = async (req, res) => {
+    const { type, quantity, remarks } = req.body;
+    const productId = req.params.id;
+
+    if (!type || !quantity || !remarks) {
+        return res.status(400).json({ message: 'Type, quantity, and remarks are required' });
+    }
+
+    if (!['Addition', 'Reduction'].includes(type)) {
+        return res.status(400).json({ message: 'Invalid adjustment type' });
+    }
+
+    const t = await sequelize.transaction();
+
+    try {
+        const product = await Product.findByPk(productId, { transaction: t });
+
+        if (!product) {
+            await t.rollback();
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        // 1. Update Product Stock
+        if (type === 'Addition') {
+            await product.increment('stockQuantity', { by: parseInt(quantity), transaction: t });
+        } else {
+            if (product.stockQuantity < parseInt(quantity)) {
+                await t.rollback();
+                return res.status(400).json({ message: 'Insufficient stock for reduction' });
+            }
+            await product.decrement('stockQuantity', { by: parseInt(quantity), transaction: t });
+        }
+
+        // 2. Create StockAdjustment record
+        await StockAdjustment.create({
+            productId,
+            type,
+            quantity: parseInt(quantity),
+            remarks,
+            adjustedById: req.user?.id || null
+        }, { transaction: t });
+
+        await t.commit();
+
+        // Return updated product
+        const updatedProduct = await Product.findByPk(productId);
+        res.json({ message: 'Stock adjusted successfully', product: updatedProduct });
+
+    } catch (error) {
+        await t.rollback();
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getProducts,
     getProductById,
     createProduct,
     updateProduct,
     deleteProduct,
+    adjustStock,
 };

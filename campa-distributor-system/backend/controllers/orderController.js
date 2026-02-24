@@ -429,6 +429,101 @@ const deleteOrder = async (req, res) => {
     }
 };
 
+// @desc    Update order (before approval)
+// @route   PUT /api/orders/:id
+// @access  Private (Admin)
+const updateOrder = async (req, res) => {
+    const { retailerId, items, paymentMode, remarks, roundOff } = req.body;
+    const orderId = req.params.id;
+
+    if (!items || items.length === 0) {
+        return res.status(400).json({ message: 'No order items' });
+    }
+
+    const t = await sequelize.transaction();
+
+    try {
+        const order = await Order.findByPk(orderId, { transaction: t });
+
+        if (!order) {
+            await t.rollback();
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Only requested orders can be edited
+        if (order.status !== 'Requested') {
+            await t.rollback();
+            return res.status(400).json({ message: 'Only Requested orders can be edited' });
+        }
+
+        const processedItems = [];
+        let orderTotalGross = 0;
+
+        // 1. Process items and calculate totals
+        for (const item of items) {
+            const product = await Product.findByPk(item.productId, { transaction: t });
+            if (!product) {
+                throw new Error(`Product not found: ${item.productId}`);
+            }
+
+            const taxablePricePerUnit = item.pricePerUnit !== undefined ? Number(item.pricePerUnit) : Number(product.price);
+            const quantity = Number(item.quantity);
+            const gstPercentage = Number(product.gstPercentage || 18);
+
+            const totalTaxable = taxablePricePerUnit * quantity;
+            const taxAmount = totalTaxable * (gstPercentage / 100);
+            const netAmount = totalTaxable + taxAmount;
+
+            orderTotalGross += netAmount;
+
+            processedItems.push({
+                productId: item.productId,
+                quantity,
+                productName: product.name,
+                pricePerUnit: taxablePricePerUnit,
+                totalPrice: totalTaxable.toFixed(2),
+                taxAmount: taxAmount.toFixed(2),
+                netAmount: netAmount.toFixed(2),
+                gstPercentage: product.gstPercentage || 18,
+                orderId: order.id
+            });
+        }
+
+        // 2. Update Order
+        order.retailerId = retailerId || order.retailerId;
+        order.paymentMode = paymentMode || order.paymentMode;
+        order.remarks = remarks !== undefined ? remarks : order.remarks;
+        order.roundOff = roundOff !== undefined ? roundOff : order.roundOff;
+        order.totalAmount = (orderTotalGross + Number(order.roundOff || 0)).toFixed(2);
+
+        await order.save({ transaction: t });
+
+        // 3. Update OrderItems (Delete and Recreate)
+        await OrderItem.destroy({ where: { orderId: order.id }, transaction: t });
+
+        for (const pItem of processedItems) {
+            await OrderItem.create(pItem, { transaction: t });
+        }
+
+        await t.commit();
+
+        // Fetch full order to return
+        const updatedOrderRecord = await Order.findByPk(order.id, {
+            include: [
+                { model: Retailer, as: 'retailer' },
+                { model: OrderItem, as: 'items', include: [Product] }
+            ]
+        });
+
+        res.json(updatedOrderRecord);
+
+    } catch (error) {
+        await t.rollback();
+        console.error('Order Update Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Get all cancelled orders
 // @route   GET /api/orders/cancelled
 // @access  Private (Admin)
@@ -506,6 +601,7 @@ module.exports = {
     updateOrderStatus,
     assignDriver,
     deleteOrder,
+    updateOrder,
     getCancelledOrders,
     getCancelledOrderById,
     generateInvoiceData

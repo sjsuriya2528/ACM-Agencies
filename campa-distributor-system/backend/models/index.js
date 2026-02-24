@@ -100,12 +100,20 @@ db.CancelledOrder.belongsTo(db.User, { as: 'salesRep', foreignKey: 'salesRepId' 
 db.Product.hasMany(db.CancelledOrderItem, { foreignKey: 'productId' });
 db.CancelledOrderItem.belongsTo(db.Product, { foreignKey: 'productId' });
 
+db.StockAdjustment = require('./StockAdjustment')(sequelize, Sequelize);
+
 // PurchaseBill associations
 db.PurchaseBill.hasMany(db.PurchaseBillItem, { as: 'items', foreignKey: 'purchaseBillId', onDelete: 'CASCADE' });
 db.PurchaseBillItem.belongsTo(db.PurchaseBill, { foreignKey: 'purchaseBillId' });
 db.PurchaseBillItem.belongsTo(db.Product, { as: 'product', foreignKey: 'productId' });
 db.Product.hasMany(db.PurchaseBillItem, { foreignKey: 'productId' });
 db.PurchaseBill.belongsTo(db.User, { as: 'createdBy', foreignKey: 'createdById' });
+
+// StockAdjustment associations
+db.StockAdjustment.belongsTo(db.Product, { as: 'product', foreignKey: 'productId' });
+db.Product.hasMany(db.StockAdjustment, { foreignKey: 'productId' });
+db.StockAdjustment.belongsTo(db.User, { as: 'adjustedBy', foreignKey: 'adjustedById' });
+db.User.hasMany(db.StockAdjustment, { foreignKey: 'adjustedById' });
 
 // Note: models are initialized synchronously at the top level
 // The authenticate function just verifies the connection.

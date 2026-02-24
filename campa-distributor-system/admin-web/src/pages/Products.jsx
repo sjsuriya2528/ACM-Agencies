@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Plus, Edit, Trash2, Loader2, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Package, Minus } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const Products = () => {
@@ -10,11 +10,12 @@ const Products = () => {
     const [formData, setFormData] = useState({ name: '', purchaseCratePrice: '', sellingCratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 });
     const [editingId, setEditingId] = useState(null);
 
-    // Quick Add Stock State
-    const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false);
-    const [addStockData, setAddStockData] = useState({ id: null, name: '', currentStock: 0, addCrates: '', addBottles: '', bpc: 24 });
     const [searchTerm, setSearchTerm] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Stock Adjustment (Add/Reduce) State
+    const [isStockAdjModalOpen, setIsStockAdjModalOpen] = useState(false);
+    const [stockAdjData, setStockAdjData] = useState({ id: null, name: '', currentStock: 0, crates: '', bottles: '', bpc: 24, type: 'Addition', remarks: '' });
 
     const fetchProducts = async () => {
         try {
@@ -99,39 +100,51 @@ const Products = () => {
         setIsModalOpen(true);
     };
 
-    const handleAddStockClick = (product) => {
-        setAddStockData({
+    const handleStockAdjClick = (product, type = 'Addition') => {
+        setStockAdjData({
             id: product.id,
             name: product.name,
             currentStock: product.stock,
-            addCrates: '',
-            addBottles: '',
-            bpc: product.bottlesPerCrate || 24
+            crates: '',
+            bottles: '',
+            bpc: product.bottlesPerCrate || 24,
+            type: type,
+            remarks: ''
         });
-        setIsAddStockModalOpen(true);
+        setIsStockAdjModalOpen(true);
     };
 
-    const submitAddStock = async (e) => {
+    const submitStockAdj = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const addedCrates = parseInt(addStockData.addCrates) || 0;
-            const addedBottles = parseInt(addStockData.addBottles) || 0;
-            const totalToAdd = (addedCrates * addStockData.bpc) + addedBottles;
+            const addedCrates = parseInt(stockAdjData.crates) || 0;
+            const addedBottles = parseInt(stockAdjData.bottles) || 0;
+            const totalToAdj = (addedCrates * stockAdjData.bpc) + addedBottles;
 
-            if (totalToAdd === 0) return;
+            if (totalToAdj === 0) {
+                alert("Please enter a quantity");
+                setIsSubmitting(false);
+                return;
+            }
 
-            const newStock = addStockData.currentStock + totalToAdd;
+            if (stockAdjData.type === 'Reduction' && !stockAdjData.remarks) {
+                alert("Remarks are mandatory for stock reduction");
+                setIsSubmitting(false);
+                return;
+            }
 
-            await api.put(`/products/${addStockData.id}`, {
-                stockQuantity: newStock
+            await api.post(`/products/${stockAdjData.id}/adjust-stock`, {
+                type: stockAdjData.type,
+                quantity: totalToAdj,
+                remarks: stockAdjData.remarks || (stockAdjData.type === 'Addition' ? 'Manual Addition' : '')
             });
 
-            setIsAddStockModalOpen(false);
+            setIsStockAdjModalOpen(false);
             fetchProducts();
         } catch (error) {
             console.error(error);
-            alert("Failed to update stock");
+            alert(error.response?.data?.message || "Failed to adjust stock");
         } finally {
             setIsSubmitting(false);
         }
@@ -248,7 +261,8 @@ const Products = () => {
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <button onClick={() => handleAddStockClick(product)} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
+                                                <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
+                                                <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 p-1.5 hover:bg-orange-50 rounded-lg transition-colors" title="Reduce Stock"><Minus size={16} /></button>
                                                 <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
                                                 <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
                                             </div>
@@ -480,43 +494,43 @@ const Products = () => {
                 )
             }
             {
-                isAddStockModalOpen && (
+                isStockAdjModalOpen && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all">
-                            <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-4 flex justify-between items-center">
+                            <div className={`bg-gradient-to-r ${stockAdjData.type === 'Addition' ? 'from-emerald-600 to-emerald-700' : 'from-orange-600 to-orange-700'} px-6 py-4 flex justify-between items-center`}>
                                 <div>
-                                    <h2 className="text-lg font-bold text-white">Quick Add Stock</h2>
-                                    <p className="text-emerald-100 text-sm opacity-90">{addStockData.name}</p>
+                                    <h2 className="text-lg font-bold text-white">Manual Stock {stockAdjData.type}</h2>
+                                    <p className="text-white/80 text-sm opacity-90">{stockAdjData.name}</p>
                                 </div>
-                                <button onClick={() => setIsAddStockModalOpen(false)} className="text-white/80 hover:text-white transition-colors">
+                                <button onClick={() => setIsStockAdjModalOpen(false)} className="text-white/80 hover:text-white transition-colors">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 </button>
                             </div>
 
-                            <form onSubmit={submitAddStock} className="p-6 space-y-5">
+                            <form onSubmit={submitStockAdj} className="p-6 space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Add Crates</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">{stockAdjData.type === 'Addition' ? 'Add' : 'Reduce'} Crates</label>
                                         <div className="relative">
                                             <input
                                                 type="number"
                                                 autoFocus
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
-                                                value={addStockData.addCrates}
-                                                onChange={e => setAddStockData({ ...addStockData, addCrates: e.target.value })}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500 focus:border-emerald-500' : 'focus:ring-orange-500 focus:border-orange-500'} transition-all outline-none`}
+                                                value={stockAdjData.crates}
+                                                onChange={e => setStockAdjData({ ...stockAdjData, crates: e.target.value })}
                                                 placeholder="0"
                                             />
                                             <span className="absolute right-2 top-2.5 text-xs text-gray-400">crts</span>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Add Bottles</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">{stockAdjData.type === 'Addition' ? 'Add' : 'Reduce'} Bottles</label>
                                         <div className="relative">
                                             <input
                                                 type="number"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
-                                                value={addStockData.addBottles}
-                                                onChange={e => setAddStockData({ ...addStockData, addBottles: e.target.value })}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500 focus:border-emerald-500' : 'focus:ring-orange-500 focus:border-orange-500'} transition-all outline-none`}
+                                                value={stockAdjData.bottles}
+                                                onChange={e => setStockAdjData({ ...stockAdjData, bottles: e.target.value })}
                                                 placeholder="0"
                                             />
                                             <span className="absolute right-2 top-2.5 text-xs text-gray-400">btls</span>
@@ -524,20 +538,35 @@ const Products = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-emerald-50 rounded-xl p-4 space-y-2 border border-emerald-100">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Remarks {stockAdjData.type === 'Reduction' && <span className="text-red-500">*</span>}</label>
+                                    <textarea
+                                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500' : 'focus:ring-orange-500'} transition-all outline-none`}
+                                        rows="2"
+                                        placeholder={stockAdjData.type === 'Addition' ? 'Manual stock addition' : 'Reason for reduction (e.g. Breakage, Return)'}
+                                        value={stockAdjData.remarks}
+                                        onChange={e => setStockAdjData({ ...stockAdjData, remarks: e.target.value })}
+                                        required={stockAdjData.type === 'Reduction'}
+                                    />
+                                </div>
+
+                                <div className={`rounded-xl p-4 space-y-2 border ${stockAdjData.type === 'Addition' ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
                                     <div className="flex justify-between text-sm text-gray-600">
                                         <span>Current Stock:</span>
-                                        <span className="font-medium">{addStockData.currentStock}</span>
+                                        <span className="font-medium">{stockAdjData.currentStock} btls</span>
                                     </div>
-                                    <div className="flex justify-between text-sm text-emerald-700">
-                                        <span>Adding:</span>
-                                        <span className="font-medium">+{((parseInt(addStockData.addCrates) || 0) * addStockData.bpc) + (parseInt(addStockData.addBottles) || 0)}</span>
+                                    <div className={`flex justify-between text-sm ${stockAdjData.type === 'Addition' ? 'text-emerald-700' : 'text-orange-700'}`}>
+                                        <span>{stockAdjData.type === 'Addition' ? 'Adding' : 'Reducing'}:</span>
+                                        <span className="font-medium">{stockAdjData.type === 'Addition' ? '+' : '-'}{((parseInt(stockAdjData.crates) || 0) * stockAdjData.bpc) + (parseInt(stockAdjData.bottles) || 0)} btls</span>
                                     </div>
-                                    <div className="pt-2 mt-1 border-t border-emerald-200 flex justify-between items-center">
+                                    <div className={`pt-2 mt-1 border-t flex justify-between items-center ${stockAdjData.type === 'Addition' ? 'border-emerald-200' : 'border-orange-200'}`}>
                                         <span className="text-sm font-bold text-gray-800">New Total:</span>
-                                        <span className="text-lg font-bold text-emerald-800">
-                                            {addStockData.currentStock + ((parseInt(addStockData.addCrates) || 0) * addStockData.bpc) + (parseInt(addStockData.addBottles) || 0)}
-                                            <span className="text-xs font-normal text-emerald-600 ml-1">btls</span>
+                                        <span className={`text-lg font-bold ${stockAdjData.type === 'Addition' ? 'text-emerald-800' : 'text-orange-800'}`}>
+                                            {stockAdjData.type === 'Addition'
+                                                ? stockAdjData.currentStock + ((parseInt(stockAdjData.crates) || 0) * stockAdjData.bpc) + (parseInt(stockAdjData.bottles) || 0)
+                                                : stockAdjData.currentStock - ((parseInt(stockAdjData.crates) || 0) * stockAdjData.bpc) - (parseInt(stockAdjData.bottles) || 0)
+                                            }
+                                            <span className="text-xs font-normal ml-1">btls</span>
                                         </span>
                                     </div>
                                 </div>
@@ -545,25 +574,18 @@ const Products = () => {
                                 <div className="flex justify-end gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => setIsAddStockModalOpen(false)}
+                                        onClick={() => setIsStockAdjModalOpen(false)}
                                         disabled={isSubmitting}
-                                        className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                        className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium shadow-lg shadow-emerald-200 transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                                        className={`px-6 py-2 text-white rounded-lg font-medium shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 ${stockAdjData.type === 'Addition' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200'}`}
                                     >
-                                        {isSubmitting ? (
-                                            <>
-                                                <Loader2 size={18} className="animate-spin" />
-                                                <span>Adding...</span>
-                                            </>
-                                        ) : (
-                                            <span>Confirm Add</span>
-                                        )}
+                                        {isSubmitting ? <><Loader2 size={18} className="animate-spin" /><span>Saving...</span></> : <span>Confirm {stockAdjData.type}</span>}
                                     </button>
                                 </div>
                             </form>

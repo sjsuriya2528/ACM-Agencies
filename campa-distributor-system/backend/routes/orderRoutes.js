@@ -3,6 +3,7 @@ const router = express.Router();
 const { createOrder, getOrders, getOrderById, updateOrderStatus,
     assignDriver,
     deleteOrder,
+    updateOrder,
     getCancelledOrders,
     getCancelledOrderById
 } = require('../controllers/orderController');
@@ -31,6 +32,7 @@ router.route('/:id/assign')
 
 router.route('/:id')
     .get(protect, getOrderById)
+    .put(protect, authorize('admin'), updateOrder)
     .delete(protect, authorize('admin'), deleteOrder);
 
 module.exports = router;
