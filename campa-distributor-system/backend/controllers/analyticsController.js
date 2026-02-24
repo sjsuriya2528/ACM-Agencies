@@ -75,10 +75,15 @@ const getDashboardSummary = async (req, res) => {
 
         // 6. Total Collection Today (Strictly today's date)
         const totalCollectionTodayResult = await Payment.sum('amount', {
-            where: sequelize.where(
-                sequelize.fn('DATE', sequelize.col('paymentDate')),
-                todayStr
-            )
+            where: {
+                [Op.and]: [
+                    sequelize.where(
+                        sequelize.fn('DATE', sequelize.col('paymentDate')),
+                        todayStr
+                    ),
+                    { approvalStatus: { [Op.ne]: 'Rejected' } }
+                ]
+            }
         });
         const totalCollectionToday = totalCollectionTodayResult || 0;
 
@@ -357,6 +362,7 @@ const getEmployeeStats = async (req, res) => {
             const todaySum = await Payment.sum('amount', {
                 where: {
                     collectedById: id,
+                    approvalStatus: { [Op.ne]: 'Rejected' },
                     createdAt: { [Op.gte]: today }
                 }
             });
