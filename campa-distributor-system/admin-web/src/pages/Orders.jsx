@@ -45,6 +45,7 @@ const Orders = () => {
     const [totalResults, setTotalResults] = useState(0);
     const [limit, setLimit] = useState(50);
     const [activeSearch, setActiveSearch] = useState('');
+    const [currentTotalSumAmount, setCurrentTotalSumAmount] = useState(0);
 
     // Edit Order State
     const [showEditModal, setShowEditModal] = useState(false);
@@ -164,6 +165,7 @@ const Orders = () => {
             setOrders(response.data.data);
             setTotalPages(response.data.totalPages);
             setTotalResults(response.data.total);
+            setCurrentTotalSumAmount(response.data.totalSumAmount || 0);
         } catch (error) {
             if (error.name === 'CanceledError' || error.name === 'AbortError') return;
             console.error("Failed to fetch orders", error);
@@ -186,6 +188,7 @@ const Orders = () => {
             setCancelledOrders(response.data.data);
             setTotalPages(response.data.totalPages);
             setTotalResults(response.data.total);
+            setCurrentTotalSumAmount(response.data.totalSumAmount || 0);
         } catch (error) {
             if (error.name === 'CanceledError' || error.name === 'AbortError') return;
             console.error("Failed to fetch cancelled orders", error);
@@ -677,8 +680,6 @@ const Orders = () => {
     const filteredOrders = filterStatus === 'Cancelled' ? cancelledOrders : orders || [];
     // Frontend filtering removed as it's now handled by the server
 
-    const currentTotalAmount = filteredOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-
     const getStatusBadge = (status) => {
         const styles = {
             'Approved': 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -714,7 +715,7 @@ const Orders = () => {
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 flex-shrink-0">
                     <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex flex-col items-end min-w-[140px]">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Total for filter</span>
-                        <span className="text-xl md:text-2xl font-black text-blue-600 truncate">₹{currentTotalAmount.toLocaleString()}</span>
+                        <span className="text-xl md:text-2xl font-black text-blue-600 truncate">₹{currentTotalSumAmount.toLocaleString()}</span>
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
                         <button

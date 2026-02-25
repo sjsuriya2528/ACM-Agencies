@@ -167,10 +167,20 @@ const getOrders = async (req, res) => {
             distinct: true, // Necessary because of includes
         });
 
+        // Calculate total sum of orders for the current filters (across all pages)
+        const totalSumAmount = await Order.sum('totalAmount', {
+            where: whereClause,
+            include: whereClause[Op.or] ? [
+                { model: Retailer, as: 'retailer' },
+                { model: User, as: 'salesRep' }
+            ] : []
+        }) || 0;
+
         res.json({
             total: count,
             page: parseInt(page),
             totalPages: Math.ceil(count / limit),
+            totalSumAmount,
             data: orders
         });
     } catch (error) {
@@ -608,10 +618,20 @@ const getCancelledOrders = async (req, res) => {
             distinct: true,
         });
 
+        // Calculate total sum of cancelled orders for the current filters
+        const totalSumAmount = await CancelledOrder.sum('totalAmount', {
+            where: whereClause,
+            include: whereClause[Op.or] ? [
+                { model: Retailer, as: 'retailer' },
+                { model: User, as: 'salesRep' }
+            ] : []
+        }) || 0;
+
         res.json({
             total: count,
             page: parseInt(page),
             totalPages: Math.ceil(count / limit),
+            totalSumAmount,
             data: orders
         });
     } catch (error) {
