@@ -42,6 +42,8 @@ const Payments = () => {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalResults, setTotalResults] = useState(0);
+    const [totalApprovedAmount, setTotalApprovedAmount] = useState(0);
+    const [totalPendingCount, setTotalPendingCount] = useState(0);
     const [limit, setLimit] = useState(50);
     const [error, setError] = useState(null);
     const [showRecordModal, setShowRecordModal] = useState(false);
@@ -57,13 +59,25 @@ const Payments = () => {
 
     useEffect(() => { fetchPayments(); }, [page, filterStatus, filterMode, activeSearch]);
 
-    // Debounce search
-    useEffect(() => {
-        const timer = setTimeout(() => {
+    const handleSearch = (e) => {
+        if (e.key === 'Enter') {
             setActiveSearch(searchTerm);
-            setPage(1); // Reset to first page on search
-        }, 500);
-        return () => clearTimeout(timer);
+            setPage(1);
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchTerm('');
+        setActiveSearch('');
+        setPage(1);
+    };
+
+    // Auto-search if empty
+    useEffect(() => {
+        if (searchTerm === '' && activeSearch !== '') {
+            setActiveSearch('');
+            setPage(1);
+        }
     }, [searchTerm]);
 
     const fetchPayments = async () => {
@@ -82,6 +96,8 @@ const Payments = () => {
             setPayments(response.data.data);
             setTotalPages(response.data.totalPages);
             setTotalResults(response.data.total);
+            setTotalApprovedAmount(response.data.totalApprovedAmount || 0);
+            setTotalPendingCount(response.data.totalPendingCount || 0);
         } catch (error) {
             setError(error.response?.data?.message || 'Failed to fetch payments.');
         } finally {
@@ -198,16 +214,9 @@ const Payments = () => {
         }
     };
 
-    // Filter and total logic moved to server side, but we still calculate some stats from the current page/summary
-    const pendingCountInPage = payments.filter(p => p.approvalStatus === 'Pending').length;
-    // For pendingCount across all pages, we should ideally get it from the backend summary or a separate call
-    // But for now, let's assume we want a quick way to see total pending
-    // I'll add a 'summary' field to the backend later if needed. For now just use what's in the current list.
-
-    const pendingCount = payments.filter(p => p.approvalStatus === 'Pending').length;
-    const totalApproved = payments
-        .filter(p => p.approvalStatus === 'Approved')
-        .reduce((sum, p) => sum + Number(p.amount), 0);
+    // For counts across all pages, we get it from the backend
+    const pendingCount = totalPendingCount;
+    const totalApproved = totalApprovedAmount;
 
     if (loading) return <LoadingSpinner />;
 
@@ -268,14 +277,23 @@ const Payments = () => {
             {/* Filters */}
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between flex-wrap">
                 <div className="relative w-full md:w-80 group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold" size={18} />
                     <input
                         type="text"
-                        placeholder="Search retailer, collector..."
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-xl text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                        placeholder="Search retailer, collector... (Enter)"
+                        className="w-full pl-11 pr-10 py-3 bg-slate-50 border-none rounded-xl text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-100 transition-all font-medium"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
+                        onKeyDown={handleSearch}
                     />
+                    {searchTerm && (
+                        <button
+                            onClick={clearSearch}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex gap-3 flex-wrap">

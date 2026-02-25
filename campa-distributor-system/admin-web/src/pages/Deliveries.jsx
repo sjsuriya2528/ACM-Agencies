@@ -62,12 +62,25 @@ const Deliveries = () => {
         }
     };
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
+    const handleSearch = (e) => {
+        if (e.key === 'Enter') {
             setActiveSearch(searchTerm);
             setPage(1);
-        }, 500);
-        return () => clearTimeout(timer);
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchTerm('');
+        setActiveSearch('');
+        setPage(1);
+    };
+
+    // Auto-search if empty
+    useEffect(() => {
+        if (searchTerm === '' && activeSearch !== '') {
+            setActiveSearch('');
+            setPage(1);
+        }
     }, [searchTerm]);
 
     useEffect(() => {
@@ -149,15 +162,24 @@ const Deliveries = () => {
             <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-100 p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold text-slate-800">Recent Deliveries</h3>
-                    <div className="relative w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <div className="relative w-64 group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
                         <input
                             type="text"
-                            placeholder="Search Delivery..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-100 "
+                            placeholder="Search Delivery... (Enter)"
+                            className="w-full pl-9 pr-10 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-100 "
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={handleSearch}
                         />
+                        {searchTerm && (
+                            <button
+                                onClick={clearSearch}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
                 </div>
 

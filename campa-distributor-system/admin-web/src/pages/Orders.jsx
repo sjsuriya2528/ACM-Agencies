@@ -104,12 +104,25 @@ const Orders = () => {
         fetchDrivers();
     }, []);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
+    const handleSearch = (e) => {
+        if (e.key === 'Enter') {
             setActiveSearch(searchTerm);
             setPage(1);
-        }, 500);
-        return () => clearTimeout(timer);
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchTerm('');
+        setActiveSearch('');
+        setPage(1);
+    };
+
+    // Auto-search if empty
+    useEffect(() => {
+        if (searchTerm === '' && activeSearch !== '') {
+            setActiveSearch('');
+            setPage(1);
+        }
     }, [searchTerm]);
 
     useEffect(() => {
@@ -724,16 +737,24 @@ const Orders = () => {
             <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
                 {/* Top Row: Search, Date, Payment */}
                 <div className="flex flex-col xl:flex-row gap-4 items-center justify-between">
-                    {/* Search */}
                     <div className="relative w-full xl:w-96 group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
                         <input
                             type="text"
-                            placeholder="Search Retailer, Sales Rep, or ID..."
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                            placeholder="Search Retailer, Sales Rep, or ID... (Enter)"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={handleSearch}
                         />
+                        {searchTerm && (
+                            <button
+                                onClick={clearSearch}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"
+                            >
+                                <XCircle size={18} />
+                            </button>
+                        )}
                     </div>
 
                     {/* Date Range & Payment Row */}

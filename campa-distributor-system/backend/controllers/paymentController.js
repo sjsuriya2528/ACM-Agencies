@@ -80,9 +80,42 @@ const getPayments = async (req, res) => {
                     }]
                 },
             ],
-            order: [['createdAt', 'DESC']],
+            order: [
+                ['paymentDate', 'DESC'],
+                ['createdAt', 'DESC'],
+                ['id', 'DESC']
+            ],
             limit: parseInt(limit),
             offset: parseInt(offset),
+        });
+
+        // Calculate summary stats for the current filters (across all pages)
+        const totalApprovedAmount = await Payment.sum('amount', {
+            where: { ...where, approvalStatus: 'Approved' },
+            include: where[Op.or] ? [
+                { model: User, as: 'collectedBy' },
+                {
+                    model: Invoice,
+                    include: [{
+                        model: Order,
+                        include: [{ model: Retailer, as: 'retailer' }]
+                    }]
+                }
+            ] : []
+        }) || 0;
+
+        const totalPendingCount = await Payment.count({
+            where: { ...where, approvalStatus: 'Pending' },
+            include: where[Op.or] ? [
+                { model: User, as: 'collectedBy' },
+                {
+                    model: Invoice,
+                    include: [{
+                        model: Order,
+                        include: [{ model: Retailer, as: 'retailer' }]
+                    }]
+                }
+            ] : []
         });
 
         const results = payments.map(p => {
@@ -99,6 +132,8 @@ const getPayments = async (req, res) => {
             total: count,
             page: parseInt(page),
             totalPages: Math.ceil(count / limit),
+            totalApprovedAmount,
+            totalPendingCount,
             data: results
         });
     } catch (error) {
