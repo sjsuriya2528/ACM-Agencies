@@ -182,6 +182,33 @@ const bulkApprovePayments = async (req, res) => {
     }
 };
 
+const getPaymentReceipt = async (req, res) => {
+    try {
+        const payment = await Payment.findByPk(req.params.id, {
+            include: [
+                { model: User, as: 'collectedBy', attributes: ['name'] },
+                {
+                    model: Invoice,
+                    attributes: ['id', 'invoiceNumber', 'invoiceDate', 'netTotal', 'customerName', 'customerAddress'],
+                    include: [{
+                        model: Order,
+                        attributes: ['id', 'createdAt'],
+                        include: [{ model: Retailer, as: 'retailer', attributes: ['shopName', 'address'] }]
+                    }]
+                },
+            ]
+        });
+
+        if (!payment) {
+            return res.status(404).json({ message: 'Payment not found' });
+        }
+
+        res.json(payment);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     recordPayment,
     getPayments,
@@ -189,4 +216,5 @@ module.exports = {
     rejectPayment,
     cancelPayment,
     bulkApprovePayments,
+    getPaymentReceipt,
 };

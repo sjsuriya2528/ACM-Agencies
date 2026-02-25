@@ -16,8 +16,10 @@ import {
     Clock,
     Truck,
     XCircle,
-    MoreHorizontal
+    MoreHorizontal,
+    Printer
 } from 'lucide-react';
+import PaymentReceipt from '../components/PaymentReceipt';
 
 const RetailerDetail = () => {
     const { id } = useParams();
@@ -25,6 +27,8 @@ const RetailerDetail = () => {
     const [retailer, setRetailer] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'payments'
+    const [receiptData, setReceiptData] = useState(null);
+    const [isPrinting, setIsPrinting] = useState(false);
 
     const fetchRetailerDetails = async () => {
         try {
@@ -260,6 +264,22 @@ const RetailerDetail = () => {
         printWindow.document.close();
     };
 
+    const handlePrintReceipt = async (paymentId) => {
+        setIsPrinting(true);
+        try {
+            const response = await api.get(`/payments/${paymentId}/receipt`);
+            setReceiptData(response.data);
+            // Small delay to ensure component has rendered with data
+            setTimeout(() => {
+                window.print();
+                setIsPrinting(false);
+            }, 500);
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to fetch receipt data');
+            setIsPrinting(false);
+        }
+    };
+
     const getStatusStyle = (status) => {
         switch (status) {
             case 'Approved': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -274,11 +294,21 @@ const RetailerDetail = () => {
     const getStatusIcon = (status) => {
         switch (status) {
             case 'Approved': return <CheckCircle size={14} />;
-            case 'Requested': return <Clock size={14} />;
+            case 'Requested':
+            case 'Pending': return <Clock size={14} />;
             case 'Dispatched': return <Truck size={14} />;
             case 'Delivered': return <Package size={14} />;
             case 'Rejected': return <XCircle size={14} />;
             default: return null;
+        }
+    };
+
+    const getPaymentStatusStyle = (status) => {
+        switch (status) {
+            case 'Approved': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+            case 'Rejected': return 'bg-rose-100 text-rose-700 border-rose-200';
+            case 'Pending': return 'bg-amber-100 text-amber-700 border-amber-200';
+            default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
 
@@ -457,15 +487,31 @@ const RetailerDetail = () => {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col sm:items-end gap-1">
-                                            <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
-                                                <Calendar size={12} /> {new Date(payment.paymentDate).toLocaleString()}
-                                            </p>
-                                            <p className="text-xs text-gray-400">
-                                                Mode: <span className="font-bold text-gray-600">{payment.paymentMode}</span>
-                                                <span className="mx-2">|</span>
-                                                By: <span className="font-bold text-gray-600">{payment.collectedBy?.name}</span>
-                                            </p>
+                                        <div className="flex flex-col sm:items-end gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
+                                                    <Calendar size={12} /> {new Date(payment.paymentDate || payment.createdAt).toLocaleString()}
+                                                </p>
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider flex items-center gap-1 ${getPaymentStatusStyle(payment.approvalStatus || 'Approved')}`}>
+                                                    {getStatusIcon(payment.approvalStatus || 'Approved')} {payment.approvalStatus || 'Approved'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                                                <p className="text-xs text-gray-400">
+                                                    Mode: <span className="font-bold text-gray-600">{payment.paymentMode}</span>
+                                                    <span className="mx-2">|</span>
+                                                    By: <span className="font-bold text-gray-600">{payment.collectedBy?.name || 'System'}</span>
+                                                </p>
+                                                {(payment.approvalStatus || 'Approved') === 'Approved' && (
+                                                    <button
+                                                        onClick={() => handlePrintReceipt(payment.id)}
+                                                        disabled={isPrinting}
+                                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-bold text-xs p-1.5 bg-blue-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Printer size={14} /> Print
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))
@@ -478,6 +524,9 @@ const RetailerDetail = () => {
                     )}
                 </div>
             </div>
+
+            {/* Receipt Component for Printing */}
+            {receiptData && <PaymentReceipt data={receiptData} />}
         </div>
     );
 };

@@ -266,7 +266,7 @@ const run = async () => {
 
         // 4. Import OrderItems
         console.log('Importing OrderItems...');
-        const allOrderItems = await importCsv(path.join(CSV_DIR, 'updated_OrderItems.csv'), processOrderItem);
+        const allOrderItems = await importCsv(path.join(CSV_DIR, 'final_updated_orderitems_combined.csv'), processOrderItem);
         const orderItems = allOrderItems.filter(oi => {
             if (!orderIds.has(oi.orderId)) return false;
             if (oi.productId && !productIds.has(oi.productId)) {

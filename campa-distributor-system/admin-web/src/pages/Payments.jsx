@@ -15,8 +15,10 @@ import {
     Clock,
     ThumbsUp,
     ThumbsDown,
+    Printer,
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import PaymentReceipt from '../components/PaymentReceipt';
 
 const STATUS_STYLES = {
     Pending: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -45,6 +47,8 @@ const Payments = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loadingInvoices, setLoadingInvoices] = useState(false);
     const [actionLoading, setActionLoading] = useState(null); // paymentId being actioned
+    const [receiptData, setReceiptData] = useState(null);
+    const [isPrinting, setIsPrinting] = useState(false);
 
     useEffect(() => { fetchPayments(); }, []);
 
@@ -92,6 +96,22 @@ const Payments = () => {
         }
     };
 
+    const handlePrintReceipt = async (paymentId) => {
+        setIsPrinting(true);
+        try {
+            const response = await api.get(`/payments/${paymentId}/receipt`);
+            setReceiptData(response.data);
+            // Small delay to ensure component has rendered with data
+            setTimeout(() => {
+                window.print();
+                setIsPrinting(false);
+            }, 500);
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to fetch receipt data');
+            setIsPrinting(false);
+        }
+    };
+
     const handleBulkApprove = async () => {
         if (!window.confirm(`Approve all ${pendingCount} pending payments? This will update all related invoice balances.`)) return;
 
@@ -117,7 +137,7 @@ const Payments = () => {
         }
         setIsSubmitting(true);
         try {
-            await api.post('/payments', {
+            const response = await api.post('/payments', {
                 invoiceId: selectedInvoice.id,
                 amount: paymentData.amount,
                 paymentMode: paymentData.paymentMode,
@@ -127,7 +147,11 @@ const Payments = () => {
             setShowRecordModal(false);
             setSelectedInvoice(null);
             setPaymentData({ amount: '', paymentMode: 'Cash', transactionId: '', paymentDate: new Date().toISOString().split('T')[0] });
-            alert('Payment recorded successfully!');
+
+            if (window.confirm('Payment recorded successfully! Do you want to print the receipt?')) {
+                handlePrintReceipt(response.data.id);
+            }
+
             fetchPayments();
         } catch (error) {
             alert(error.response?.data?.message || 'Failed to record payment');
@@ -351,13 +375,22 @@ const Payments = () => {
                                                     </>
                                                 )}
                                                 {status === 'Approved' && (
-                                                    <button
-                                                        onClick={() => handleAction(payment.id, 'cancel')}
-                                                        className="p-2 bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors font-bold text-xs flex items-center gap-1"
-                                                        title="Cancel (revert invoice)"
-                                                    >
-                                                        <RotateCcw size={14} /> Cancel
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() => handlePrintReceipt(payment.id)}
+                                                            className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-colors font-bold text-xs flex items-center gap-1"
+                                                            title="Print Receipt"
+                                                        >
+                                                            <Printer size={15} /> Print
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAction(payment.id, 'cancel')}
+                                                            className="p-2 bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors font-bold text-xs flex items-center gap-1"
+                                                            title="Cancel (revert invoice)"
+                                                        >
+                                                            <RotateCcw size={14} /> Cancel
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         )}
@@ -479,6 +512,9 @@ const Payments = () => {
                     </div>
                 </div>
             )}
+
+            {/* Receipt Component for Printing */}
+            {receiptData && <PaymentReceipt data={receiptData} />}
         </div>
     );
 };
