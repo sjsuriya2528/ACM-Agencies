@@ -48,7 +48,25 @@ const recordPayment = async (req, res) => {
 // @access  Private (Admin)
 const getPayments = async (req, res) => {
     try {
-        const payments = await Payment.findAll({
+        const { page = 1, limit = 50, status, mode, search } = req.query;
+        const offset = (page - 1) * limit;
+
+        const { Op } = require('sequelize');
+        const where = {};
+        if (status && status !== 'All') where.approvalStatus = status;
+        if (mode && mode !== 'All') where.paymentMode = mode;
+        if (search) {
+            where[Op.or] = [
+                { retailerName: { [Op.iLike]: `%${search}%` } },
+                { transactionId: { [Op.iLike]: `%${search}%` } },
+                { '$collectedBy.name$': { [Op.iLike]: `%${search}%` } },
+                { '$Invoice.customerName$': { [Op.iLike]: `%${search}%` } },
+                { '$Invoice.Order.retailer.shopName$': { [Op.iLike]: `%${search}%` } },
+            ];
+        }
+
+        const { count, rows: payments } = await Payment.findAndCountAll({
+            where,
             include: [
                 { model: User, as: 'collectedBy', attributes: ['id', 'name', 'role'] },
                 { model: User, as: 'approvedBy', attributes: ['id', 'name'] },
@@ -57,12 +75,14 @@ const getPayments = async (req, res) => {
                     attributes: ['id', 'netTotal', 'balanceAmount', 'customerName'],
                     include: [{
                         model: Order,
-                        attributes: ['id'],
+                        attributes: ['id', 'retailerId'],
                         include: [{ model: Retailer, as: 'retailer', attributes: ['shopName'] }]
                     }]
                 },
             ],
             order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
         });
 
         const results = payments.map(p => {
@@ -75,7 +95,12 @@ const getPayments = async (req, res) => {
             return json;
         });
 
-        res.json(results);
+        res.json({
+            total: count,
+            page: parseInt(page),
+            totalPages: Math.ceil(count / limit),
+            data: results
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -160,23 +185,45 @@ const cancelPayment = async (req, res) => {
 // @access  Private (Admin only)
 const bulkApprovePayments = async (req, res) => {
     try {
-        const pendingCount = await Payment.count({ where: { approvalStatus: 'Pending' } });
-        if (pendingCount === 0) {
+        // 1. Get all pending payments to know which invoices/retailers stay affected
+        const pendingPayments = await Payment.findAll({
+            where: { approvalStatus: 'Pending' },
+            include: [{
+                model: Invoice,
+                include: [{ model: Order, attributes: ['retailerId'] }]
+            }]
+        });
+
+        if (pendingPayments.length === 0) {
             return res.status(400).json({ message: 'No pending payments to approve' });
         }
 
-        // Update all pending payments to Approved
-        // individualHooks: true ensures that Invoice.updateBalance is called for each updated payment
+        const invoiceIds = [...new Set(pendingPayments.map(p => p.invoiceId))];
+        const retailerIds = [...new Set(pendingPayments.map(p => p.Invoice?.Order?.retailerId).filter(id => id))];
+
+        // 2. Perform bulk update on Payments (disable individual hooks to prevent O(N^2))
         await Payment.update({
             approvalStatus: 'Approved',
             approvedById: req.user.id,
             approvalNote: 'Bulk approved by admin',
         }, {
             where: { approvalStatus: 'Pending' },
-            individualHooks: true
+            individualHooks: false
         });
 
-        res.json({ message: `Successfully approved ${pendingCount} payments` });
+        // 3. Manually trigger balance updates ONCE per affected invoice
+        console.log(`Recalculating balances for ${invoiceIds.length} invoices...`);
+        for (const invoiceId of invoiceIds) {
+            await Invoice.updateBalance(invoiceId);
+        }
+
+        // 4. Manually trigger credit balance updates ONCE per affected retailer
+        console.log(`Recalculating credit for ${retailerIds.length} retailers...`);
+        for (const retailerId of retailerIds) {
+            await Retailer.updateCreditBalance(retailerId);
+        }
+
+        res.json({ message: `Successfully approved ${pendingPayments.length} payments and updated ${retailerIds.length} retailers.` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

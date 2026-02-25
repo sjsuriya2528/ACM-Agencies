@@ -21,6 +21,7 @@ import {
     Plus,
     Minus,
     RefreshCw,
+    RotateCcw,
     AlertCircle
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -39,6 +40,11 @@ const Orders = () => {
 
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalResults, setTotalResults] = useState(0);
+    const [limit, setLimit] = useState(50);
+    const [activeSearch, setActiveSearch] = useState('');
 
     // Edit Order State
     const [showEditModal, setShowEditModal] = useState(false);
@@ -99,20 +105,22 @@ const Orders = () => {
     }, []);
 
     useEffect(() => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-            if (filterStatus === 'Cancelled') {
-                fetchCancelledOrders(controller.signal);
-            } else {
-                fetchOrders(controller.signal);
-            }
-        }, 300); // 300ms debounce
+        const timer = setTimeout(() => {
+            setActiveSearch(searchTerm);
+            setPage(1);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
-        return () => {
-            clearTimeout(timeoutId);
-            controller.abort();
-        };
-    }, [startDate, endDate, filterStatus]);
+    useEffect(() => {
+        const controller = new AbortController();
+        if (filterStatus === 'Cancelled') {
+            fetchCancelledOrders(controller.signal);
+        } else {
+            fetchOrders(controller.signal);
+        }
+        return () => controller.abort();
+    }, [startDate, endDate, filterStatus, paymentFilter, activeSearch, page]);
 
     // Body Scroll Lock for Modal
     useEffect(() => {
@@ -130,11 +138,19 @@ const Orders = () => {
 
     const fetchOrders = async (signal) => {
         try {
-            const params = {};
-            if (startDate) params.startDate = startDate;
-            if (endDate) params.endDate = endDate;
+            setLoading(true);
+            const params = {
+                startDate,
+                endDate,
+                page,
+                limit,
+                search: activeSearch,
+                paymentMode: paymentFilter !== 'All' ? paymentFilter : undefined
+            };
             const response = await api.get('/orders', { params, signal });
-            setOrders(response.data);
+            setOrders(response.data.data);
+            setTotalPages(response.data.totalPages);
+            setTotalResults(response.data.total);
         } catch (error) {
             if (error.name === 'CanceledError' || error.name === 'AbortError') return;
             console.error("Failed to fetch orders", error);
@@ -145,14 +161,23 @@ const Orders = () => {
 
     const fetchCancelledOrders = async (signal) => {
         try {
-            const params = {};
-            if (startDate) params.startDate = startDate;
-            if (endDate) params.endDate = endDate;
+            setLoadingCancelled(true);
+            const params = {
+                startDate,
+                endDate,
+                page,
+                limit,
+                search: activeSearch
+            };
             const response = await api.get('/orders/cancelled', { params, signal });
-            setCancelledOrders(response.data);
+            setCancelledOrders(response.data.data);
+            setTotalPages(response.data.totalPages);
+            setTotalResults(response.data.total);
         } catch (error) {
             if (error.name === 'CanceledError' || error.name === 'AbortError') return;
             console.error("Failed to fetch cancelled orders", error);
+        } finally {
+            setLoadingCancelled(false);
         }
     };
 
@@ -636,14 +661,8 @@ const Orders = () => {
         printWindow.document.close();
     };
 
-    const filteredOrders = (filterStatus === 'Cancelled' ? cancelledOrders : orders || []).filter(order => {
-        const matchesSearch = (order.retailer?.shopName || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
-            (order.salesRep?.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
-            (order.id?.toString() || '').includes(searchTerm);
-        const matchesStatus = filterStatus === 'All' || filterStatus === 'Cancelled' || order.status === filterStatus;
-        const matchesPayment = paymentFilter === 'All' || order.paymentMode === paymentFilter;
-        return matchesSearch && matchesStatus && matchesPayment;
-    });
+    const filteredOrders = filterStatus === 'Cancelled' ? cancelledOrders : orders || [];
+    // Frontend filtering removed as it's now handled by the server
 
     const currentTotalAmount = filteredOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 
@@ -1040,472 +1059,520 @@ const Orders = () => {
                         )}
                     </tbody>
                 </table>
+
+                {/* Pagination Controls */}
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 bg-slate-50 border-t border-slate-100">
+                    <div className="text-sm text-slate-500 font-medium">
+                        Showing <span className="text-slate-900 font-bold">{Math.min(totalResults, (page - 1) * limit + 1)}</span> to{' '}
+                        <span className="text-slate-900 font-bold">{Math.min(totalResults, page * limit)}</span> of{' '}
+                        <span className="text-black font-black">{totalResults}</span> orders
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                            disabled={page === 1}
+                            className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                        >
+                            <RotateCcw size={16} className="rotate-180" />
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                            {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) pageNum = i + 1;
+                                else if (page <= 3) pageNum = i + 1;
+                                else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                else pageNum = page - 2 + i;
+
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setPage(pageNum)}
+                                        className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${page === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'hover:bg-white bg-transparent text-slate-600 border border-transparent hover:border-slate-200'}`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <button
+                            onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={page === totalPages}
+                            className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                        >
+                            <RotateCcw size={16} />
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Create/Edit Order Modal - "The Sales Station" */}
-            {(showCreateModal || showEditModal) && createPortal(
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] overflow-y-auto">
-                    <div className="min-h-screen px-4 text-center">
-                        {/* Overlay ghost element to center content vertically */}
-                        <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
+            {
+                (showCreateModal || showEditModal) && createPortal(
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] overflow-y-auto">
+                        <div className="min-h-screen px-4 text-center">
+                            {/* Overlay ghost element to center content vertically */}
+                            <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
 
-                        <div className="inline-block w-full max-w-6xl my-8 text-left align-middle transition-all transform bg-white shadow-2xl rounded-3xl overflow-hidden relative">
-                            {/* Modal Header */}
-                            <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white flex-shrink-0">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-200">
-                                        <ShoppingCart size={24} />
+                            <div className="inline-block w-full max-w-6xl my-8 text-left align-middle transition-all transform bg-white shadow-2xl rounded-3xl overflow-hidden relative">
+                                {/* Modal Header */}
+                                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white flex-shrink-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-200">
+                                            <ShoppingCart size={24} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-800">{showEditModal ? 'Edit Order Station' : 'Sales Station'}</h2>
+                                            <p className="text-xs font-medium text-slate-400 uppercase tracking-tighter">{showEditModal ? `Modifying Order #${editingOrder?.id}` : 'Create & Place New Order'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold text-slate-800">{showEditModal ? 'Edit Order Station' : 'Sales Station'}</h2>
-                                        <p className="text-xs font-medium text-slate-400 uppercase tracking-tighter">{showEditModal ? `Modifying Order #${editingOrder?.id}` : 'Create & Place New Order'}</p>
-                                    </div>
+                                    <button
+                                        onClick={() => { setShowCreateModal(false); setShowEditModal(false); setEditingOrder(null); setCart({}); setSelectedRetailer(null); setFetchError(null); }}
+                                        className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
+                                    >
+                                        <XCircle size={28} strokeWidth={1.5} />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => { setShowCreateModal(false); setShowEditModal(false); setEditingOrder(null); setCart({}); setSelectedRetailer(null); setFetchError(null); }}
-                                    className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
-                                >
-                                    <XCircle size={28} strokeWidth={1.5} />
-                                </button>
-                            </div>
 
 
-                            <div className="flex flex-col lg:flex-row">
-                                {/* Left Pane: Catalog */}
-                                <div className="w-full lg:w-2/3 flex flex-col bg-slate-50/50 border-r border-slate-100">
-                                    <div className="p-6 border-b border-slate-100 space-y-4 flex-shrink-0">
-                                        {/* Retailer Selector */}
-                                        <div className="relative">
-                                            {selectedRetailer ? (
-                                                <div className="flex justify-between items-center bg-white p-3 rounded-2xl border border-blue-100 shadow-sm animate-in slide-in-from-top-2">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md">
-                                                            {selectedRetailer.shopName?.charAt(0) || '?'}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-slate-800 leading-tight">{selectedRetailer.shopName}</p>
-                                                            <p className="text-xs text-slate-500">{selectedRetailer.ownerName || 'No owner'} • {selectedRetailer.phone || 'No phone'}</p>
-                                                        </div>
-                                                    </div>
-                                                    <button onClick={() => setSelectedRetailer(null)} className="px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">Change</button>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    <div className="flex gap-2">
-                                                        <div className="relative flex-1 group">
-                                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Search retailer by shop or owner..."
-                                                                className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 shadow-sm"
-                                                                value={retailerSearchTerm}
-                                                                onChange={(e) => { setRetailerSearchTerm(e.target.value); setShowNewRetailerForm(false); }}
-                                                            />
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setShowNewRetailerForm(!showNewRetailerForm)}
-                                                            className={`px-6 rounded-2xl font-bold transition-all border ${showNewRetailerForm ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                                        >
-                                                            {showNewRetailerForm ? 'Cancel' : 'New +'}
-                                                        </button>
-                                                    </div>
-
-                                                    {showNewRetailerForm && (
-                                                        <div className="mt-4 p-6 bg-white rounded-3xl border-2 border-slate-200 animate-in fade-in slide-in-from-top-4 shadow-xl shadow-slate-200/50">
-                                                            <div className="flex justify-between items-center mb-6">
-                                                                <h4 className="font-black text-slate-800 flex items-center gap-2 group">
-                                                                    <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                                                                        <User size={18} />
-                                                                    </div>
-                                                                    Register New Retailer
-                                                                </h4>
-                                                                <button
-                                                                    onClick={() => setShowNewRetailerForm(false)}
-                                                                    className="p-1 px-3 text-xs font-black text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                                                                >
-                                                                    DISCARD
-                                                                </button>
+                                <div className="flex flex-col lg:flex-row">
+                                    {/* Left Pane: Catalog */}
+                                    <div className="w-full lg:w-2/3 flex flex-col bg-slate-50/50 border-r border-slate-100">
+                                        <div className="p-6 border-b border-slate-100 space-y-4 flex-shrink-0">
+                                            {/* Retailer Selector */}
+                                            <div className="relative">
+                                                {selectedRetailer ? (
+                                                    <div className="flex justify-between items-center bg-white p-3 rounded-2xl border border-blue-100 shadow-sm animate-in slide-in-from-top-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md">
+                                                                {selectedRetailer.shopName?.charAt(0) || '?'}
                                                             </div>
-                                                            <form onSubmit={handleCreateRetailer} className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                                <div className="space-y-1.5">
-                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Shop Name</label>
-                                                                    <input
-                                                                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
-                                                                        placeholder="e.g. SRM TRADERS"
-                                                                        value={newRetailer.shopName}
-                                                                        onChange={(e) => setNewRetailer({ ...newRetailer, shopName: e.target.value.toUpperCase() })}
-                                                                        required
-                                                                    />
-                                                                </div>
-                                                                <div className="space-y-1.5">
-                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Owner Name</label>
-                                                                    <input
-                                                                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
-                                                                        placeholder="e.g. RAJESH"
-                                                                        value={newRetailer.ownerName}
-                                                                        onChange={(e) => setNewRetailer({ ...newRetailer, ownerName: e.target.value.toUpperCase() })}
-                                                                        required
-                                                                    />
-                                                                </div>
-                                                                <div className="space-y-1.5">
-                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Contact Number</label>
-                                                                    <input
-                                                                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
-                                                                        placeholder="10-digit number"
-                                                                        value={newRetailer.phone}
-                                                                        onChange={(e) => setNewRetailer({ ...newRetailer, phone: e.target.value })}
-                                                                        required
-                                                                    />
-                                                                </div>
-                                                                <div className="space-y-1.5">
-                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Address / Route</label>
-                                                                    <input
-                                                                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
-                                                                        placeholder="Area or full address"
-                                                                        value={newRetailer.address}
-                                                                        onChange={(e) => setNewRetailer({ ...newRetailer, address: e.target.value.toUpperCase() })}
-                                                                        required
-                                                                    />
-                                                                </div>
-                                                                <div className="md:col-span-2 pt-2 flex gap-3">
+                                                            <div>
+                                                                <p className="font-bold text-slate-800 leading-tight">{selectedRetailer.shopName}</p>
+                                                                <p className="text-xs text-slate-500">{selectedRetailer.ownerName || 'No owner'} • {selectedRetailer.phone || 'No phone'}</p>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={() => setSelectedRetailer(null)} className="px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">Change</button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        <div className="flex gap-2">
+                                                            <div className="relative flex-1 group">
+                                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Search retailer by shop or owner..."
+                                                                    className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 shadow-sm"
+                                                                    value={retailerSearchTerm}
+                                                                    onChange={(e) => { setRetailerSearchTerm(e.target.value); setShowNewRetailerForm(false); }}
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setShowNewRetailerForm(!showNewRetailerForm)}
+                                                                className={`px-6 rounded-2xl font-bold transition-all border ${showNewRetailerForm ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                                            >
+                                                                {showNewRetailerForm ? 'Cancel' : 'New +'}
+                                                            </button>
+                                                        </div>
+
+                                                        {showNewRetailerForm && (
+                                                            <div className="mt-4 p-6 bg-white rounded-3xl border-2 border-slate-200 animate-in fade-in slide-in-from-top-4 shadow-xl shadow-slate-200/50">
+                                                                <div className="flex justify-between items-center mb-6">
+                                                                    <h4 className="font-black text-slate-800 flex items-center gap-2 group">
+                                                                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                            <User size={18} />
+                                                                        </div>
+                                                                        Register New Retailer
+                                                                    </h4>
                                                                     <button
-                                                                        type="submit"
-                                                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl font-black shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                                                                    >
-                                                                        Add Retailer <Plus size={20} />
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
                                                                         onClick={() => setShowNewRetailerForm(false)}
-                                                                        className="px-8 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-bold transition-all"
+                                                                        className="p-1 px-3 text-xs font-black text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                                                                     >
-                                                                        Cancel
+                                                                        DISCARD
                                                                     </button>
                                                                 </div>
-                                                            </form>
-                                                        </div>
-                                                    )}
-
-                                                    {retailerSearchTerm && !showNewRetailerForm && (
-                                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white shadow-2xl rounded-2xl border border-slate-100 z-10 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                                                            {(filteredRetailers || []).map(r => (
-                                                                <div
-                                                                    key={r.id}
-                                                                    onClick={() => { setSelectedRetailer(r); setRetailerSearchTerm(''); }}
-                                                                    className="p-4 hover:bg-blue-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors flex items-center justify-between"
-                                                                >
-                                                                    <div>
-                                                                        <p className="font-bold text-slate-800">{r.shopName || 'Unknown Shop'}</p>
-                                                                        <p className="text-xs text-slate-500">{r.ownerName || ''} • {r.address || ''}</p>
-                                                                    </div>
-                                                                    <div className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                                                                        <Plus size={16} />
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                            {filteredRetailers.length === 0 && <div className="p-8 text-center text-slate-400 text-sm">No retailers found</div>}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Search Product */}
-                                        <div className="relative group">
-                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                                            <input
-                                                type="text"
-                                                placeholder="Search products in catalog..."
-                                                className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 shadow-sm"
-                                                value={productSearchTerm}
-                                                onChange={(e) => setProductSearchTerm(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Catalog Grid */}
-                                    <div className="p-6">
-                                        {modalLoading ? (
-                                            <div className="flex flex-col items-center justify-center h-full space-y-4">
-                                                <RefreshCw className="w-10 h-10 text-blue-600 animate-spin" />
-                                                <p className="text-slate-500 font-bold tracking-tight">Syncing Inventory...</p>
-                                            </div>
-                                        ) : fetchError ? (
-                                            <div className="flex flex-col items-center justify-center h-full space-y-4 text-center">
-                                                <div className="p-4 bg-rose-50 rounded-full text-rose-500">
-                                                    <AlertCircle size={48} strokeWidth={1.5} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-slate-800 font-bold text-lg">Load Failed</p>
-                                                    <p className="text-slate-500 text-sm max-w-xs">{fetchError}</p>
-                                                </div>
-                                                <button
-                                                    onClick={fetchCreateOrderData}
-                                                    className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all"
-                                                >
-                                                    Try Again
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                                                {(products || []).filter(p => (p.name || '').toLowerCase().includes((productSearchTerm || '').toLowerCase())).map(product => {
-                                                    const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
-                                                    const totalQty = cartData.quantity;
-                                                    const pricePerUnit = cartData.pricePerUnit;
-                                                    const bottlesPerCrate = product.bottlesPerCrate || 24;
-                                                    const crates = Math.floor(totalQty / bottlesPerCrate);
-                                                    const pieces = totalQty % bottlesPerCrate;
-                                                    const gstRate = Number(product.gstPercentage || 18);
-
-                                                    return (
-                                                        <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-400/20 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300 shadow-sm'}`}>
-                                                            <div className="flex justify-between items-start mb-4">
-                                                                <div className="space-y-1">
-                                                                    <h4 className="font-black text-slate-800 leading-tight">{product.name}</h4>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.sellingPrice ?? product.price} (Sell) • 1 CR = {bottlesPerCrate}</ p>
-                                                                        <span className="text-[10x] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-black">GST: {gstRate}%</span>
-                                                                    </div>
-                                                                </div>
-                                                                {totalQty > 0 && (
-                                                                    <div className="text-right">
-                                                                        <p className="text-[10px] font-black text-slate-400 uppercase">Gross Total</p>
-                                                                        <p className="font-black text-blue-600">₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}</p>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="grid grid-cols-1 gap-3">
-                                                                <div className="space-y-1">
-                                                                    <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Taxable)</label>
-                                                                    <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                        <div className="pl-3 py-2 text-slate-400"><IndianRupee size={12} /></div>
+                                                                <form onSubmit={handleCreateRetailer} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                                    <div className="space-y-1.5">
+                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Shop Name</label>
                                                                         <input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                            value={pricePerUnit}
-                                                                            onChange={(e) => handlePriceChange(product.id, e.target.value)}
+                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            placeholder="e.g. SRM TRADERS"
+                                                                            value={newRetailer.shopName}
+                                                                            onChange={(e) => setNewRetailer({ ...newRetailer, shopName: e.target.value.toUpperCase() })}
+                                                                            required
                                                                         />
                                                                     </div>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-3">
-                                                                    <div className="space-y-1">
-                                                                        <label className="text-[10px] text-slate-400 uppercase font-black px-1">Crates</label>
-                                                                        <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                            <button
-                                                                                onClick={() => handleQuantityChange(product.id, 'crates', Math.max(0, crates - 1))}
-                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                            >
-                                                                                <Minus size={14} />
-                                                                            </button>
-                                                                            <input
-                                                                                type="number"
-                                                                                className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                                value={crates || ''}
-                                                                                placeholder="0"
-                                                                                onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
-                                                                            />
-                                                                            <button
-                                                                                onClick={() => handleQuantityChange(product.id, 'crates', crates + 1)}
-                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                            >
-                                                                                <Plus size={14} />
-                                                                            </button>
+                                                                    <div className="space-y-1.5">
+                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Owner Name</label>
+                                                                        <input
+                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            placeholder="e.g. RAJESH"
+                                                                            value={newRetailer.ownerName}
+                                                                            onChange={(e) => setNewRetailer({ ...newRetailer, ownerName: e.target.value.toUpperCase() })}
+                                                                            required
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Contact Number</label>
+                                                                        <input
+                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            placeholder="10-digit number"
+                                                                            value={newRetailer.phone}
+                                                                            onChange={(e) => setNewRetailer({ ...newRetailer, phone: e.target.value })}
+                                                                            required
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Address / Route</label>
+                                                                        <input
+                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            placeholder="Area or full address"
+                                                                            value={newRetailer.address}
+                                                                            onChange={(e) => setNewRetailer({ ...newRetailer, address: e.target.value.toUpperCase() })}
+                                                                            required
+                                                                        />
+                                                                    </div>
+                                                                    <div className="md:col-span-2 pt-2 flex gap-3">
+                                                                        <button
+                                                                            type="submit"
+                                                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl font-black shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                                        >
+                                                                            Add Retailer <Plus size={20} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setShowNewRetailerForm(false)}
+                                                                            className="px-8 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-bold transition-all"
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        )}
+
+                                                        {retailerSearchTerm && !showNewRetailerForm && (
+                                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white shadow-2xl rounded-2xl border border-slate-100 z-10 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                                                {(filteredRetailers || []).map(r => (
+                                                                    <div
+                                                                        key={r.id}
+                                                                        onClick={() => { setSelectedRetailer(r); setRetailerSearchTerm(''); }}
+                                                                        className="p-4 hover:bg-blue-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors flex items-center justify-between"
+                                                                    >
+                                                                        <div>
+                                                                            <p className="font-bold text-slate-800">{r.shopName || 'Unknown Shop'}</p>
+                                                                            <p className="text-xs text-slate-500">{r.ownerName || ''} • {r.address || ''}</p>
+                                                                        </div>
+                                                                        <div className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                            <Plus size={16} />
                                                                         </div>
                                                                     </div>
-                                                                    <div className="space-y-1">
-                                                                        <label className="text-[10px] text-slate-400 uppercase font-black px-1">Pieces</label>
-                                                                        <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                            <button
-                                                                                onClick={() => handleQuantityChange(product.id, 'pieces', Math.max(0, pieces - 1))}
-                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                            >
-                                                                                <Minus size={14} />
-                                                                            </button>
-                                                                            <input
-                                                                                type="number"
-                                                                                className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                                value={pieces || ''}
-                                                                                placeholder="0"
-                                                                                onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
-                                                                            />
-                                                                            <button
-                                                                                onClick={() => handleQuantityChange(product.id, 'pieces', pieces + 1)}
-                                                                                className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                            >
-                                                                                <Plus size={14} />
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                                ))}
+                                                                {filteredRetailers.length === 0 && <div className="p-8 text-center text-slate-400 text-sm">No retailers found</div>}
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Right Pane: Cart Summary */}
-                                <div className="hidden lg:flex w-1/3 flex-col bg-white">
-                                    <div className="p-8 flex flex-col h-full">
-                                        <div className="space-y-1 mb-8 sticky top-0 bg-white z-10 py-2">
-                                            <h3 className="text-2xl font-black text-slate-800 tracking-tight">Cart Summary</h3>
-                                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Review items & payment</p>
-                                        </div>
-
-                                        <div className="space-y-4 pr-1">
-                                            {Object.entries(cart).length === 0 ? (
-                                                <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-4 border-2 border-dashed border-slate-100 rounded-3xl p-8">
-                                                    <ShoppingCart size={64} strokeWidth={1} />
-                                                    <p className="font-bold text-center">Your station is empty. Add products to start.</p>
-                                                </div>
-                                            ) : (
-                                                Object.entries(cart).map(([pId, qty]) => {
-                                                    const product = products.find(p => p.id === parseInt(pId));
-                                                    if (!product) return null;
-                                                    const bpc = product.bottlesPerCrate || 24;
-                                                    const crates = Math.floor(qty / bpc);
-                                                    const pieces = qty % bpc;
-
-                                                    return (
-                                                        <div key={pId} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 animate-in slide-in-from-right-4 transition-all hover:border-slate-300">
-                                                            <div>
-                                                                <p className="font-bold text-slate-800">{product.name}</p>
-                                                                <p className="text-xs font-bold text-blue-600 uppercase tracking-tighter">
-                                                                    {crates > 0 && `${crates} Crates `}{pieces > 0 && `${pieces} Pieces`}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <p className="font-black text-slate-800">₹{(qty * (product.sellingPrice ?? product.price)).toFixed(2)}</p>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const { [pId]: _, ...rest } = cart;
-                                                                        setCart(rest);
-                                                                    }}
-                                                                    className="text-xs text-rose-500 font-bold hover:underline"
-                                                                >
-                                                                    Remove
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            )}
-                                        </div>
-
-                                        {/* Payment & Action Area */}
-                                        <div className="mt-8 pt-8 border-t-4 border-double border-slate-100 space-y-6">
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Payment Strategy</label>
-                                                <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
-                                                    {['Credit', 'Cash'].map(mode => (
-                                                        <button
-                                                            key={mode}
-                                                            onClick={() => setPaymentMode(mode)}
-                                                            className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${paymentMode === mode ? 'bg-white shadow-lg text-blue-600 border border-blue-100 scale-105' : 'text-slate-500 hover:text-slate-800'}`}
-                                                        >
-                                                            {mode}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {/* Remarks */}
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Order Remarks</label>
-                                                <textarea
-                                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 text-sm shadow-sm"
-                                                    rows="2"
-                                                    placeholder="Add any special instructions or billing notes..."
-                                                    value={remarks}
-                                                    onChange={(e) => setRemarks(e.target.value)}
+                                            {/* Search Product */}
+                                            <div className="relative group">
+                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search products in catalog..."
+                                                    className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 shadow-sm"
+                                                    value={productSearchTerm}
+                                                    onChange={(e) => setProductSearchTerm(e.target.value)}
                                                 />
                                             </div>
+                                        </div>
 
-                                            {/* Round Off Toggle */}
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
-                                                            <RefreshCw size={14} />
-                                                        </div>
-                                                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Round Off Total</span>
+                                        {/* Catalog Grid */}
+                                        <div className="p-6">
+                                            {modalLoading ? (
+                                                <div className="flex flex-col items-center justify-center h-full space-y-4">
+                                                    <RefreshCw className="w-10 h-10 text-blue-600 animate-spin" />
+                                                    <p className="text-slate-500 font-bold tracking-tight">Syncing Inventory...</p>
+                                                </div>
+                                            ) : fetchError ? (
+                                                <div className="flex flex-col items-center justify-center h-full space-y-4 text-center">
+                                                    <div className="p-4 bg-rose-50 rounded-full text-rose-500">
+                                                        <AlertCircle size={48} strokeWidth={1.5} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-slate-800 font-bold text-lg">Load Failed</p>
+                                                        <p className="text-slate-500 text-sm max-w-xs">{fetchError}</p>
                                                     </div>
                                                     <button
-                                                        onClick={() => setIsRounded(!isRounded)}
-                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isRounded ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                                        onClick={fetchCreateOrderData}
+                                                        className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all"
                                                     >
-                                                        <span
-                                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRounded ? 'translate-x-6' : 'translate-x-1'}`}
-                                                        />
+                                                        Try Again
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                                                    {(products || []).filter(p => (p.name || '').toLowerCase().includes((productSearchTerm || '').toLowerCase())).map(product => {
+                                                        const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
+                                                        const totalQty = cartData.quantity;
+                                                        const pricePerUnit = cartData.pricePerUnit;
+                                                        const bottlesPerCrate = product.bottlesPerCrate || 24;
+                                                        const crates = Math.floor(totalQty / bottlesPerCrate);
+                                                        const pieces = totalQty % bottlesPerCrate;
+                                                        const gstRate = Number(product.gstPercentage || 18);
+
+                                                        return (
+                                                            <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-400/20 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300 shadow-sm'}`}>
+                                                                <div className="flex justify-between items-start mb-4">
+                                                                    <div className="space-y-1">
+                                                                        <h4 className="font-black text-slate-800 leading-tight">{product.name}</h4>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.sellingPrice ?? product.price} (Sell) • 1 CR = {bottlesPerCrate}</ p>
+                                                                            <span className="text-[10x] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-black">GST: {gstRate}%</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {totalQty > 0 && (
+                                                                        <div className="text-right">
+                                                                            <p className="text-[10px] font-black text-slate-400 uppercase">Gross Total</p>
+                                                                            <p className="font-black text-blue-600">₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 gap-3">
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Taxable)</label>
+                                                                        <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                            <div className="pl-3 py-2 text-slate-400"><IndianRupee size={12} /></div>
+                                                                            <input
+                                                                                type="number"
+                                                                                step="0.01"
+                                                                                className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                value={pricePerUnit}
+                                                                                onChange={(e) => handlePriceChange(product.id, e.target.value)}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1">Crates</label>
+                                                                            <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                                <button
+                                                                                    onClick={() => handleQuantityChange(product.id, 'crates', Math.max(0, crates - 1))}
+                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                >
+                                                                                    <Minus size={14} />
+                                                                                </button>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                    value={crates || ''}
+                                                                                    placeholder="0"
+                                                                                    onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
+                                                                                />
+                                                                                <button
+                                                                                    onClick={() => handleQuantityChange(product.id, 'crates', crates + 1)}
+                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                >
+                                                                                    <Plus size={14} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1">Pieces</label>
+                                                                            <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                                <button
+                                                                                    onClick={() => handleQuantityChange(product.id, 'pieces', Math.max(0, pieces - 1))}
+                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                >
+                                                                                    <Minus size={14} />
+                                                                                </button>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                    value={pieces || ''}
+                                                                                    placeholder="0"
+                                                                                    onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
+                                                                                />
+                                                                                <button
+                                                                                    onClick={() => handleQuantityChange(product.id, 'pieces', pieces + 1)}
+                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                >
+                                                                                    <Plus size={14} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Pane: Cart Summary */}
+                                    <div className="hidden lg:flex w-1/3 flex-col bg-white">
+                                        <div className="p-8 flex flex-col h-full">
+                                            <div className="space-y-1 mb-8 sticky top-0 bg-white z-10 py-2">
+                                                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Cart Summary</h3>
+                                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Review items & payment</p>
+                                            </div>
+
+                                            <div className="space-y-4 pr-1">
+                                                {Object.entries(cart).length === 0 ? (
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-4 border-2 border-dashed border-slate-100 rounded-3xl p-8">
+                                                        <ShoppingCart size={64} strokeWidth={1} />
+                                                        <p className="font-bold text-center">Your station is empty. Add products to start.</p>
+                                                    </div>
+                                                ) : (
+                                                    Object.entries(cart).map(([pId, qty]) => {
+                                                        const product = products.find(p => p.id === parseInt(pId));
+                                                        if (!product) return null;
+                                                        const bpc = product.bottlesPerCrate || 24;
+                                                        const crates = Math.floor(qty / bpc);
+                                                        const pieces = qty % bpc;
+
+                                                        return (
+                                                            <div key={pId} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 animate-in slide-in-from-right-4 transition-all hover:border-slate-300">
+                                                                <div>
+                                                                    <p className="font-bold text-slate-800">{product.name}</p>
+                                                                    <p className="text-xs font-bold text-blue-600 uppercase tracking-tighter">
+                                                                        {crates > 0 && `${crates} Crates `}{pieces > 0 && `${pieces} Pieces`}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="font-black text-slate-800">₹{(qty * (product.sellingPrice ?? product.price)).toFixed(2)}</p>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const { [pId]: _, ...rest } = cart;
+                                                                            setCart(rest);
+                                                                        }}
+                                                                        className="text-xs text-rose-500 font-bold hover:underline"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+
+                                            {/* Payment & Action Area */}
+                                            <div className="mt-8 pt-8 border-t-4 border-double border-slate-100 space-y-6">
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Payment Strategy</label>
+                                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
+                                                        {['Credit', 'Cash'].map(mode => (
+                                                            <button
+                                                                key={mode}
+                                                                onClick={() => setPaymentMode(mode)}
+                                                                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${paymentMode === mode ? 'bg-white shadow-lg text-blue-600 border border-blue-100 scale-105' : 'text-slate-500 hover:text-slate-800'}`}
+                                                            >
+                                                                {mode}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Remarks */}
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Order Remarks</label>
+                                                    <textarea
+                                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 text-sm shadow-sm"
+                                                        rows="2"
+                                                        placeholder="Add any special instructions or billing notes..."
+                                                        value={remarks}
+                                                        onChange={(e) => setRemarks(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                {/* Round Off Toggle */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                                                                <RefreshCw size={14} />
+                                                            </div>
+                                                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Round Off Total</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setIsRounded(!isRounded)}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isRounded ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                                        >
+                                                            <span
+                                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRounded ? 'translate-x-6' : 'translate-x-1'}`}
+                                                            />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-6 bg-slate-900 rounded-3xl text-white shadow-2xl shadow-slate-400">
+                                                    <div className="flex justify-between items-end mb-6">
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                                {isRounded ? 'Total Payable (Rounded)' : 'Total Payable'}
+                                                            </p>
+                                                            <p className="text-4xl font-black tracking-tighter">
+                                                                ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </p>
+                                                            {isRounded && (
+                                                                <p className="text-[10px] text-slate-400 mt-1 font-bold">
+                                                                    Round off adjustment: ₹{(Math.round(calculateTotal()) - calculateTotal()).toFixed(2)}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
+                                                        disabled={Object.keys(cart).length === 0 || !selectedRetailer}
+                                                        className={`w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 ${Object.keys(cart).length === 0 || !selectedRetailer
+                                                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-100' // Keeping it visible but clearly disabled style
+                                                            : 'bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-xl shadow-blue-500/20'}`}
+                                                    >
+                                                        {!selectedRetailer ? (
+                                                            <>Select Retailer <User size={20} className="opacity-50" /></>
+                                                        ) : Object.keys(cart).length === 0 ? (
+                                                            <>Add Items to Cart <ShoppingCart size={20} className="opacity-50" /></>
+                                                        ) : (
+                                                            <>{showEditModal ? 'Update Order' : 'Place Order'} <Truck size={20} /></>
+                                                        )}
                                                     </button>
                                                 </div>
                                             </div>
-
-                                            <div className="p-6 bg-slate-900 rounded-3xl text-white shadow-2xl shadow-slate-400">
-                                                <div className="flex justify-between items-end mb-6">
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                                            {isRounded ? 'Total Payable (Rounded)' : 'Total Payable'}
-                                                        </p>
-                                                        <p className="text-4xl font-black tracking-tighter">
-                                                            ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </p>
-                                                        {isRounded && (
-                                                            <p className="text-[10px] text-slate-400 mt-1 font-bold">
-                                                                Round off adjustment: ₹{(Math.round(calculateTotal()) - calculateTotal()).toFixed(2)}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
-                                                    disabled={Object.keys(cart).length === 0 || !selectedRetailer}
-                                                    className={`w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 ${Object.keys(cart).length === 0 || !selectedRetailer
-                                                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-100' // Keeping it visible but clearly disabled style
-                                                        : 'bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-xl shadow-blue-500/20'}`}
-                                                >
-                                                    {!selectedRetailer ? (
-                                                        <>Select Retailer <User size={20} className="opacity-50" /></>
-                                                    ) : Object.keys(cart).length === 0 ? (
-                                                        <>Add Items to Cart <ShoppingCart size={20} className="opacity-50" /></>
-                                                    ) : (
-                                                        <>{showEditModal ? 'Update Order' : 'Place Order'} <Truck size={20} /></>
-                                                    )}
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Mobile Action Bar (If on mobile) */}
-                            <div className="lg:hidden p-6 bg-white border-t border-slate-100 flex justify-between items-center shadow-2xl sticky bottom-0 z-20">
-                                <div>
-                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Order Total</p>
-                                    <p className="text-2xl font-black text-slate-900">
-                                        ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </p>
+                                {/* Mobile Action Bar (If on mobile) */}
+                                <div className="lg:hidden p-6 bg-white border-t border-slate-100 flex justify-between items-center shadow-2xl sticky bottom-0 z-20">
+                                    <div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Order Total</p>
+                                        <p className="text-2xl font-black text-slate-900">
+                                            ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
+                                        disabled={Object.keys(cart).length === 0 || !selectedRetailer}
+                                        className={`px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${Object.keys(cart).length === 0 || !selectedRetailer
+                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                            : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                                    >
+                                        {!selectedRetailer ? 'Select Retailer' : Object.keys(cart).length === 0 ? 'Add Items' : (showEditModal ? 'Update Order' : 'Place Order')}
+                                        {!selectedRetailer || Object.keys(cart).length === 0 ? <AlertCircle size={18} /> : <Truck size={18} />}
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
-                                    disabled={Object.keys(cart).length === 0 || !selectedRetailer}
-                                    className={`px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${Object.keys(cart).length === 0 || !selectedRetailer
-                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                        : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                                >
-                                    {!selectedRetailer ? 'Select Retailer' : Object.keys(cart).length === 0 ? 'Add Items' : (showEditModal ? 'Update Order' : 'Place Order')}
-                                    {!selectedRetailer || Object.keys(cart).length === 0 ? <AlertCircle size={18} /> : <Truck size={18} />}
-                                </button>
                             </div>
                         </div>
-                    </div>
-                </div>,
-                document.body
-            )
+                    </div>,
+                    document.body
+                )
             }
         </div >
     );

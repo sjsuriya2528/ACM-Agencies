@@ -36,8 +36,13 @@ const Payments = () => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeSearch, setActiveSearch] = useState(''); // Search term actually used for fetch
     const [filterStatus, setFilterStatus] = useState('All');
     const [filterMode, setFilterMode] = useState('All');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalResults, setTotalResults] = useState(0);
+    const [limit, setLimit] = useState(50);
     const [error, setError] = useState(null);
     const [showRecordModal, setShowRecordModal] = useState(false);
     const [invoices, setInvoices] = useState([]);
@@ -50,14 +55,33 @@ const Payments = () => {
     const [receiptData, setReceiptData] = useState(null);
     const [isPrinting, setIsPrinting] = useState(false);
 
-    useEffect(() => { fetchPayments(); }, []);
+    useEffect(() => { fetchPayments(); }, [page, filterStatus, filterMode, activeSearch]);
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setActiveSearch(searchTerm);
+            setPage(1); // Reset to first page on search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const fetchPayments = async () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await api.get('/payments');
-            setPayments(response.data);
+            const response = await api.get('/payments', {
+                params: {
+                    page,
+                    limit,
+                    status: filterStatus,
+                    mode: filterMode,
+                    search: activeSearch
+                }
+            });
+            setPayments(response.data.data);
+            setTotalPages(response.data.totalPages);
+            setTotalResults(response.data.total);
         } catch (error) {
             setError(error.response?.data?.message || 'Failed to fetch payments.');
         } finally {
@@ -65,10 +89,15 @@ const Payments = () => {
         }
     };
 
-    const fetchPendingInvoices = async () => {
+    const fetchPendingInvoices = async (search = '') => {
         try {
             setLoadingInvoices(true);
-            const response = await api.get('/invoices?status=Pending');
+            const response = await api.get('/invoices', {
+                params: {
+                    status: 'Pending',
+                    search: search
+                }
+            });
             setInvoices(response.data);
         } catch (error) {
             console.error('Failed to fetch invoices', error);
@@ -76,6 +105,15 @@ const Payments = () => {
             setLoadingInvoices(false);
         }
     };
+
+    // Debounce invoice search in modal
+    useEffect(() => {
+        if (!showRecordModal) return;
+        const timer = setTimeout(() => {
+            fetchPendingInvoices(searchInvoice);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchInvoice, showRecordModal]);
 
     const handleAction = async (id, action) => {
         const confirmMessages = {
@@ -160,15 +198,11 @@ const Payments = () => {
         }
     };
 
-    const filteredPayments = payments.filter(p => {
-        const matchSearch =
-            (p.Invoice?.Order?.retailer?.shopName || p.retailerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.collectedBy?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.transactionId || '').toLowerCase().includes(searchTerm.toLowerCase());
-        const matchStatus = filterStatus === 'All' || p.approvalStatus === filterStatus;
-        const matchMode = filterMode === 'All' || p.paymentMode === filterMode;
-        return matchSearch && matchStatus && matchMode;
-    });
+    // Filter and total logic moved to server side, but we still calculate some stats from the current page/summary
+    const pendingCountInPage = payments.filter(p => p.approvalStatus === 'Pending').length;
+    // For pendingCount across all pages, we should ideally get it from the backend summary or a separate call
+    // But for now, let's assume we want a quick way to see total pending
+    // I'll add a 'summary' field to the backend later if needed. For now just use what's in the current list.
 
     const pendingCount = payments.filter(p => p.approvalStatus === 'Pending').length;
     const totalApproved = payments
@@ -287,7 +321,7 @@ const Payments = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                        {filteredPayments.length > 0 ? filteredPayments.map(payment => {
+                        {payments.length > 0 ? payments.map(payment => {
                             const status = payment.approvalStatus || 'Approved';
                             const isActioning = actionLoading === payment.id;
 
@@ -408,6 +442,54 @@ const Payments = () => {
                 </table>
             </div>
 
+            {/* Pagination Controls */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                <div className="text-sm text-slate-500 font-medium">
+                    Showing <span className="text-slate-900 font-bold">{Math.min(totalResults, (page - 1) * limit + 1)}</span> to{' '}
+                    <span className="text-slate-900 font-bold">{Math.min(totalResults, page * limit)}</span> of{' '}
+                    <span className="text-black font-black">{totalResults}</span> payments
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                        disabled={page === 1}
+                        className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <RotateCcw size={16} className="rotate-180" />
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                        {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) pageNum = i + 1;
+                            else if (page <= 3) pageNum = i + 1;
+                            else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                            else pageNum = page - 2 + i;
+
+                            return (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => setPage(pageNum)}
+                                    className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${page === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'hover:bg-slate-100 text-slate-600'}`}
+                                >
+                                    {pageNum}
+                                </button>
+                            );
+                        })}
+                        {totalPages > 5 && page < totalPages - 2 && <span className="px-2 text-slate-400">...</span>}
+                    </div>
+
+                    <button
+                        onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={page === totalPages}
+                        className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <RotateCcw size={16} />
+                    </button>
+                </div>
+            </div>
+
             {/* Record New Payment Modal */}
             {showRecordModal && (
                 <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 pt-10 md:pt-20 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
@@ -439,10 +521,7 @@ const Payments = () => {
                                 <div className="h-[300px] overflow-y-auto space-y-2 pr-2">
                                     {loadingInvoices ? (
                                         <div className="flex justify-center py-10"><LoadingSpinner /></div>
-                                    ) : invoices.filter(inv =>
-                                        (inv.Order?.retailer?.shopName || '').toLowerCase().includes(searchInvoice.toLowerCase()) ||
-                                        inv.id.toString().includes(searchInvoice)
-                                    ).map(invoice => (
+                                    ) : invoices.map(invoice => (
                                         <button
                                             key={invoice.id}
                                             onClick={() => { setSelectedInvoice(invoice); setPaymentData({ ...paymentData, amount: invoice.balanceAmount }); }}

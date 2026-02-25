@@ -11,12 +11,26 @@ const Retailers = () => {
     const [formData, setFormData] = useState({ shopName: '', ownerName: '', phone: '', address: '', gstin: '' });
     const [editingId, setEditingId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeSearch, setActiveSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalResults, setTotalResults] = useState(0);
+    const [limit, setLimit] = useState(50);
 
-    const fetchRetailers = async () => {
+    const fetchRetailers = async (signal) => {
         try {
-            const response = await api.get('/retailers');
-            setRetailers(response.data);
+            setLoading(true);
+            const params = {
+                page,
+                limit,
+                search: activeSearch
+            };
+            const response = await api.get('/retailers', { params, signal });
+            setRetailers(response.data.data);
+            setTotalPages(response.data.totalPages);
+            setTotalResults(response.data.total);
         } catch (error) {
+            if (error.name === 'CanceledError' || error.name === 'AbortError') return;
             console.error(error);
         } finally {
             setLoading(false);
@@ -24,8 +38,18 @@ const Retailers = () => {
     };
 
     useEffect(() => {
-        fetchRetailers();
-    }, []);
+        const timer = setTimeout(() => {
+            setActiveSearch(searchTerm);
+            setPage(1);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchRetailers(controller.signal);
+        return () => controller.abort();
+    }, [page, activeSearch]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -109,11 +133,7 @@ const Retailers = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {retailers.filter(r =>
-                                (r.shopName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                (r.ownerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                r.phone?.includes(searchTerm)
-                            ).map(retailer => (
+                            {retailers.map(retailer => (
                                 <tr key={retailer.id} className="hover:bg-purple-50 transition-colors duration-150">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -145,6 +165,57 @@ const Retailers = () => {
                             ))}
                         </tbody>
                     </table>
+
+                    {/* Pagination Controls */}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 bg-gray-50 border-t border-gray-100">
+                        <div className="text-sm text-gray-500 font-medium">
+                            Showing <span className="text-gray-900 font-bold">{Math.min(totalResults, (page - 1) * limit + 1)}</span> to{' '}
+                            <span className="text-gray-900 font-bold">{Math.min(totalResults, page * limit)}</span> of{' '}
+                            <span className="text-black font-black">{totalResults}</span> retailers
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                                disabled={page === 1}
+                                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                            >
+                                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+                                </svg>
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                                    let pageNum;
+                                    if (totalPages <= 5) pageNum = i + 1;
+                                    else if (page <= 3) pageNum = i + 1;
+                                    else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                    else pageNum = page - 2 + i;
+
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => setPage(pageNum)}
+                                            className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${page === pageNum ? 'bg-purple-600 text-white shadow-lg shadow-purple-100' : 'hover:bg-white bg-transparent text-gray-600 border border-transparent hover:border-gray-200'}`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <button
+                                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={page === totalPages}
+                                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                            >
+                                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

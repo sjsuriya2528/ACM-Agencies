@@ -6,13 +6,21 @@ const { Op } = Sequelize;
 // @access  Private (Admin/Collector)
 const getInvoices = async (req, res) => {
     try {
-        const { status } = req.query;
+        const { status, search } = req.query;
         let whereClause = {};
 
         if (status === 'Pending') {
             whereClause.paymentStatus = { [Op.in]: ['Pending', 'Partially Paid'] };
         } else if (status) {
             whereClause.paymentStatus = status;
+        }
+
+        if (search) {
+            whereClause[Op.or] = [
+                { invoiceNumber: { [Op.iLike]: `%${search}%` } },
+                { customerName: { [Op.iLike]: `%${search}%` } },
+                { '$Order.retailer.shopName$': { [Op.iLike]: `%${search}%` } }
+            ];
         }
 
         const invoices = await Invoice.findAll({

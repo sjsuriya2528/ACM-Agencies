@@ -5,10 +5,33 @@ const { Retailer, Order, OrderItem, Invoice, Payment, User, Product } = require(
 // @access  Private
 const getRetailers = async (req, res) => {
     try {
-        const retailers = await Retailer.findAll({
-            order: [['shopName', 'ASC']]
+        const { page = 1, limit = 50, search } = req.query;
+        const offset = (page - 1) * limit;
+
+        const { Op } = require('sequelize');
+        const where = {};
+        if (search) {
+            where[Op.or] = [
+                { shopName: { [Op.iLike]: `%${search}%` } },
+                { ownerName: { [Op.iLike]: `%${search}%` } },
+                { phone: { [Op.iLike]: `%${search}%` } },
+                { address: { [Op.iLike]: `%${search}%` } },
+            ];
+        }
+
+        const { count, rows: retailers } = await Retailer.findAndCountAll({
+            where,
+            order: [['shopName', 'ASC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
         });
-        res.json(retailers);
+
+        res.json({
+            total: count,
+            page: parseInt(page),
+            totalPages: Math.ceil(count / limit),
+            data: retailers
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

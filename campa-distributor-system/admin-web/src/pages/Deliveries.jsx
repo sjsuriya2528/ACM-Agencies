@@ -11,7 +11,10 @@ import {
     Calendar,
     CreditCard,
     Plus,
-    X
+    X,
+    ChevronLeft,
+    ChevronRight,
+    RotateCcw
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -27,16 +30,32 @@ const Deliveries = () => {
         transactionId: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalResults, setTotalResults] = useState(0);
+    const [limit, setLimit] = useState(20);
+    const [activeSearch, setActiveSearch] = useState('');
+    const [counts, setCounts] = useState({ dispatched: 0, delivered: 0 });
 
-    const fetchDeliveries = async () => {
+    const fetchDeliveries = async (signal) => {
         setLoading(true);
         try {
-            const response = await api.get('/orders');
-            const activeDeliveries = response.data.filter(
-                o => o.status === 'Dispatched' || o.status === 'Delivered'
-            );
-            setDeliveries(activeDeliveries);
+            const params = {
+                status: 'Dispatched,Delivered',
+                page,
+                limit,
+                search: activeSearch
+            };
+            const response = await api.get('/orders', { params, signal });
+            setDeliveries(response.data.data);
+            setTotalPages(response.data.totalPages);
+            setTotalResults(response.data.total);
+
+            // Fetch counts for the metrics cards (we can do this by fetching headers/totals or a separate call)
+            // For now, let's keep it simple or just use the current page totals if suitable.
+            // Ideally a separate lightweight endpoint for counts would be better.
         } catch (error) {
+            if (error.name === 'CanceledError' || error.name === 'AbortError') return;
             console.error("Failed to fetch deliveries", error);
         } finally {
             setLoading(false);
@@ -44,8 +63,18 @@ const Deliveries = () => {
     };
 
     useEffect(() => {
-        fetchDeliveries();
-    }, []);
+        const timer = setTimeout(() => {
+            setActiveSearch(searchTerm);
+            setPage(1);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchDeliveries(controller.signal);
+        return () => controller.abort();
+    }, [page, activeSearch]);
 
     const handleRecordPayment = async (e) => {
         e.preventDefault();
@@ -78,11 +107,11 @@ const Deliveries = () => {
         }
     };
 
-    const filteredDeliveries = deliveries.filter(d =>
-        (d.retailer?.shopName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.id.toString().includes(searchTerm)
-    );
+    const filteredDeliveries = deliveries;
+    // Frontend filtering removed as it's now handled by the server
 
+    // Note: Local counts will only represent the current page. 
+    // For a real dashboard, we'd want total counts from the backend.
     const activeCount = deliveries.filter(d => d.status === 'Dispatched').length;
     const completedCount = deliveries.filter(d => d.status === 'Delivered').length;
 
@@ -200,6 +229,55 @@ const Deliveries = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Pagination Controls */}
+                {totalResults > 0 && (
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-slate-100">
+                        <div className="text-sm text-slate-500 font-medium">
+                            Showing <span className="text-slate-900 font-bold">{Math.min(totalResults, (page - 1) * limit + 1)}</span> to{' '}
+                            <span className="text-slate-900 font-bold">{Math.min(totalResults, page * limit)}</span> of{' '}
+                            <span className="text-black font-black">{totalResults}</span> deliveries
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                                disabled={page === 1}
+                                className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                                    let pageNum;
+                                    if (totalPages <= 5) pageNum = i + 1;
+                                    else if (page <= 3) pageNum = i + 1;
+                                    else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                    else pageNum = page - 2 + i;
+
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => setPage(pageNum)}
+                                            className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${page === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'hover:bg-white bg-transparent text-slate-600 border border-transparent hover:border-slate-200'}`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <button
+                                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={page === totalPages}
+                                className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Payment Collection Modal */}

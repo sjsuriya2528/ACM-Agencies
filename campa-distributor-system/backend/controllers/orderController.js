@@ -85,7 +85,8 @@ const createOrder = async (req, res) => {
 // @access  Private (Admin/Sales Rep)
 const getOrders = async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
+        const { startDate, endDate, page = 1, limit = 50, search, status, paymentMode } = req.query;
+        const offset = (page - 1) * limit;
         let whereClause = {};
 
         if (req.user.role === 'sales_rep') {
@@ -101,6 +102,27 @@ const getOrders = async (req, res) => {
             whereClause = {
                 status: { [Op.in]: ['Dispatched', 'Delivered'] }
             };
+        }
+
+        // Apply filters
+        if (status && status !== 'All') {
+            if (status.includes(',')) {
+                whereClause.status = { [Op.in]: status.split(',') };
+            } else {
+                whereClause.status = status;
+            }
+        }
+        if (paymentMode && paymentMode !== 'All') {
+            whereClause.paymentMode = paymentMode;
+        }
+
+        // Apply Search
+        if (search) {
+            whereClause[Op.or] = [
+                { billNumber: { [Op.iLike]: `%${search}%` } },
+                { '$retailer.shopName$': { [Op.iLike]: `%${search}%` } },
+                { '$salesRep.name$': { [Op.iLike]: `%${search}%` } }
+            ];
         }
 
         // Apply Date Range Filter
@@ -126,7 +148,7 @@ const getOrders = async (req, res) => {
             };
         }
 
-        const orders = await Order.findAll({
+        const { count, rows: orders } = await Order.findAndCountAll({
             where: whereClause,
             include: [
                 { model: Retailer, as: 'retailer', attributes: ['id', 'shopName'] },
@@ -140,9 +162,17 @@ const getOrders = async (req, res) => {
                 { model: Invoice },
             ],
             order: [['createdAt', 'DESC'], ['id', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            distinct: true, // Necessary because of includes
         });
 
-        res.json(orders);
+        res.json({
+            total: count,
+            page: parseInt(page),
+            totalPages: Math.ceil(count / limit),
+            data: orders
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -529,8 +559,18 @@ const updateOrder = async (req, res) => {
 // @access  Private (Admin)
 const getCancelledOrders = async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
+        const { startDate, endDate, page = 1, limit = 50, search } = req.query;
+        const offset = (page - 1) * limit;
         let whereClause = {};
+
+        // Apply Search
+        if (search) {
+            whereClause[Op.or] = [
+                { billNumber: { [Op.iLike]: `%${search}%` } },
+                { '$retailer.shopName$': { [Op.iLike]: `%${search}%` } },
+                { '$salesRep.name$': { [Op.iLike]: `%${search}%` } }
+            ];
+        }
 
         // Apply Date Range Filter Based on Cancellation Date
         if (startDate && endDate) {
@@ -555,7 +595,7 @@ const getCancelledOrders = async (req, res) => {
             };
         }
 
-        const orders = await CancelledOrder.findAll({
+        const { count, rows: orders } = await CancelledOrder.findAndCountAll({
             where: whereClause,
             include: [
                 { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'phone'] },
@@ -563,9 +603,17 @@ const getCancelledOrders = async (req, res) => {
                 { model: CancelledOrderItem, as: 'items', include: [{ model: Product, attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }] }
             ],
             order: [['cancelledAt', 'DESC'], ['id', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            distinct: true,
         });
 
-        res.json(orders);
+        res.json({
+            total: count,
+            page: parseInt(page),
+            totalPages: Math.ceil(count / limit),
+            data: orders
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
