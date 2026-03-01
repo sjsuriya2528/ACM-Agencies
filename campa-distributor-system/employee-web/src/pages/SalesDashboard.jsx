@@ -20,7 +20,7 @@ const SalesDashboard = () => {
         const fetchStats = async () => {
             try {
                 const response = await api.get('/orders');
-                const orders = response.data;
+                const orders = response.data.data || [];
 
                 const totalOrders = orders.length;
                 const requested = orders.filter(o => o.status === 'Requested').length;

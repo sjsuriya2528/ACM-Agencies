@@ -22,7 +22,7 @@ const ViewOrders = () => {
                     if (startDate) params.startDate = startDate;
                     if (endDate) params.endDate = endDate;
                     const response = await api.get('/orders', { params, signal });
-                    setOrders(response.data);
+                    setOrders(response.data.data || []);
                 } catch (error) {
                     if (error.name === 'CanceledError' || error.name === 'AbortError') return;
                     console.error("Failed to fetch orders", error);

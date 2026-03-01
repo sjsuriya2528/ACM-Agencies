@@ -15,8 +15,9 @@ const Retailers = () => {
         const fetchRetailers = async () => {
             try {
                 const response = await api.get('/retailers');
-                setRetailers(response.data);
-                setFilteredRetailers(response.data);
+                const retailersData = response.data.data || [];
+                setRetailers(retailersData);
+                setFilteredRetailers(retailersData);
             } catch (error) {
                 console.error("Failed to fetch retailers", error);
             } finally {

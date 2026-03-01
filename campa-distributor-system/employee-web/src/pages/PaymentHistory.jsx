@@ -13,7 +13,7 @@ const PaymentHistory = () => {
         const fetchPayments = async () => {
             try {
                 const response = await api.get('/payments');
-                setPayments(response.data);
+                setPayments(response.data.data || []);
             } catch (error) {
                 console.error("Failed to fetch payments", error);
             } finally {

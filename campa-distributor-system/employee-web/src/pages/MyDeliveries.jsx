@@ -16,7 +16,7 @@ const MyDeliveries = () => {
         const fetchDeliveries = async () => {
             try {
                 const response = await api.get('/orders');
-                setDeliveries(response.data);
+                setDeliveries(response.data.data || []);
             } catch (error) {
                 console.error("Failed to fetch deliveries", error);
             } finally {
