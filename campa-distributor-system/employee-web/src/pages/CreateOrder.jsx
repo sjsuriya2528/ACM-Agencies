@@ -32,8 +32,8 @@ const CreateOrder = () => {
         const fetchData = async () => {
             try {
                 const [retailersRes, productsRes] = await Promise.all([
-                    api.get('/retailers'),
-                    api.get('/products')
+                    api.get('/retailers?limit=1000'),
+                    api.get('/products?limit=1000')
                 ]);
                 setRetailers(Array.isArray(retailersRes.data) ? retailersRes.data : (Array.isArray(retailersRes.data?.data) ? retailersRes.data.data : []));
                 setProducts(Array.isArray(productsRes.data) ? productsRes.data : (Array.isArray(productsRes.data?.data) ? productsRes.data.data : []));

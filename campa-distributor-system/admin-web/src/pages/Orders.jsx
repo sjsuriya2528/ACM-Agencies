@@ -216,8 +216,8 @@ const Orders = () => {
         setFetchError(null);
         try {
             const [retailersRes, productsRes] = await Promise.all([
-                api.get('/retailers'),
-                api.get('/products')
+                api.get('/retailers?limit=1000'),
+                api.get('/products?limit=1000')
             ]);
             // paginated retailers
             setRetailers(retailersRes.data.data || []);
