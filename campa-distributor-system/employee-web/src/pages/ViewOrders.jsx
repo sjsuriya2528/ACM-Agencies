@@ -39,6 +39,9 @@ const ViewOrders = () => {
         };
     }, [startDate, endDate]);
 
+    if (!Array.isArray(orders)) {
+        console.warn("Filter warning: 'orders' is not an array in ViewOrders. Type:", typeof orders, "Value:", orders);
+    }
     const filteredOrders = (Array.isArray(orders) ? orders : []).filter(order => {
         const matchesSearch = order.retailer?.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             order.id.toString().includes(searchTerm);

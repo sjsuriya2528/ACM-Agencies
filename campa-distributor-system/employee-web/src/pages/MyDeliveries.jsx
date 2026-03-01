@@ -26,7 +26,10 @@ const MyDeliveries = () => {
         fetchDeliveries();
     }, [user]);
 
-    const filteredDeliveries = deliveries.filter(d =>
+    if (!Array.isArray(deliveries)) {
+        console.warn("Filter warning: 'deliveries' is not an array in MyDeliveries. Type:", typeof deliveries, "Value:", deliveries);
+    }
+    const filteredDeliveries = (Array.isArray(deliveries) ? deliveries : []).filter(d =>
         (d.retailer?.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             d.id.toString().includes(searchTerm)) &&
         ['Approved', 'Dispatched', 'Delivered'].includes(d.status)

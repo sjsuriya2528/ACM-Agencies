@@ -22,10 +22,14 @@ const SalesDashboard = () => {
                 const response = await api.get('/orders');
                 const orders = Array.isArray(response.data) ? response.data : (Array.isArray(response.data?.data) ? response.data.data : []);
 
-                const totalOrders = orders.length;
-                const requested = (orders || []).filter(o => o.status === 'Requested').length;
-                const accepted = (orders || []).filter(o => o.status === 'Approved').length;
-                const totalAmount = (orders || []).reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
+                if (!Array.isArray(orders)) {
+                    console.warn("Filter warning: 'orders' is not an array in SalesDashboard. Type:", typeof orders, "Value:", orders);
+                }
+                const ordersList = Array.isArray(orders) ? orders : [];
+                const totalOrders = ordersList.length;
+                const requested = ordersList.filter(o => o.status === 'Requested').length;
+                const accepted = ordersList.filter(o => o.status === 'Approved').length;
+                const totalAmount = ordersList.reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
 
                 setStats({ totalOrders, requested, accepted, totalAmount });
             } catch (error) {

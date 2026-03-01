@@ -30,9 +30,13 @@ const CollectPayment = () => {
     };
 
     const toggleExpand = (invoiceId, balanceAmount) => {
-        setExpandedIds(prev =>
-            (Array.isArray(prev) ? prev : []).includes(invoiceId) ? (Array.isArray(prev) ? prev : []).filter(id => id !== invoiceId) : [...(Array.isArray(prev) ? prev : []), invoiceId]
-        );
+        setExpandedIds(prev => {
+            if (!Array.isArray(prev)) {
+                console.warn("Filter warning: 'prev' expandedIds is not an array in CollectPayment. Type:", typeof prev, "Value:", prev);
+            }
+            const prevList = Array.isArray(prev) ? prev : [];
+            return prevList.includes(invoiceId) ? prevList.filter(id => id !== invoiceId) : [...prevList, invoiceId];
+        });
         if (!paymentData[invoiceId]) {
             setPaymentData(prev => ({
                 ...prev,
@@ -82,7 +86,12 @@ const CollectPayment = () => {
             // Refresh list
             await fetchInvoices();
             // Clear successful payment data and collapse
-            setExpandedIds(prev => (Array.isArray(prev) ? prev : []).filter(id => id !== invoiceId));
+            setExpandedIds(prev => {
+                if (!Array.isArray(prev)) {
+                    console.warn("Filter warning: 'prev' expandedIds is not an array during submit in CollectPayment. Type:", typeof prev, "Value:", prev);
+                }
+                return (Array.isArray(prev) ? prev : []).filter(id => id !== invoiceId);
+            });
         } catch (error) {
             console.error("Payment failed", error);
             alert(error.response?.data?.message || "Failed to record payment");
@@ -96,6 +105,9 @@ const CollectPayment = () => {
         return inv.customerName || inv.Order?.retailer?.shopName || inv.Order?.Retailer?.shopName || 'Unknown Retailer';
     };
 
+    if (!Array.isArray(invoices)) {
+        console.warn("Filter warning: 'invoices' is not an array in CollectPayment. Type:", typeof invoices, "Value:", invoices);
+    }
     const filteredInvoices = (Array.isArray(invoices) ? invoices : []).filter(inv =>
         (getRetailerName(inv).toLowerCase().includes(searchTerm.toLowerCase()) ||
             inv.id.toString().includes(searchTerm)) &&

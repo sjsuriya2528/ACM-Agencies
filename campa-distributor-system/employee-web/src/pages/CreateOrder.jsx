@@ -47,6 +47,9 @@ const CreateOrder = () => {
     }, []);
 
     // Filter Retailers
+    if (!Array.isArray(retailers)) {
+        console.warn("Filter warning: 'retailers' is not an array in CreateOrder. Type:", typeof retailers, "Value:", retailers);
+    }
     const filteredRetailers = (Array.isArray(retailers) ? retailers : []).filter(r =>
         r.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.ownerName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -331,85 +334,90 @@ const CreateOrder = () => {
                     </div>
 
                     <div className="space-y-3">
-                        {(Array.isArray(products) ? products : []).filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
-                            const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.price };
-                            const totalQty = cartData.quantity;
-                            const pricePerUnit = cartData.pricePerUnit;
-                            const bottlesPerCrate = product.bottlesPerCrate || 24;
-                            const crates = Math.floor(totalQty / bottlesPerCrate);
-                            const pieces = totalQty % bottlesPerCrate;
-                            const isActive = totalQty > 0;
-                            const gstRate = Number(product.gstPercentage || 18);
+                        {(() => {
+                            if (!Array.isArray(products)) {
+                                console.warn("Filter warning: 'products' is not an array in CreateOrder. Type:", typeof products, "Value:", products);
+                            }
+                            return (Array.isArray(products) ? products : []).filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
+                                const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.price };
+                                const totalQty = cartData.quantity;
+                                const pricePerUnit = cartData.pricePerUnit;
+                                const bottlesPerCrate = product.bottlesPerCrate || 24;
+                                const crates = Math.floor(totalQty / bottlesPerCrate);
+                                const pieces = totalQty % bottlesPerCrate;
+                                const isActive = totalQty > 0;
+                                const gstRate = Number(product.gstPercentage || 18);
 
-                            return (
-                                <div key={product.id} className={`bg-white p-5 rounded-3xl shadow-sm border transition-all duration-300 ${isActive ? 'border-blue-500 ring-4 ring-blue-500/5 shadow-blue-100' : 'border-slate-100'}`}>
-                                    <div className="flex justify-between items-start mb-5">
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-slate-800 text-lg leading-tight mb-2">{product.name}</h3>
-                                            <div className="flex flex-wrap items-center gap-3">
-                                                <div className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">
-                                                    ₹{product.price} <span className="text-slate-400 font-medium">/ bottle (Default)</span>
-                                                </div>
-                                                <div className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded-lg">
-                                                    GST: {gstRate}%
+                                return (
+                                    <div key={product.id} className={`bg-white p-5 rounded-3xl shadow-sm border transition-all duration-300 ${isActive ? 'border-blue-500 ring-4 ring-blue-500/5 shadow-blue-100' : 'border-slate-100'}`}>
+                                        <div className="flex justify-between items-start mb-5">
+                                            <div className="flex-1">
+                                                <h3 className="font-bold text-slate-800 text-lg leading-tight mb-2">{product.name}</h3>
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <div className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">
+                                                        ₹{product.price} <span className="text-slate-400 font-medium">/ bottle (Default)</span>
+                                                    </div>
+                                                    <div className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded-lg">
+                                                        GST: {gstRate}%
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <div className={`text-right transition-opacity duration-300 ${isActive ? 'opacity-100' : 'opacity-0'}`}>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total (inc. GST)</p>
+                                                <p className="font-extrabold text-blue-600 text-xl leading-none">
+                                                    ₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className={`text-right transition-opacity duration-300 ${isActive ? 'opacity-100' : 'opacity-0'}`}>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total (inc. GST)</p>
-                                            <p className="font-extrabold text-blue-600 text-xl leading-none">
-                                                ₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}
-                                            </p>
+
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Price/Pc</label>
+                                                <div className="flex items-center justify-center">
+                                                    <IndianRupee size={14} className="text-slate-400 mr-1" />
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
+                                                        value={pricePerUnit}
+                                                        onChange={(e) => handlePriceChange(product.id, e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Crates</label>
+                                                <div className="flex items-center justify-center">
+                                                    <Box size={14} className="text-slate-400 mr-1" />
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
+                                                        value={crates || ''}
+                                                        placeholder="0"
+                                                        onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Pieces</label>
+                                                <div className="flex items-center justify-center">
+                                                    <Check size={14} className="text-slate-400 mr-1" />
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={bottlesPerCrate - 1}
+                                                        className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
+                                                        value={pieces || ''}
+                                                        placeholder="0"
+                                                        onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Price/Pc</label>
-                                            <div className="flex items-center justify-center">
-                                                <IndianRupee size={14} className="text-slate-400 mr-1" />
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
-                                                    value={pricePerUnit}
-                                                    onChange={(e) => handlePriceChange(product.id, e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Crates</label>
-                                            <div className="flex items-center justify-center">
-                                                <Box size={14} className="text-slate-400 mr-1" />
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
-                                                    value={crates || ''}
-                                                    placeholder="0"
-                                                    onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-50 rounded-2xl p-1.5 border border-slate-200 focus-within:border-blue-500 focus-within:bg-blue-50/30 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase block text-center mb-0.5">Pieces</label>
-                                            <div className="flex items-center justify-center">
-                                                <Check size={14} className="text-slate-400 mr-1" />
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max={bottlesPerCrate - 1}
-                                                    className="w-full bg-transparent text-center font-bold text-lg text-slate-700 outline-none p-0"
-                                                    value={pieces || ''}
-                                                    placeholder="0"
-                                                    onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
             </div>

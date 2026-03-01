@@ -29,6 +29,9 @@ const Retailers = () => {
     }, []);
 
     useEffect(() => {
+        if (!Array.isArray(retailers)) {
+            console.warn("Filter warning: 'retailers' is not an array in Retailers. Type:", typeof retailers, "Value:", retailers);
+        }
         const filtered = (Array.isArray(retailers) ? retailers : []).filter(r =>
             r.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.ownerName && r.ownerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
