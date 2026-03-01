@@ -194,7 +194,12 @@ const Purchases = () => {
     };
 
     const addItem = () => setItems(p => [...p, emptyItem()]);
-    const removeItem = (idx) => setItems(p => p.filter((_, i) => i !== idx));
+    const removeItem = (idx) => {
+        if (!Array.isArray(items)) {
+            console.warn("Filter warning: 'items' is not an array in Purchases.jsx (removeItem). Type:", typeof items, "Value:", items);
+        }
+        setItems(p => (Array.isArray(p) ? p : []).filter((_, i) => i !== idx));
+    };
 
     const resetForm = () => {
         setForm({ billDate: new Date().toISOString().split('T')[0], invoiceNo: '', supplierName: '', cgstAmount: '', sgstAmount: '', roundOff: '', notes: '' });
@@ -204,7 +209,10 @@ const Purchases = () => {
     // ── Submit ─────────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (!form.invoiceNo.trim() || !form.supplierName.trim()) return alert('Invoice No and Supplier name are required');
-        const validItems = items.filter(i => i.description && Number(i.quantity) > 0 && Number(i.rate) > 0);
+        if (!Array.isArray(items)) {
+            console.warn("Filter warning: 'items' is not an array in Purchases.jsx (handleSubmit). Type:", typeof items, "Value:", items);
+        }
+        const validItems = (Array.isArray(items) ? items : []).filter(i => i.description && Number(i.quantity) > 0 && Number(i.rate) > 0);
         if (validItems.length === 0) return alert('Add at least one valid item with description, qty and rate');
         setSaving(true);
         try {
@@ -417,7 +425,12 @@ const Purchases = () => {
     };
 
     // ── Stock filter ───────────────────────────────────────────────────────────
-    const allStock = stockProducts.filter(p =>
+    if (!Array.isArray(stockProducts)) {
+        console.warn("Filter warning: 'stockProducts' is not an array in Purchases.jsx. Type:", typeof stockProducts, "Value:", stockProducts);
+    }
+    const stockList = Array.isArray(stockProducts) ? stockProducts : [];
+
+    const allStock = stockList.filter(p =>
         !stockSearch || p.name?.toLowerCase().includes(stockSearch.toLowerCase()) || p.sku?.toLowerCase().includes(stockSearch.toLowerCase())
     );
     const filteredStock = stockFilter === 'all' ? allStock

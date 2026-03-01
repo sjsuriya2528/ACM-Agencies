@@ -200,7 +200,12 @@ const Orders = () => {
     const fetchDrivers = async () => {
         try {
             const response = await api.get('/users');
-            setDrivers(response.data.filter(u => u.role === 'driver'));
+            if (Array.isArray(response.data)) {
+                setDrivers(response.data.filter(u => u.role === 'driver'));
+            } else {
+                console.warn("Filter warning: 'drivers' response.data is not an array in Orders.jsx. Type:", typeof response.data, "Value:", response.data);
+                setDrivers([]);
+            }
         } catch (error) {
             console.error("Failed to fetch drivers", error);
         }
@@ -269,7 +274,10 @@ const Orders = () => {
     };
 
     // Create Order Functions
-    const filteredRetailers = (retailers || []).filter(r =>
+    if (!Array.isArray(retailers)) {
+        console.warn("Filter warning: 'retailers' is not an array in Orders.jsx. Type:", typeof retailers, "Value:", retailers);
+    }
+    const filteredRetailers = (Array.isArray(retailers) ? retailers : []).filter(r =>
         (r.shopName || '').toLowerCase().includes((retailerSearchTerm || '').toLowerCase()) ||
         (r.ownerName && r.ownerName.toLowerCase().includes((retailerSearchTerm || '').toLowerCase()))
     );
@@ -1337,101 +1345,105 @@ const Orders = () => {
                                                 </div>
                                             ) : (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                                                    {(products || []).filter(p => (p.name || '').toLowerCase().includes((productSearchTerm || '').toLowerCase())).map(product => {
-                                                        const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
-                                                        const totalQty = cartData.quantity;
-                                                        const pricePerUnit = cartData.pricePerUnit;
-                                                        const bottlesPerCrate = product.bottlesPerCrate || 24;
-                                                        const crates = Math.floor(totalQty / bottlesPerCrate);
-                                                        const pieces = totalQty % bottlesPerCrate;
-                                                        const gstRate = Number(product.gstPercentage || 18);
+                                                    {(() => {
+                                                        if (!Array.isArray(products)) {
+                                                            console.warn("Filter warning: 'products' is not an array in Orders.jsx (Create Modal). Type:", typeof products, "Value:", products);
+                                                        }
+                                                        return (Array.isArray(products) ? products : []).filter(p => (p.name || '').toLowerCase().includes((productSearchTerm || '').toLowerCase())).map(product => {
+                                                            const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
+                                                            const totalQty = cartData.quantity;
+                                                            const pricePerUnit = cartData.pricePerUnit;
+                                                            const bottlesPerCrate = product.bottlesPerCrate || 24;
+                                                            const crates = Math.floor(totalQty / bottlesPerCrate);
+                                                            const pieces = totalQty % bottlesPerCrate;
+                                                            const gstRate = Number(product.gstPercentage || 18);
 
-                                                        return (
-                                                            <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-400/20 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300 shadow-sm'}`}>
-                                                                <div className="flex justify-between items-start mb-4">
-                                                                    <div className="space-y-1">
-                                                                        <h4 className="font-black text-slate-800 leading-tight">{product.name}</h4>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.sellingPrice ?? product.price} (Sell) • 1 CR = {bottlesPerCrate}</ p>
-                                                                            <span className="text-[10x] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-black">GST: {gstRate}%</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    {totalQty > 0 && (
-                                                                        <div className="text-right">
-                                                                            <p className="text-[10px] font-black text-slate-400 uppercase">Gross Total</p>
-                                                                            <p className="font-black text-blue-600">₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}</p>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="grid grid-cols-1 gap-3">
-                                                                    <div className="space-y-1">
-                                                                        <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Taxable)</label>
-                                                                        <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                            <div className="pl-3 py-2 text-slate-400"><IndianRupee size={12} /></div>
-                                                                            <input
-                                                                                type="number"
-                                                                                step="0.01"
-                                                                                className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                                value={pricePerUnit}
-                                                                                onChange={(e) => handlePriceChange(product.id, e.target.value)}
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="grid grid-cols-2 gap-3">
+                                                            return (
+                                                                <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-400/20 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300 shadow-sm'}`}>
+                                                                    <div className="flex justify-between items-start mb-4">
                                                                         <div className="space-y-1">
-                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1">Crates</label>
-                                                                            <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                                <button
-                                                                                    onClick={() => handleQuantityChange(product.id, 'crates', Math.max(0, crates - 1))}
-                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                                >
-                                                                                    <Minus size={14} />
-                                                                                </button>
-                                                                                <input
-                                                                                    type="number"
-                                                                                    className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                                    value={crates || ''}
-                                                                                    placeholder="0"
-                                                                                    onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
-                                                                                />
-                                                                                <button
-                                                                                    onClick={() => handleQuantityChange(product.id, 'crates', crates + 1)}
-                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                                >
-                                                                                    <Plus size={14} />
-                                                                                </button>
+                                                                            <h4 className="font-black text-slate-800 leading-tight">{product.name}</h4>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.sellingPrice ?? product.price} (Sell) • 1 CR = {bottlesPerCrate}</ p>
+                                                                                <span className="text-[10x] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-black">GST: {gstRate}%</span>
                                                                             </div>
                                                                         </div>
+                                                                        {totalQty > 0 && (
+                                                                            <div className="text-right">
+                                                                                <p className="text-[10px] font-black text-slate-400 uppercase">Gross Total</p>
+                                                                                <p className="font-black text-blue-600">₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="grid grid-cols-1 gap-3">
                                                                         <div className="space-y-1">
-                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1">Pieces</label>
+                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Taxable)</label>
                                                                             <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                                <button
-                                                                                    onClick={() => handleQuantityChange(product.id, 'pieces', Math.max(0, pieces - 1))}
-                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                                >
-                                                                                    <Minus size={14} />
-                                                                                </button>
+                                                                                <div className="pl-3 py-2 text-slate-400"><IndianRupee size={12} /></div>
                                                                                 <input
                                                                                     type="number"
+                                                                                    step="0.01"
                                                                                     className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                                    value={pieces || ''}
-                                                                                    placeholder="0"
-                                                                                    onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
+                                                                                    value={pricePerUnit}
+                                                                                    onChange={(e) => handlePriceChange(product.id, e.target.value)}
                                                                                 />
-                                                                                <button
-                                                                                    onClick={() => handleQuantityChange(product.id, 'pieces', pieces + 1)}
-                                                                                    className="p-2 hover:bg-slate-50 text-slate-400"
-                                                                                >
-                                                                                    <Plus size={14} />
-                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 gap-3">
+                                                                            <div className="space-y-1">
+                                                                                <label className="text-[10px] text-slate-400 uppercase font-black px-1">Crates</label>
+                                                                                <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                                    <button
+                                                                                        onClick={() => handleQuantityChange(product.id, 'crates', Math.max(0, crates - 1))}
+                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                    >
+                                                                                        <Minus size={14} />
+                                                                                    </button>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                        value={crates || ''}
+                                                                                        placeholder="0"
+                                                                                        onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
+                                                                                    />
+                                                                                    <button
+                                                                                        onClick={() => handleQuantityChange(product.id, 'crates', crates + 1)}
+                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                    >
+                                                                                        <Plus size={14} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="space-y-1">
+                                                                                <label className="text-[10px] text-slate-400 uppercase font-black px-1">Pieces</label>
+                                                                                <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                                    <button
+                                                                                        onClick={() => handleQuantityChange(product.id, 'pieces', Math.max(0, pieces - 1))}
+                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                    >
+                                                                                        <Minus size={14} />
+                                                                                    </button>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                        value={pieces || ''}
+                                                                                        placeholder="0"
+                                                                                        onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
+                                                                                    />
+                                                                                    <button
+                                                                                        onClick={() => handleQuantityChange(product.id, 'pieces', pieces + 1)}
+                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                    >
+                                                                                        <Plus size={14} />
+                                                                                    </button>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                            );
+                                                        });
+                                                    })()}
                                                 </div>
                                             )}
                                         </div>

@@ -125,8 +125,12 @@ const Deliveries = () => {
 
     // Note: Local counts will only represent the current page. 
     // For a real dashboard, we'd want total counts from the backend.
-    const activeCount = deliveries.filter(d => d.status === 'Dispatched').length;
-    const completedCount = deliveries.filter(d => d.status === 'Delivered').length;
+    if (!Array.isArray(deliveries)) {
+        console.warn("Filter warning: 'deliveries' is not an array in Deliveries.jsx. Type:", typeof deliveries, "Value:", deliveries);
+    }
+    const deliveriesList = Array.isArray(deliveries) ? deliveries : [];
+    const activeCount = deliveriesList.filter(d => d.status === 'Dispatched').length;
+    const completedCount = deliveriesList.filter(d => d.status === 'Delivered').length;
 
     if (loading) return <LoadingSpinner />;
 

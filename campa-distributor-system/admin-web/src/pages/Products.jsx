@@ -199,77 +199,82 @@ const Products = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {products.filter(p =>
-                                p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                (p.category && p.category.toLowerCase().includes(searchTerm.toLowerCase()))
-                            ).map(product => {
-                                const isSingle = product.name.toUpperCase().includes('SINGLE') || product.name.toUpperCase().includes('BOTTLE');
-                                const bpc = product.bottlesPerCrate || 24;
+                            {(() => {
+                                if (!Array.isArray(products)) {
+                                    console.warn("Filter warning: 'products' is not an array in Products.jsx. Type:", typeof products, "Value:", products);
+                                }
+                                return (Array.isArray(products) ? products : []).filter(p =>
+                                    (p.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+                                    (p.category && p.category.toLowerCase().includes((searchTerm || '').toLowerCase()))
+                                ).map(product => {
+                                    const isSingle = product.name.toUpperCase().includes('SINGLE') || product.name.toUpperCase().includes('BOTTLE');
+                                    const bpc = product.bottlesPerCrate || 24;
 
-                                // Stock is now always stored as Bottles
-                                const bottles = product.stock;
-                                const crates = isSingle ? '-' : Math.ceil(product.stock / bpc);
+                                    // Stock is now always stored as Bottles
+                                    const bottles = product.stock;
+                                    const crates = isSingle ? '-' : Math.ceil(product.stock / bpc);
 
-                                return (
-                                    <tr key={product.id} className="hover:bg-slate-50 transition-colors duration-150">
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.id}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">{product.name}</td>
-                                        {/* Purchase Price */}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-orange-700">
-                                                    ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
-                                                </span>
-                                                <span className="text-xs text-slate-400">
-                                                    ₹{Number(product.price).toFixed(4)} <span className="text-[10px]">/ btl</span>
-                                                </span>
-                                            </div>
-                                        </td>
-                                        {/* Selling Price */}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {product.sellingPrice ? (
+                                    return (
+                                        <tr key={product.id} className="hover:bg-slate-50 transition-colors duration-150">
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.id}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">{product.name}</td>
+                                            {/* Purchase Price */}
+                                            <td className="px-4 py-3 whitespace-nowrap">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-emerald-700">
-                                                        ₹{(product.sellingPrice * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                                    <span className="text-sm font-bold text-orange-700">
+                                                        ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
                                                     </span>
                                                     <span className="text-xs text-slate-400">
-                                                        ₹{Number(product.sellingPrice).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                        ₹{Number(product.price).toFixed(4)} <span className="text-[10px]">/ btl</span>
                                                     </span>
                                                 </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-300 italic">Not set</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="flex flex-col">
-                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${bottles > 100 ? 'bg-green-100 text-green-800' :
-                                                    bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-red-100 text-red-800'
-                                                    }`}>{bottles} btls</span>
-                                                <span className="text-xs text-slate-400 mt-0.5">{isSingle ? '—' : `${crates} crates`}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md border border-blue-100">
-                                                {product.category || 'Uncategorized'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className="px-2 py-1 text-xs font-medium bg-orange-50 text-orange-600 rounded-md border border-orange-100">
-                                                {product.gstPercentage}%
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
-                                                <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 p-1.5 hover:bg-orange-50 rounded-lg transition-colors" title="Reduce Stock"><Minus size={16} /></button>
-                                                <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
-                                                <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                                            </td>
+                                            {/* Selling Price */}
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {product.sellingPrice ? (
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold text-emerald-700">
+                                                            ₹{(product.sellingPrice * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                                        </span>
+                                                        <span className="text-xs text-slate-400">
+                                                            ₹{Number(product.sellingPrice).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-300 italic">Not set</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <div className="flex flex-col">
+                                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${bottles > 100 ? 'bg-green-100 text-green-800' :
+                                                        bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-red-100 text-red-800'
+                                                        }`}>{bottles} btls</span>
+                                                    <span className="text-xs text-slate-400 mt-0.5">{isSingle ? '—' : `${crates} crates`}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md border border-blue-100">
+                                                    {product.category || 'Uncategorized'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className="px-2 py-1 text-xs font-medium bg-orange-50 text-orange-600 rounded-md border border-orange-100">
+                                                    {product.gstPercentage}%
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
+                                                    <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 p-1.5 hover:bg-orange-50 rounded-lg transition-colors" title="Reduce Stock"><Minus size={16} /></button>
+                                                    <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
+                                                    <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })()
+                            }
                         </tbody>
                     </table>
                 </div>

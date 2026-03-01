@@ -316,10 +316,15 @@ const RetailerDetail = () => {
     if (!retailer) return <div className="p-8 text-center text-gray-500">Retailer not found</div>;
 
     // Collect all payments from all invoices
-    const allPayments = retailer.orders
-        ?.filter(o => o.Invoice)
-        .flatMap(o => o.Invoice.Payments?.map(p => ({ ...p, orderId: o.id, invoiceNumber: o.Invoice.invoiceNumber })) || [])
-        .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate)) || [];
+    const allPayments = (() => {
+        if (!Array.isArray(retailer.orders)) {
+            console.warn("Filter warning: 'retailer.orders' is not an array in RetailerDetail.jsx. Type:", typeof retailer.orders, "Value:", retailer.orders);
+        }
+        return (Array.isArray(retailer.orders) ? retailer.orders : [])
+            .filter(o => o.Invoice)
+            .flatMap(o => o.Invoice.Payments?.map(p => ({ ...p, orderId: o.id, invoiceNumber: o.Invoice.invoiceNumber })) || [])
+            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+    })();
 
     return (
         <div className="p-2 md:p-6 max-w-7xl mx-auto animate-fade-in-up">
@@ -397,7 +402,12 @@ const RetailerDetail = () => {
                             <div className="flex justify-between items-center">
                                 <span className="text-purple-100 text-sm">Active Invoices</span>
                                 <span className="font-bold text-lg">
-                                    {retailer.orders?.filter(o => o.Invoice && o.Invoice.paymentStatus !== 'Paid').length || 0}
+                                    {(() => {
+                                        if (!Array.isArray(retailer.orders)) {
+                                            console.warn("Filter warning: 'retailer.orders' map is not an array in RetailerDetail.jsx. Type:", typeof retailer.orders, "Value:", retailer.orders);
+                                        }
+                                        return (Array.isArray(retailer.orders) ? retailer.orders : []).filter(o => o.Invoice && o.Invoice.paymentStatus !== 'Paid').length || 0;
+                                    })()}
                                 </span>
                             </div>
                         </div>
