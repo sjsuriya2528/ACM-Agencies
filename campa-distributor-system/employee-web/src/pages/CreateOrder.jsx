@@ -35,8 +35,8 @@ const CreateOrder = () => {
                     api.get('/retailers'),
                     api.get('/products')
                 ]);
-                setRetailers(retailersRes.data.data || []);
-                setProducts(productsRes.data.data || []);
+                setRetailers(Array.isArray(retailersRes.data) ? retailersRes.data : (retailersRes.data.data || []));
+                setProducts(Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data.data || []));
             } catch (error) {
                 console.error("Error loading data", error);
             } finally {

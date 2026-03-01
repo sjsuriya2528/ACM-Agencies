@@ -15,7 +15,7 @@ const Retailers = () => {
         const fetchRetailers = async () => {
             try {
                 const response = await api.get('/retailers');
-                const retailersData = response.data.data || [];
+                const retailersData = Array.isArray(response.data) ? response.data : (response.data.data || []);
                 setRetailers(retailersData);
                 setFilteredRetailers(retailersData);
             } catch (error) {
@@ -32,7 +32,7 @@ const Retailers = () => {
         const filtered = retailers.filter(r =>
             r.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.ownerName && r.ownerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (r.mobileNumber && r.mobileNumber.includes(searchTerm))
+            (r.phone && r.phone.includes(searchTerm))
         );
         setFilteredRetailers(filtered);
     }, [searchTerm, retailers]);
@@ -105,11 +105,11 @@ const Retailers = () => {
                                 </div>
 
                                 <div className="mt-5 flex flex-col gap-3 pl-[4.5rem] relative z-10">
-                                    <a href={`tel:${retailer.mobileNumber} `} className="flex items-center gap-3 text-slate-600 text-sm font-bold hover:text-blue-600 transition-colors w-fit p-2 -ml-2 rounded-xl hover:bg-blue-50 group/phone">
+                                    <a href={`tel:${retailer.phone} `} className="flex items-center gap-3 text-slate-600 text-sm font-bold hover:text-blue-600 transition-colors w-fit p-2 -ml-2 rounded-xl hover:bg-blue-50 group/phone">
                                         <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover/phone:scale-110 transition-transform shadow-sm">
                                             <Phone size={16} />
                                         </div>
-                                        <span>{retailer.mobileNumber}</span>
+                                        <span>{retailer.phone}</span>
                                     </a>
                                     <div className="flex items-start gap-3 text-slate-500 text-sm font-medium">
                                         <div className="p-2 bg-indigo-50 text-indigo-500 rounded-lg mt-0.5 shadow-sm">
