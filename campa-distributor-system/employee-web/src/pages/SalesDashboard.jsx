@@ -20,12 +20,12 @@ const SalesDashboard = () => {
         const fetchStats = async () => {
             try {
                 const response = await api.get('/orders');
-                const orders = Array.isArray(response.data) ? response.data : (response.data.data || []);
+                const orders = Array.isArray(response.data) ? response.data : (Array.isArray(response.data?.data) ? response.data.data : []);
 
                 const totalOrders = orders.length;
-                const requested = orders.filter(o => o.status === 'Requested').length;
-                const accepted = orders.filter(o => o.status === 'Approved').length;
-                const totalAmount = orders.reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
+                const requested = (orders || []).filter(o => o.status === 'Requested').length;
+                const accepted = (orders || []).filter(o => o.status === 'Approved').length;
+                const totalAmount = (orders || []).reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
 
                 setStats({ totalOrders, requested, accepted, totalAmount });
             } catch (error) {

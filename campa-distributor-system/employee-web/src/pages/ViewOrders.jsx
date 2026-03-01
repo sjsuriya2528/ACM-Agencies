@@ -22,7 +22,7 @@ const ViewOrders = () => {
                     if (startDate) params.startDate = startDate;
                     if (endDate) params.endDate = endDate;
                     const response = await api.get('/orders', { params, signal });
-                    setOrders(Array.isArray(response.data) ? response.data : (response.data.data || []));
+                    setOrders(Array.isArray(response.data) ? response.data : (Array.isArray(response.data?.data) ? response.data.data : []));
                 } catch (error) {
                     if (error.name === 'CanceledError' || error.name === 'AbortError') return;
                     console.error("Failed to fetch orders", error);
@@ -39,7 +39,7 @@ const ViewOrders = () => {
         };
     }, [startDate, endDate]);
 
-    const filteredOrders = orders.filter(order => {
+    const filteredOrders = (Array.isArray(orders) ? orders : []).filter(order => {
         const matchesSearch = order.retailer?.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             order.id.toString().includes(searchTerm);
         const matchesStatus = filterStatus === 'All' || order.status === filterStatus;

@@ -35,8 +35,8 @@ const CreateOrder = () => {
                     api.get('/retailers'),
                     api.get('/products')
                 ]);
-                setRetailers(Array.isArray(retailersRes.data) ? retailersRes.data : (retailersRes.data.data || []));
-                setProducts(Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data.data || []));
+                setRetailers(Array.isArray(retailersRes.data) ? retailersRes.data : (Array.isArray(retailersRes.data?.data) ? retailersRes.data.data : []));
+                setProducts(Array.isArray(productsRes.data) ? productsRes.data : (Array.isArray(productsRes.data?.data) ? productsRes.data.data : []));
             } catch (error) {
                 console.error("Error loading data", error);
             } finally {
@@ -47,7 +47,7 @@ const CreateOrder = () => {
     }, []);
 
     // Filter Retailers
-    const filteredRetailers = retailers.filter(r =>
+    const filteredRetailers = (Array.isArray(retailers) ? retailers : []).filter(r =>
         r.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.ownerName?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -331,7 +331,7 @@ const CreateOrder = () => {
                     </div>
 
                     <div className="space-y-3">
-                        {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
+                        {(Array.isArray(products) ? products : []).filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => {
                             const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.price };
                             const totalQty = cartData.quantity;
                             const pricePerUnit = cartData.pricePerUnit;

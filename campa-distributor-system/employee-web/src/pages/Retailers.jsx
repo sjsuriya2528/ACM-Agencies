@@ -15,7 +15,7 @@ const Retailers = () => {
         const fetchRetailers = async () => {
             try {
                 const response = await api.get('/retailers');
-                const retailersData = Array.isArray(response.data) ? response.data : (response.data.data || []);
+                const retailersData = Array.isArray(response.data) ? response.data : (Array.isArray(response.data?.data) ? response.data.data : []);
                 setRetailers(retailersData);
                 setFilteredRetailers(retailersData);
             } catch (error) {
@@ -29,7 +29,7 @@ const Retailers = () => {
     }, []);
 
     useEffect(() => {
-        const filtered = retailers.filter(r =>
+        const filtered = (Array.isArray(retailers) ? retailers : []).filter(r =>
             r.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.ownerName && r.ownerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (r.phone && r.phone.includes(searchTerm))

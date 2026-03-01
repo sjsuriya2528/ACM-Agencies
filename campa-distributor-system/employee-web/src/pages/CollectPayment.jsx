@@ -21,7 +21,7 @@ const CollectPayment = () => {
         setLoading(true);
         try {
             const response = await api.get('/invoices?status=Pending');
-            setInvoices(Array.isArray(response.data) ? response.data : (response.data.data || []));
+            setInvoices(Array.isArray(response.data) ? response.data : (Array.isArray(response.data?.data) ? response.data.data : []));
         } catch (error) {
             console.error("Failed to fetch invoices", error);
         } finally {
@@ -31,7 +31,7 @@ const CollectPayment = () => {
 
     const toggleExpand = (invoiceId, balanceAmount) => {
         setExpandedIds(prev =>
-            prev.includes(invoiceId) ? prev.filter(id => id !== invoiceId) : [...prev, invoiceId]
+            (Array.isArray(prev) ? prev : []).includes(invoiceId) ? (Array.isArray(prev) ? prev : []).filter(id => id !== invoiceId) : [...(Array.isArray(prev) ? prev : []), invoiceId]
         );
         if (!paymentData[invoiceId]) {
             setPaymentData(prev => ({
@@ -82,7 +82,7 @@ const CollectPayment = () => {
             // Refresh list
             await fetchInvoices();
             // Clear successful payment data and collapse
-            setExpandedIds(prev => prev.filter(id => id !== invoiceId));
+            setExpandedIds(prev => (Array.isArray(prev) ? prev : []).filter(id => id !== invoiceId));
         } catch (error) {
             console.error("Payment failed", error);
             alert(error.response?.data?.message || "Failed to record payment");
@@ -96,7 +96,7 @@ const CollectPayment = () => {
         return inv.customerName || inv.Order?.retailer?.shopName || inv.Order?.Retailer?.shopName || 'Unknown Retailer';
     };
 
-    const filteredInvoices = invoices.filter(inv =>
+    const filteredInvoices = (Array.isArray(invoices) ? invoices : []).filter(inv =>
         (getRetailerName(inv).toLowerCase().includes(searchTerm.toLowerCase()) ||
             inv.id.toString().includes(searchTerm)) &&
         (inv.paymentStatus === 'Pending' || inv.paymentStatus === 'Partially Paid') &&
