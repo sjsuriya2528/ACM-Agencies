@@ -164,6 +164,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return _roundOffTotal ? total.roundToDouble() : total;
   }
 
+  double get _roundOffValue {
+    if (!_roundOffTotal) return 0.0;
+    double total = _totalOriginalAmount + _totalGstAmount;
+    return total.roundToDouble() - total;
+  }
+
   Future<Position?> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -235,7 +241,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       final orderItems = _cart.map((item) => {
         'productId': item.product.id,
         'quantity': item.totalPieces, // Send total pieces as quantity
-        'priceAtTime': item.customPrice, // Use custom price if overridden
+        'pricePerUnit': item.customPrice, // Use custom price if overridden
         'crates': item.crates,
         'pieces': item.pieces,
         'gstSelected': true,
@@ -247,7 +253,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         'items': orderItems,
         'totalAmount': _finalTotalAmount,
         'paymentMode': _paymentMode,
-        'gpsCoordinates': gpsString,
+        'gpsLatitude': position?.latitude,
+        'gpsLongitude': position?.longitude,
+        'roundOff': _roundOffValue,
       };
 
       // 3. Submit

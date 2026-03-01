@@ -35,7 +35,12 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
       final response = await _apiService.get('/orders', queryParameters: params);
       if (response.statusCode == 200) {
         setState(() {
-          _orders = response.data;
+          final responseData = response.data;
+          if (responseData is Map) {
+            _orders = responseData['data'] ?? [];
+          } else {
+            _orders = responseData;
+          }
           _isLoading = false;
         });
       }

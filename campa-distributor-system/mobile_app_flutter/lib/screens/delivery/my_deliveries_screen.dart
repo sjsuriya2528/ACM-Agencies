@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
@@ -17,6 +18,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _deliveries = [];
   bool _isLoading = true;
+  String? _errorMessage;
   String _searchTerm = '';
 
   @override
@@ -26,17 +28,42 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
   }
 
   Future<void> _fetchDeliveries() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       final response = await _apiService.get('/orders');
       if (response.statusCode == 200) {
         setState(() {
-          _deliveries = response.data;
+          final responseData = response.data;
+          if (responseData is Map) {
+            _deliveries = responseData['data'] ?? [];
+          } else {
+            _deliveries = responseData;
+          }
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Server error: ${response.statusCode}';
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint('Error fetching deliveries: $e');
-      setState(() => _isLoading = false);
+      String message = 'Failed to load deliveries.';
+      if (e is DioException) {
+        if (e.response?.data is Map && e.response?.data?['message'] != null) {
+          message = e.response?.data['message'];
+        } else if (e.message != null) {
+          message = e.message!;
+        }
+      }
+      setState(() {
+        _errorMessage = message;
+        _isLoading = false;
+      });
     }
   }
 
@@ -124,9 +151,11 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
-              : _filteredDeliveries.isEmpty
-                ? _buildEmptyState()
-                : _buildDeliveryList(),
+              : _errorMessage != null
+                ? _buildErrorState()
+                : _filteredDeliveries.isEmpty
+                  ? _buildEmptyState()
+                  : _buildDeliveryList(),
           ),
         ],
       ),
@@ -366,6 +395,42 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(LucideIcons.alertCircle, size: 60, color: Colors.redAccent),
+            const SizedBox(height: 16),
+            const Text(
+              'Oops! Something went wrong',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'An unknown error occurred.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _fetchDeliveries,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
       ),
     );
   }

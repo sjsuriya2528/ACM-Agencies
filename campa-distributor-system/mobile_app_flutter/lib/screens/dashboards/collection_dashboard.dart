@@ -181,9 +181,12 @@ class _CollectionDashboardState extends State<CollectionDashboard> {
           desc: 'Record new collections from retailers',
           icon: LucideIcons.wallet,
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
+            );
+            _fetchStats();
+          },
         ),
         const SizedBox(height: 16),
         QuickActionCard(
@@ -191,9 +194,12 @@ class _CollectionDashboardState extends State<CollectionDashboard> {
           desc: 'Browse historical collection logs',
           icon: LucideIcons.history,
           gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const PaymentHistoryScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const PaymentHistoryScreen()),
+            );
+            _fetchStats();
+          },
         ),
       ],
     );

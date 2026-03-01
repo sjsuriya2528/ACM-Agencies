@@ -199,9 +199,12 @@ class _DriverDashboardState extends State<DriverDashboard> {
           desc: 'View current tasks and manage route',
           icon: LucideIcons.package,
           gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const MyDeliveriesScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const MyDeliveriesScreen()),
+            );
+            _fetchStats();
+          },
         ),
         const SizedBox(height: 16),
         QuickActionCard(
@@ -209,9 +212,12 @@ class _DriverDashboardState extends State<DriverDashboard> {
           desc: 'Log a new order while on route',
           icon: LucideIcons.mapPin,
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => CreateOrderScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => CreateOrderScreen()),
+            );
+            _fetchStats();
+          },
         ),
         const SizedBox(height: 16),
         QuickActionCard(
@@ -219,9 +225,12 @@ class _DriverDashboardState extends State<DriverDashboard> {
           desc: 'Record bill payments from retailers',
           icon: LucideIcons.creditCard,
           gradient: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
+            );
+            _fetchStats();
+          },
         ),
       ],
     );

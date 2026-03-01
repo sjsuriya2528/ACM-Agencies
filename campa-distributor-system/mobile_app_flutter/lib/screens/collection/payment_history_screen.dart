@@ -28,7 +28,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       final response = await _apiService.get('/payments');
       if (response.statusCode == 200) {
         setState(() {
-          _payments = response.data;
+          final responseData = response.data;
+          _payments = responseData is Map ? (responseData['data'] ?? []) : responseData;
           _isLoading = false;
         });
       }

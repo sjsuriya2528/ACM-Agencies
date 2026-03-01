@@ -102,104 +102,139 @@ const getOrders = async (req, res) => {
     try {
         const { startDate, endDate, page = 1, limit = 50, search, status, paymentMode } = req.query;
         const offset = (page - 1) * limit;
-        let whereClause = {};
+        // 1. Base conditions based on user role
+        const conditions = [];
 
         if (req.user.role === 'sales_rep') {
-            whereClause = { salesRepId: req.user.id };
+            conditions.push({ salesRepId: req.user.id });
         } else if (req.user.role === 'driver') {
-            whereClause = {
+            conditions.push({
                 [Op.or]: [
                     { status: 'Approved' },
                     { driverId: req.user.id }
                 ]
-            };
+            });
         } else if (req.user.role === 'collection_agent') {
-            whereClause = {
+            conditions.push({
                 status: { [Op.in]: ['Dispatched', 'Delivered'] }
-            };
+            });
         }
 
-        // Apply filters
+        // 2. Status Filter
         if (status && status !== 'All') {
             if (status.includes(',')) {
-                whereClause.status = { [Op.in]: status.split(',') };
+                conditions.push({ status: { [Op.in]: status.split(',') } });
             } else {
-                whereClause.status = status;
+                conditions.push({ status: status });
             }
         }
+
+        // 3. Payment Mode Filter
         if (paymentMode && paymentMode !== 'All') {
-            whereClause.paymentMode = paymentMode;
+            conditions.push({ paymentMode: paymentMode });
         }
 
-        // Apply Search
+        // 4. Search Filter
         if (search) {
-            whereClause[Op.or] = [
-                { billNumber: { [Op.iLike]: `%${search}%` } },
-                { '$retailer.shopName$': { [Op.iLike]: `%${search}%` } },
-                { '$salesRep.name$': { [Op.iLike]: `%${search}%` } }
-            ];
+            conditions.push({
+                [Op.or]: [
+                    { billNumber: { [Op.iLike]: `%${search}%` } },
+                    { '$retailer.shopName$': { [Op.iLike]: `%${search}%` } },
+                    { '$salesRep.name$': { [Op.iLike]: `%${search}%` } }
+                ]
+            });
         }
 
-        // Apply Date Range Filter
+        // 5. Date Range Filter
         if (startDate && endDate) {
             const start = new Date(startDate);
             start.setHours(0, 0, 0, 0);
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
-            whereClause.createdAt = {
-                [Op.between]: [start, end]
-            };
+            conditions.push({ createdAt: { [Op.between]: [start, end] } });
         } else if (startDate) {
             const start = new Date(startDate);
             start.setHours(0, 0, 0, 0);
-            whereClause.createdAt = {
-                [Op.gte]: start
-            };
+            conditions.push({ createdAt: { [Op.gte]: start } });
         } else if (endDate) {
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
-            whereClause.createdAt = {
-                [Op.lte]: end
-            };
+            conditions.push({ createdAt: { [Op.lte]: end } });
         }
 
-        const { count, rows: orders } = await Order.findAndCountAll({
-            where: whereClause,
-            include: [
-                { model: Retailer, as: 'retailer', attributes: ['id', 'shopName'] },
-                { model: User, as: 'salesRep', attributes: ['id', 'name'] },
-                {
-                    model: OrderItem,
-                    as: 'items',
-                    separate: true,
-                    include: [{ model: Product, attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }]
-                },
-                { model: Invoice },
-            ],
-            order: [['createdAt', 'DESC'], ['id', 'DESC']],
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            distinct: true, // Necessary because of includes
-        });
+        const whereClause = conditions.length > 0 ? { [Op.and]: conditions } : {};
+
+        console.log('[DEBUG] getOrders - User:', { id: req.user.id, role: req.user.role });
+        console.log('[DEBUG] getOrders - Final WhereClause:', JSON.stringify(whereClause, null, 2));
+
+        // 6. Final queries. To completely avoid Postgres GROUP BY issues with nested sorting/paging,
+        // we use a 2-step approach: fetch all matching IDs, then paginate those IDs manually.
+        let matchingIdsQuery = [];
+        try {
+            matchingIdsQuery = await Order.findAll({
+                where: whereClause,
+                include: search ? [
+                    { model: Retailer, as: 'retailer', attributes: [], required: true },
+                    { model: User, as: 'salesRep', attributes: [], required: true }
+                ] : [],
+                attributes: ['id', 'totalAmount', 'createdAt'],
+                order: [['createdAt', 'DESC'], ['id', 'DESC']]
+            });
+        } catch (e) {
+            console.error('[Error] Failed to fetch matching IDs:', e.message);
+            throw e; // Reraise for standard 500 error response
+        }
+
+        const count = matchingIdsQuery.length;
 
         // Calculate total sum of orders for the current filters (across all pages)
-        const totalSumAmount = await Order.sum('totalAmount', {
-            where: whereClause,
-            include: whereClause[Op.or] ? [
-                { model: Retailer, as: 'retailer' },
-                { model: User, as: 'salesRep' }
-            ] : []
-        }) || 0;
+        const totalSumAmount = matchingIdsQuery.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0);
+
+        // Calculate pagination slices safely
+        const startIndex = parseInt(offset) || 0;
+        const endIndex = startIndex + (parseInt(limit) || 50);
+        const paginatedIds = matchingIdsQuery.map(o => o.id).slice(startIndex, endIndex);
+
+        let orders = [];
+        if (paginatedIds.length > 0) {
+            orders = await Order.findAll({
+                where: { id: paginatedIds },
+                include: [
+                    {
+                        model: Retailer,
+                        as: 'retailer',
+                        attributes: ['id', 'shopName', 'address', 'phone'],
+                    },
+                    {
+                        model: User,
+                        as: 'salesRep',
+                        attributes: ['id', 'name', 'phone'],
+                    },
+                    {
+                        model: OrderItem,
+                        as: 'items',
+                        separate: true,
+                        include: [{ model: Product, attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }]
+                    },
+                    { model: Invoice },
+                ],
+                order: [['createdAt', 'DESC'], ['id', 'DESC']]
+            });
+        }
+
+        console.log('[DEBUG] getOrders - Result Count:', count, 'Rows Length:', orders.length);
 
         res.json({
             total: count,
             page: parseInt(page),
             totalPages: Math.ceil(count / limit),
             totalSumAmount,
-            data: orders
+            data: orders,
+            debug: { role: req.user.role }
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('[CRITICAL] getOrders 500:', error);
+        res.status(500).json({ message: error.stack || error.message });
     }
 };
 

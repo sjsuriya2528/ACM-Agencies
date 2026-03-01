@@ -39,15 +39,16 @@ class _SalesDashboardState extends State<SalesDashboard> {
     try {
       final response = await _apiService.get('/orders');
       if (response.statusCode == 200) {
-        final List<dynamic> orders = response.data;
+        final Map<String, dynamic> responseData = response.data;
+        final List<dynamic> orders = responseData['data'] ?? [];
+        final double totalAmount = (responseData['totalSumAmount'] ?? 0).toDouble();
         
         final requested = orders.where((o) => o['status'] == 'Requested').length;
         final accepted = orders.where((o) => o['status'] == 'Approved').length;
-        final double totalAmount = orders.fold(0.0, (sum, o) => sum + (o['totalAmount'] ?? 0).toDouble());
 
         setState(() {
           _stats = {
-            'totalOrders': orders.length,
+            'totalOrders': responseData['total'] ?? orders.length,
             'requested': requested,
             'accepted': accepted,
             'totalAmount': totalAmount,
@@ -210,9 +211,12 @@ class _SalesDashboardState extends State<SalesDashboard> {
           desc: 'Create a new order for a retailer',
           icon: LucideIcons.shoppingCart,
           gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const CreateOrderScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CreateOrderScreen()),
+            );
+            _fetchStats();
+          },
         ),
         const SizedBox(height: 16),
         QuickActionCard(
@@ -220,9 +224,12 @@ class _SalesDashboardState extends State<SalesDashboard> {
           desc: 'View status of all your orders',
           icon: LucideIcons.package,
           gradient: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const ViewOrdersScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const ViewOrdersScreen()),
+            );
+            _fetchStats();
+          },
         ),
         const SizedBox(height: 16),
         QuickActionCard(
@@ -240,9 +247,12 @@ class _SalesDashboardState extends State<SalesDashboard> {
           desc: 'Collect and view payments',
           icon: LucideIcons.indianRupee,
           gradient: const [Color(0xFFF59E0B), Color(0xFFEA580C)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
+            );
+            _fetchStats();
+          },
         ),
         const SizedBox(height: 16),
         QuickActionCard(
@@ -250,9 +260,12 @@ class _SalesDashboardState extends State<SalesDashboard> {
           desc: 'View collection dashboard',
           icon: LucideIcons.fileText,
           gradient: const [Color(0xFFEC4899), Color(0xFFE11D48)],
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const CollectionDashboard()),
-          ),
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CollectionDashboard()),
+            );
+            _fetchStats();
+          },
         ),
       ],
     );
