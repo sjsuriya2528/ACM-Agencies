@@ -76,8 +76,14 @@ const InvoiceView = () => {
         const hasTaxFields = item.netAmount !== undefined && item.netAmount !== null;
 
         const totalGross = hasTaxFields ? Number(item.netAmount) : Number(item.totalPrice);
-        const taxableValue = hasTaxFields ? Number(item.totalPrice) : (totalGross / (1 + (gstRate / 100)));
-        const gstAmount = hasTaxFields ? Number(item.taxAmount) : (totalGross - taxableValue);
+
+        // Calculate taxableValue and gstAmount robustly
+        // If taxAmount is provided and > 0, we trust it. Otherwise, calculate backwards from totalGross.
+        const taxableValue = (hasTaxFields && Number(item.taxAmount) > 0)
+            ? Number(item.totalPrice)
+            : (totalGross / (1 + (gstRate / 100)));
+
+        const gstAmount = totalGross - taxableValue;
         const grossRate = totalGross / qty;
 
         if (!taxSummary[gstRate]) {
@@ -232,7 +238,7 @@ const InvoiceView = () => {
                                                     <td className="py-1 border-r-[1.5px] border-black">{vals.taxable.toFixed(2)}</td>
                                                     <td className="py-1 border-r-[1.5px] border-black">{vals.cgst.toFixed(2)}</td>
                                                     <td className="py-1 border-r-[1.5px] border-black">{vals.sgst.toFixed(2)}</td>
-                                                    <td className="py-1">NaN</td>
+                                                    <td className="py-1">{vals.igst.toFixed(2)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
