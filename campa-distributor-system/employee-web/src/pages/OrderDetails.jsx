@@ -14,7 +14,7 @@ const OrderDetails = () => {
         const fetchOrder = async () => {
             try {
                 const response = await api.get(`/orders/${id}`);
-                setOrder(response.data);
+                setOrder(response.data.data || response.data);
             } catch (error) {
                 console.error("Failed to fetch order details", error);
             } finally {

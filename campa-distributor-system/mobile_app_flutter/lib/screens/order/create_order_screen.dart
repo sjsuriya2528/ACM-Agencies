@@ -31,6 +31,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   final TextEditingController _retailerSearchController = TextEditingController();
   final FocusNode _retailerSearchFocus = FocusNode();
 
+  String _productSearchQuery = '';
+  final TextEditingController _productSearchController = TextEditingController();
+
   bool _isLoadingProducts = true;
   bool _isLoadingRetailers = true;
   bool _isSubmitting = false;
@@ -46,6 +49,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   void dispose() {
     _retailerSearchController.dispose();
     _retailerSearchFocus.dispose();
+    _productSearchController.dispose();
     super.dispose();
   }
 
@@ -96,6 +100,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       (r.shopName.toLowerCase().contains(query)) ||
       (r.ownerName.toLowerCase().contains(query)) ||
       (r.phone.contains(query))
+    ).toList();
+  }
+
+  List<Product> get _filteredProducts {
+    if (_productSearchQuery.isEmpty) return _products;
+    final query = _productSearchQuery.toLowerCase();
+    return _products.where((p) =>
+      p.name.toLowerCase().contains(query)
     ).toList();
   }
 
@@ -488,6 +500,37 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                _buildOrderSettings(),
                                const SizedBox(height: 24),
                                const Text('Products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                               const SizedBox(height: 12),
+                               Container(
+                                 decoration: BoxDecoration(
+                                   color: Colors.white,
+                                   borderRadius: BorderRadius.circular(16),
+                                   border: Border.all(color: const Color(0xFFE2E8F0)),
+                                 ),
+                                 child: TextField(
+                                   controller: _productSearchController,
+                                   onChanged: (val) => setState(() => _productSearchQuery = val),
+                                   style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                                   decoration: InputDecoration(
+                                     hintText: 'Search products...',
+                                     hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
+                                     prefixIcon: const Icon(LucideIcons.search, size: 20, color: Color(0xFF94A3B8)),
+                                     border: InputBorder.none,
+                                     contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 0),
+                                     suffixIcon: _productSearchQuery.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(LucideIcons.x, size: 18, color: Color(0xFF94A3B8)),
+                                            onPressed: () {
+                                              setState(() {
+                                                _productSearchController.clear();
+                                                _productSearchQuery = '';
+                                              });
+                                            },
+                                          ) 
+                                        : null,
+                                   ),
+                                 ),
+                               ),
                                const SizedBox(height: 16),
                             ],
                           ]),
@@ -499,9 +542,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           sliver: SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
-                                return _buildProductCard(_products[index]);
+                                return _buildProductCard(_filteredProducts[index]);
                               },
-                              childCount: _products.length,
+                              childCount: _filteredProducts.length,
                             ),
                           ),
                         ),

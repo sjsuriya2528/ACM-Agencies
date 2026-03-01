@@ -24,9 +24,10 @@ const DeliveryDetails = () => {
     const fetchOrderDetails = async () => {
         try {
             const response = await api.get(`/orders/${id}`);
-            setOrder(response.data);
-            if (response.data.Invoice) {
-                setPaymentAmount(response.data.Invoice.balanceAmount);
+            const orderData = response.data.data || response.data;
+            setOrder(orderData);
+            if (orderData.Invoice) {
+                setPaymentAmount(orderData.Invoice.balanceAmount);
             }
         } catch (error) {
             console.error("Failed to fetch order details", error);

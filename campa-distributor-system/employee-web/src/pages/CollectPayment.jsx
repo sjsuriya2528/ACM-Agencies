@@ -21,7 +21,7 @@ const CollectPayment = () => {
         setLoading(true);
         try {
             const response = await api.get('/invoices?status=Pending');
-            setInvoices(response.data);
+            setInvoices(response.data.data || []);
         } catch (error) {
             console.error("Failed to fetch invoices", error);
         } finally {
