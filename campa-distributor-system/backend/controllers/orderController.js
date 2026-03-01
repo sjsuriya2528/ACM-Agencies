@@ -14,17 +14,23 @@ const createOrder = async (req, res) => {
     const t = await sequelize.transaction();
 
     try {
+        const productIds = items.map(i => i.productId);
+        const products = await Product.findAll({
+            where: { id: { [Op.in]: productIds } },
+            transaction: t
+        });
+
+        const productMap = new Map(products.map(p => [p.id, p]));
         const processedItems = [];
         let orderTotalGross = 0;
 
         // 1. Process items and calculate totals
         for (const item of items) {
-            const product = await Product.findByPk(item.productId);
+            const product = productMap.get(item.productId);
             if (!product) {
                 throw new Error(`Product not found: ${item.productId}`);
             }
 
-            // Taxable price per unit: either provided (override) or from product table (default)
             const taxablePricePerUnit = item.pricePerUnit !== undefined ? Number(item.pricePerUnit) : Number(product.price);
             const quantity = Number(item.quantity);
             const gstPercentage = Number(product.gstPercentage || 18);
@@ -40,19 +46,20 @@ const createOrder = async (req, res) => {
                 quantity,
                 productName: product.name,
                 pricePerUnit: taxablePricePerUnit,
-                totalPrice: totalTaxable.toFixed(2), // Taxable Value
+                totalPrice: totalTaxable.toFixed(2),
                 taxAmount: taxAmount.toFixed(2),
-                netAmount: netAmount.toFixed(2)
+                netAmount: netAmount.toFixed(2),
+                gstPercentage
             });
         }
 
-        // 2. Create Order with correct Gross Total
+        // 2. Create Order
         const order = await Order.create({
             retailerId,
             salesRepId: req.user.id,
-            totalAmount: orderTotalGross.toFixed(2),
+            totalAmount: (orderTotalGross + Number(roundOff || 0)).toFixed(2),
             status: 'Requested',
-            billNumber,
+            billNumber: billNumber || null,
             remarks,
             gpsLatitude,
             gpsLongitude,
@@ -62,10 +69,8 @@ const createOrder = async (req, res) => {
 
         // 3. Create OrderItems
         for (const pItem of processedItems) {
-            const product = await Product.findByPk(pItem.productId);
             await OrderItem.create({
                 ...pItem,
-                gstPercentage: product?.gstPercentage || 18,
                 orderId: order.id
             }, { transaction: t });
         }
@@ -74,11 +79,21 @@ const createOrder = async (req, res) => {
         res.status(201).json(order);
 
     } catch (error) {
-        await t.rollback();
-        console.error('Order Creation Error:', error);
-        res.status(500).json({ message: error.message });
+        if (t) await t.rollback();
+        console.error('Order Creation Error:', {
+            message: error.message,
+            stack: error.stack,
+            body: req.body,
+            userId: req.user?.id
+        });
+        res.status(500).json({
+            message: error.name === 'SequelizeUniqueConstraintError'
+                ? 'Constraint Error: ' + error.errors.map(e => e.message).join(', ')
+                : error.message
+        });
     }
 };
+
 
 // @desc    Get all orders
 // @route   GET /api/orders
