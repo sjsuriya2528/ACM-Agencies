@@ -219,7 +219,9 @@ const Orders = () => {
                 api.get('/retailers'),
                 api.get('/products')
             ]);
-            setRetailers(retailersRes.data || []);
+            // paginated retailers
+            setRetailers(retailersRes.data.data || []);
+            // direct products
             setProducts(productsRes.data || []);
         } catch (error) {
             console.error("Failed to fetch data for create order", error);
@@ -274,8 +276,8 @@ const Orders = () => {
     };
 
     // Create Order Functions
-    if (!Array.isArray(retailers)) {
-        console.warn("Filter warning: 'retailers' is not an array in Orders.jsx. Type:", typeof retailers, "Value:", retailers);
+    if (!Array.isArray(retailers) && retailers !== undefined) {
+        console.warn("Filter warning: 'retailers' is not an array in Orders.jsx. Type:", typeof retailers, "Value:", JSON.stringify(retailers).slice(0, 100));
     }
     const filteredRetailers = (Array.isArray(retailers) ? retailers : []).filter(r =>
         (r.shopName || '').toLowerCase().includes((retailerSearchTerm || '').toLowerCase()) ||
