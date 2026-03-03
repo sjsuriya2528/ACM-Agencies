@@ -68,8 +68,8 @@ const Login = () => {
 
             <div className="w-full max-w-md animate-scale-in z-10">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center p-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 mb-6 shadow-2xl">
-                        <ShieldCheck size={40} className="text-blue-400" />
+                    <div className="inline-flex items-center justify-center p-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 mb-6 shadow-2xl overflow-hidden w-20 h-20">
+                        <img src="/logo.png" className="w-full h-full object-cover" alt="Logo" />
                     </div>
                     <h2 className="text-3xl font-extrabold text-white tracking-tight">Admin Portal</h2>
                     <p className="text-slate-400 mt-2">Welcome back to ACM Agencies</p>

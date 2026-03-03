@@ -97,6 +97,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          Center(
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              margin: const EdgeInsets.bottom(24),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                image: const DecorationImage(
+                                  image: AssetImage('assets/images/logo.png'),
+                                  fit: BoxFit.cover,
+                                ),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              ),
+                            ),
+                          ),
                           const Text(
                             'Welcome Back',
                             textAlign: TextAlign.center,

@@ -123,17 +123,15 @@ class _SalesDashboardState extends State<SalesDashboard> {
                 width: 70,
                 height: 70,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF4F46E5)]),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
                   ],
-                ),
-                child: Center(
-                  child: Text(
-                    name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+                  image: const DecorationImage(
+                    image: AssetImage('assets/images/logo.png'),
+                    fit: BoxFit.cover,
                   ),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
               ),
               const SizedBox(width: 20),
