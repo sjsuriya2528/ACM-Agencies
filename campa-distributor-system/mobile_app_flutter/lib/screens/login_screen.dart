@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Container(
                               width: 100,
                               height: 100,
-                              margin: const EdgeInsets.bottom(24),
+                              margin: const EdgeInsets.only(bottom: 24),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(24),
                                 image: const DecorationImage(
