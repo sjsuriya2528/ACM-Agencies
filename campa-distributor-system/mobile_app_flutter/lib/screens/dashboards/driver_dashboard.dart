@@ -10,6 +10,7 @@ import '../delivery/my_deliveries_screen.dart';
 import '../collection/collect_payment_screen.dart';
 import '../retailers_screen.dart';
 import '../order/create_order_screen.dart';
+import 'collection_dashboard.dart';
 
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -228,6 +229,19 @@ class _DriverDashboardState extends State<DriverDashboard> {
           onTap: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
+            );
+            _fetchStats();
+          },
+        ),
+        const SizedBox(height: 16),
+        QuickActionCard(
+          title: 'Collection Dashboard',
+          desc: 'View collection stats and history',
+          icon: LucideIcons.layoutDashboard,
+          gradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CollectionDashboard()),
             );
             _fetchStats();
           },

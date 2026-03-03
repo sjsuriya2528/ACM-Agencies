@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../models/user.dart';
 import 'delivery_details_screen.dart';
 
 class MyDeliveriesScreen extends StatefulWidget {
@@ -85,8 +86,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
     }
   }
 
-  List<dynamic> get _filteredDeliveries {
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
+  List<dynamic> _getFilteredDeliveries(User? user) {
     return _deliveries.where((d) {
       final shopName = (d['retailer']?['shopName'] ?? '').toString().toLowerCase();
       final orderId = d['id'].toString().toLowerCase();
@@ -134,6 +134,9 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<AuthProvider>(context).user;
+    final filteredDeliveries = _getFilteredDeliveries(user);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -153,9 +156,9 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
               ? const Center(child: CircularProgressIndicator())
               : _errorMessage != null
                 ? _buildErrorState()
-                : _filteredDeliveries.isEmpty
+                : filteredDeliveries.isEmpty
                   ? _buildEmptyState()
-                  : _buildDeliveryList(),
+                  : _buildDeliveryList(filteredDeliveries, user),
           ),
         ],
       ),
@@ -180,14 +183,12 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
     );
   }
 
-  Widget _buildDeliveryList() {
-    final user = Provider.of<AuthProvider>(context).user;
-
+  Widget _buildDeliveryList(List<dynamic> deliveries, User? user) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _filteredDeliveries.length,
+      itemCount: deliveries.length,
       itemBuilder: (context, index) {
-        final delivery = _filteredDeliveries[index];
+        final delivery = deliveries[index];
         final isMyDelivery = delivery['driverId'] == user?.id;
         final statusStyle = _getStatusStyle(delivery['status']);
         final IconData statusIcon = statusStyle['icon'];
@@ -305,31 +306,35 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(10)),
-                                child: const Icon(LucideIcons.indianRupee, size: 16, color: Color(0xFF10B981)),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('BILLING', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w800)),
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        '₹${delivery['Invoice']?['balanceAmount'] ?? delivery['totalAmount']}',
-                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
-                                      ),
-                                    ),
-                                  ],
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(10)),
+                                  child: const Icon(LucideIcons.indianRupee, size: 16, color: Color(0xFF10B981)),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('BILLING', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w800)),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '₹${delivery['Invoice']?['balanceAmount'] ?? delivery['totalAmount']}',
+                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 16),
                           delivery['status'] == 'Approved'
                             ? _buildSelfAssignButton(delivery['id'])
                             : _buildActionButtons(delivery),
