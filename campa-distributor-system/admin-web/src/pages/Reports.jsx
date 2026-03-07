@@ -214,13 +214,12 @@ const Reports = () => {
                     p.sku || '—',
                     p.name || '—',
                     p.category || '—',
-                    p.stockLevel || '0',
-                    `Rs. ${Number(p.price || 0).toFixed(2)}`
+                    p.stock || '0'
                 ]);
 
                 autoTable(doc, {
                     startY: 45,
-                    head: [['SKU', 'Product Name', 'Category', 'Stock', 'Price']],
+                    head: [['SKU', 'Product Name', 'Category', 'Stock']],
                     body: tableData,
                     theme: 'striped',
                     headStyles: { fillColor: [79, 70, 229] },
@@ -526,7 +525,6 @@ const Reports = () => {
                                             <th className="px-6 py-4 font-semibold">SKU</th>
                                             <th className="px-6 py-4 font-semibold">Product</th>
                                             <th className="px-6 py-4 font-semibold">Category</th>
-                                            <th className="px-6 py-4 font-semibold">Price</th>
                                             <th className="px-6 py-4 font-semibold text-right">Stock</th>
                                         </>
                                     )}
@@ -584,8 +582,7 @@ const Reports = () => {
                                         <td className="px-6 py-4 font-mono text-xs">{p.sku || '—'}</td>
                                         <td className="px-6 py-4 font-bold">{p.name || '—'}</td>
                                         <td className="px-6 py-4 text-slate-500">{p.category || '—'}</td>
-                                        <td className="px-6 py-4 text-slate-500 text-xs">Rs. {Number(p.price || 0).toLocaleString()}</td>
-                                        <td className="px-6 py-4 text-right font-black text-indigo-600">{p.stockLevel || 0}</td>
+                                        <td className="px-6 py-4 text-right font-black text-indigo-600">{p.stock || 0}</td>
                                     </tr>
                                 ))}
                                 {(reportType === 'bills' ? (reportData.invoices.length + reportData.cancelled.length) : reportData.length) === 0 && (
