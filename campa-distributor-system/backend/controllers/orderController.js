@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 // @route   POST /api/orders
 // @access  Private (Sales Rep, Driver)
 const createOrder = async (req, res) => {
-    const { retailerId, items, billNumber, remarks, gpsLatitude, gpsLongitude, paymentMode, roundOff } = req.body;
+    const { retailerId, items, billNumber, remarks, gpsLatitude, gpsLongitude, paymentMode, roundOff, salesRepId } = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ message: 'No order items' });
@@ -56,7 +56,7 @@ const createOrder = async (req, res) => {
         // 2. Create Order
         const order = await Order.create({
             retailerId,
-            salesRepId: req.user.id,
+            salesRepId: (req.user.role === 'admin' && salesRepId) ? salesRepId : req.user.id,
             totalAmount: (orderTotalGross + Number(roundOff || 0)).toFixed(2),
             status: 'Requested',
             billNumber: billNumber || null,
@@ -523,7 +523,7 @@ const deleteOrder = async (req, res) => {
 // @route   PUT /api/orders/:id
 // @access  Private (Admin)
 const updateOrder = async (req, res) => {
-    const { retailerId, items, paymentMode, remarks, roundOff } = req.body;
+    const { retailerId, items, paymentMode, remarks, roundOff, salesRepId } = req.body;
     const orderId = req.params.id;
 
     if (!items || items.length === 0) {
@@ -584,6 +584,9 @@ const updateOrder = async (req, res) => {
         order.paymentMode = paymentMode || order.paymentMode;
         order.remarks = remarks !== undefined ? remarks : order.remarks;
         order.roundOff = roundOff !== undefined ? roundOff : order.roundOff;
+        if (req.user.role === 'admin' && salesRepId) {
+            order.salesRepId = salesRepId;
+        }
         order.totalAmount = (orderTotalGross + Number(order.roundOff || 0)).toFixed(2);
 
         await order.save({ transaction: t });

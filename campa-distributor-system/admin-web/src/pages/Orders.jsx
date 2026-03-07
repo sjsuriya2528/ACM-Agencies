@@ -55,8 +55,10 @@ const Orders = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [retailers, setRetailers] = useState([]);
     const [products, setProducts] = useState([]);
+    const [salesReps, setSalesReps] = useState([]);
     const [cart, setCart] = useState({}); // { productId: totalPieces }
     const [selectedRetailer, setSelectedRetailer] = useState(null);
+    const [selectedSalesRep, setSelectedSalesRep] = useState(null);
     const [retailerSearchTerm, setRetailerSearchTerm] = useState('');
 
     // Lock body scroll when modal is open
@@ -215,14 +217,19 @@ const Orders = () => {
         setModalLoading(true);
         setFetchError(null);
         try {
-            const [retailersRes, productsRes] = await Promise.all([
+            const [retailersRes, productsRes, usersRes] = await Promise.all([
                 api.get('/retailers?limit=1000'),
-                api.get('/products?limit=1000')
+                api.get('/products?limit=1000'),
+                api.get('/users')
             ]);
             // paginated retailers
             setRetailers(retailersRes.data.data || []);
             // direct products
             setProducts(productsRes.data || []);
+            // sales reps
+            if (Array.isArray(usersRes.data)) {
+                setSalesReps(usersRes.data.filter(u => u.role === 'sales_rep'));
+            }
         } catch (error) {
             console.error("Failed to fetch data for create order", error);
             setFetchError("Failed to load catalog data. Please check your connection.");
@@ -357,6 +364,7 @@ const Orders = () => {
 
             await api.post('/orders', {
                 retailerId: selectedRetailer.id,
+                salesRepId: selectedSalesRep?.id,
                 items: orderItems,
                 totalAmount: totalAmount + roundOffValue,
                 paymentMode,
@@ -370,6 +378,7 @@ const Orders = () => {
             setShowCreateModal(false);
             setCart({});
             setSelectedRetailer(null);
+            setSelectedSalesRep(null);
             setRemarks('');
             setIsRounded(false);
             fetchOrders(); // Refresh list
@@ -391,6 +400,7 @@ const Orders = () => {
         });
         setCart(initialCart);
         setSelectedRetailer(order.retailer);
+        setSelectedSalesRep(order.salesRep);
         setPaymentMode(order.paymentMode);
         setRemarks(order.remarks || '');
         setIsRounded(order.roundOff !== 0);
@@ -419,6 +429,7 @@ const Orders = () => {
 
             await api.put(`/orders/${editingOrder.id}`, {
                 retailerId: selectedRetailer.id,
+                salesRepId: selectedSalesRep?.id,
                 items: orderItems,
                 paymentMode,
                 roundOff: roundOffValue,
@@ -430,6 +441,7 @@ const Orders = () => {
             setShowEditModal(false);
             setCart({});
             setSelectedRetailer(null);
+            setSelectedSalesRep(null);
             setRemarks('');
             setEditingOrder(null);
             fetchOrders();
@@ -830,7 +842,7 @@ const Orders = () => {
             </div>
 
             {/* Orders Table */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-slate-50/80 border-b border-slate-100 text-left">
@@ -1161,7 +1173,7 @@ const Orders = () => {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => { setShowCreateModal(false); setShowEditModal(false); setEditingOrder(null); setCart({}); setSelectedRetailer(null); setFetchError(null); }}
+                                        onClick={() => { setShowCreateModal(false); setShowEditModal(false); setEditingOrder(null); setCart({}); setSelectedRetailer(null); setSelectedSalesRep(null); setFetchError(null); }}
                                         className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
                                     >
                                         <XCircle size={28} strokeWidth={1.5} />
@@ -1307,6 +1319,29 @@ const Orders = () => {
                                                         )}
                                                     </div>
                                                 )}
+                                            </div>
+
+                                            {/* Employee Selection */}
+                                            <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">Sales Representative</label>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                                        <User size={18} />
+                                                    </div>
+                                                    <select
+                                                        className="flex-1 bg-transparent border-none focus:ring-0 font-bold text-slate-700 outline-none cursor-pointer"
+                                                        value={selectedSalesRep?.id || ''}
+                                                        onChange={(e) => {
+                                                            const rep = salesReps.find(u => u.id === parseInt(e.target.value));
+                                                            setSelectedSalesRep(rep || null);
+                                                        }}
+                                                    >
+                                                        <option value="">Select Employee (Leave for self)</option>
+                                                        {salesReps.map(rep => (
+                                                            <option key={rep.id} value={rep.id}>{rep.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </div>
 
                                             {/* Search Product */}
