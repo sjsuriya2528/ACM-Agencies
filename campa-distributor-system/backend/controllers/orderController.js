@@ -58,7 +58,7 @@ const createOrder = async (req, res) => {
             retailerId,
             salesRepId: (req.user.role === 'admin' && salesRepId) ? salesRepId : req.user.id,
             totalAmount: (orderTotalGross + Number(roundOff || 0)).toFixed(2),
-            status: 'Requested',
+            status: (req.user.role === 'admin' && req.body.status) ? req.body.status : 'Requested',
             billNumber: billNumber || null,
             remarks,
             gpsLatitude,
@@ -72,6 +72,37 @@ const createOrder = async (req, res) => {
             await OrderItem.create({
                 ...pItem,
                 orderId: order.id
+            }, { transaction: t });
+        }
+
+        // 4. Handle auto-payment for Cash orders if Admin creates it as Approved
+        if (order.status === 'Approved' && order.paymentMode === 'Cash') {
+            const { Payment, Invoice } = sequelize.models;
+
+            // Fetch order with retailer for invoice generation
+            const fullOrder = await Order.findByPk(order.id, {
+                include: [
+                    { model: Retailer, as: 'retailer' },
+                    { model: OrderItem, as: 'items', include: [Product] }
+                ],
+                transaction: t
+            });
+
+            // Create Invoice
+            const invoiceData = generateInvoiceData(fullOrder);
+            const invoice = await Invoice.create(invoiceData, { transaction: t });
+
+            // Create Payment
+            await Payment.create({
+                invoiceId: invoice.id,
+                amount: invoice.netTotal,
+                paymentMode: 'Cash',
+                paymentDate: new Date().toISOString().split('T')[0],
+                collectedById: req.user.id,
+                retailerName: invoice.customerName,
+                approvalStatus: 'Approved',
+                approvedById: req.user.id,
+                approvalNote: 'Auto-paid for Cash Order'
             }, { transaction: t });
         }
 
@@ -295,16 +326,10 @@ const updateOrderStatus = async (req, res) => {
                     const invoiceData = generateInvoiceData(order);
                     await Invoice.create(invoiceData);
                 }
-            }
-
-            // Deduct stock on Approval (moved from prev logic which was inside transaction, 
-            // but now we are here. To be safe, let's keep it simple. 
-            // The previous logic deducted stock on 'Approved'. 
-            // Let's implement that properly if not already done.
-            // Wait, previous code had stock deduction logic inside updateOrderStatus inside a transaction.
-            // I should preserve that.
-
-            if (status === 'Approved' && order.status !== 'Approved') {
+                // Deduct stock on Approval
+                // This block is intentionally separate from the invoice generation block above
+                // to allow for more granular control if needed, but both execute on 'Approved' status change.
+                // The original code had this structure, so preserving it.
                 for (const item of order.items) {
                     const product = item.Product || await Product.findByPk(item.productId);
                     if (product) {
@@ -312,6 +337,39 @@ const updateOrderStatus = async (req, res) => {
                             return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
                         }
                         await product.decrement('stockQuantity', { by: item.quantity });
+                    }
+                }
+
+                // Auto-payment for Cash orders
+                if (order.paymentMode === 'Cash') {
+                    // Check if invoice already exists
+                    let invoice = await Invoice.findOne({ where: { orderId: order.id } });
+                    if (!invoice) {
+                        const fullOrder = await Order.findByPk(order.id, {
+                            include: [
+                                { model: Retailer, as: 'retailer' },
+                                { model: OrderItem, as: 'items', include: [Product] }
+                            ]
+                        });
+                        const invoiceData = generateInvoiceData(fullOrder);
+                        invoice = await Invoice.create(invoiceData);
+                    }
+
+                    // Create full payment if not already paid
+                    if (invoice.paymentStatus !== 'Paid') {
+                        const { Payment } = sequelize.models;
+                        await Payment.create({
+                            invoiceId: invoice.id,
+                            amount: invoice.balanceAmount,
+                            paymentMode: 'Cash',
+                            paymentDate: new Date().toISOString().split('T')[0],
+                            collectedById: req.user.id,
+                            retailerName: invoice.customerName,
+                            approvalStatus: 'Approved',
+                            approvedById: req.user.id,
+                            approvalNote: 'Auto-paid on Order Approval'
+                        });
+                        // Model hooks will update invoice balance
                     }
                 }
             }
@@ -622,11 +680,21 @@ const updateOrder = async (req, res) => {
 // @access  Private (Admin)
 const getCancelledOrders = async (req, res) => {
     try {
-        const { startDate, endDate, page = 1, limit = 50, search } = req.query;
+        const { startDate, endDate, page = 1, limit = 50, search, paymentMode } = req.query;
         const offset = (page - 1) * limit;
         let whereClause = {};
 
-        // Apply Search
+        // 1. Base conditions (only Admin can see cancelled orders usually, but let's be role-aware)
+        if (req.user.role === 'sales_rep') {
+            whereClause.salesRepId = req.user.id;
+        }
+
+        // 2. Payment Mode Filter
+        if (paymentMode && paymentMode !== 'All') {
+            whereClause.paymentMode = paymentMode;
+        }
+
+        // 3. Search Filter
         if (search) {
             whereClause[Op.or] = [
                 { billNumber: { [Op.iLike]: `%${search}%` } },

@@ -184,7 +184,8 @@ const Orders = () => {
                 endDate,
                 page,
                 limit,
-                search: activeSearch
+                search: activeSearch,
+                paymentMode: paymentFilter !== 'All' ? paymentFilter : undefined
             };
             const response = await api.get('/orders/cancelled', { params, signal });
             setCancelledOrders(response.data.data);
