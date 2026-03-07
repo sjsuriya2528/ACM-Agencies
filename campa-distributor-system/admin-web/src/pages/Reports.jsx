@@ -75,7 +75,13 @@ const Reports = () => {
             const response = await api.get(endpoint, { params });
 
             if (reportType === 'current_stock') {
-                setReportData(response.data.products || response.data || []);
+                const rawProducts = response.data.products || response.data || [];
+                const mapped = rawProducts.map(p => ({
+                    ...p,
+                    stock: p.stockQuantity,
+                    category: p.groupName || p.category
+                }));
+                setReportData(mapped);
             } else if (reportType === 'stock_history') {
                 setReportData(response.data.data || []);
             } else {
