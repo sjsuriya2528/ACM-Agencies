@@ -6,8 +6,10 @@ import {
     Building2, Hash, FileText, ShoppingBag, Truck,
     TrendingUp, AlertTriangle, CheckCircle, ArrowLeft,
     IndianRupee, Box, Layers, ChevronLeft, ChevronRight as ChevRight,
-    Download,
+    Download, RefreshCw, XCircle as XCircleIcon
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -132,6 +134,16 @@ const Purchases = () => {
     const [reportTo, setReportTo] = useState(new Date().toISOString().split('T')[0]);
     const [reportLoading, setReportLoading] = useState(false);
 
+    // ── Stock History ─────────────────────────────────────────────────────────
+    const [stockHistory, setStockHistory] = useState([]);
+    const [stockHistoryLoading, setStockHistoryLoading] = useState(false);
+    const [historyFilters, setHistoryFilters] = useState({
+        productId: '',
+        type: 'All',
+        startDate: '',
+        endDate: ''
+    });
+
     // ── Fetch ─────────────────────────────────────────────────────────────────
     const fetchBills = async () => {
         setLoading(true);
@@ -157,9 +169,32 @@ const Purchases = () => {
         } catch (err) { console.error(err); }
     };
 
+    const fetchStockHistoryData = async () => {
+        setStockHistoryLoading(true);
+        try {
+            const params = {
+                page: 1,
+                limit: 1000,
+                type: historyFilters.type === 'All' ? undefined : historyFilters.type,
+                productId: historyFilters.productId || undefined,
+                startDate: historyFilters.startDate || undefined,
+                endDate: historyFilters.endDate || undefined
+            };
+            const response = await api.get('/products/stock-adjustments/history', { params });
+            setStockHistory(response.data.data || []);
+        } catch (error) {
+            console.error("Failed to fetch stock history", error);
+        } finally {
+            setStockHistoryLoading(false);
+        }
+    };
+
     useEffect(() => { fetchBills(); }, [page, search]);
     useEffect(() => { fetchProducts(); }, []);
-    useEffect(() => { if (activeTab === 'stock') fetchStock(); }, [activeTab]);
+    useEffect(() => {
+        if (activeTab === 'stock') fetchStock();
+        if (activeTab === 'history') fetchStockHistoryData();
+    }, [activeTab]);
 
     // ── Totals ────────────────────────────────────────────────────────────────
     const subTotal = items.reduce((s, i) => s + Number(i.amount || 0), 0);
@@ -412,6 +447,46 @@ const Purchases = () => {
         }
     };
 
+    const downloadStockHistoryPDF = () => {
+        const doc = new jsPDF();
+        const tableColumn = ["Date", "Product", "Type", "Qty", "User", "Remarks"];
+        const tableRows = [];
+
+        stockHistory.forEach(item => {
+            const rowData = [
+                new Date(item.createdAt).toLocaleDateString('en-IN'),
+                item.product?.name || '—',
+                item.type || '—',
+                item.quantity,
+                item.user?.name || '—',
+                item.remarks || '—'
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.setFontSize(18);
+        doc.text("ACM AGENCIES - Stock History Report", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+
+        let filterText = "Filters: All Records";
+        if (historyFilters.type !== 'All' || historyFilters.productId || historyFilters.startDate) {
+            filterText = `Filters: ${historyFilters.type !== 'All' ? `Type: ${historyFilters.type}` : ''} ${historyFilters.startDate ? `| From: ${historyFilters.startDate} To: ${historyFilters.endDate}` : ''}`;
+        }
+        doc.text(filterText, 14, 30);
+        doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 14, 36);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 45,
+            theme: 'grid',
+            headStyles: { fillColor: [37, 99, 235] }
+        });
+
+        doc.save(`Stock_History_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     // ── Print ──────────────────────────────────────────────────────────────────
     const handlePrint = () => {
         const content = document.getElementById('print-bill').innerHTML;
@@ -517,7 +592,7 @@ const Purchases = () => {
                         </div>
 
                         {/* Items Table */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                                 <p className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                                     <Layers size={12} className="text-indigo-400" /> Purchase Items
@@ -714,6 +789,7 @@ const Purchases = () => {
                 {[
                     { key: 'bills', label: 'Purchase Bills', icon: ClipboardList },
                     { key: 'stock', label: 'Current Stock', icon: BarChart2 },
+                    { key: 'history', label: 'Stock History', icon: Layers },
                 ].map(({ key, label, icon: Icon }) => (
                     <button key={key} onClick={() => setActiveTab(key)}
                         className={`flex items-center gap-2 px-6 py-2.5 font-semibold text-sm rounded-xl transition-all ${activeTab === key
@@ -927,7 +1003,7 @@ const Purchases = () => {
                     </div>
 
                     {/* Stock table */}
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
                         <div className="overflow-x-auto">
                             <table className="min-w-full">
                                 <thead>
@@ -984,6 +1060,139 @@ const Purchases = () => {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ════ HISTORY TAB ════ */}
+            {activeTab === 'history' && (
+                <div className="space-y-6 text-slate-800">
+                    {/* History Filters */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap gap-4 items-end">
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Product</label>
+                            <select
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                                value={historyFilters.productId}
+                                onChange={e => setHistoryFilters({ ...historyFilters, productId: e.target.value })}
+                            >
+                                <option value="">All Products</option>
+                                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="w-40">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Type</label>
+                            <select
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                                value={historyFilters.type}
+                                onChange={e => setHistoryFilters({ ...historyFilters, type: e.target.value })}
+                            >
+                                <option value="All">All Types</option>
+                                <option value="Addition">Addition</option>
+                                <option value="Reduction">Reduction</option>
+                            </select>
+                        </div>
+                        <div className="flex gap-2 items-end">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Date Range</label>
+                                <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                    <input
+                                        type="date"
+                                        className="bg-transparent border-none text-xs p-1.5 outline-none"
+                                        value={historyFilters.startDate}
+                                        onChange={e => setHistoryFilters({ ...historyFilters, startDate: e.target.value })}
+                                    />
+                                    <span className="text-slate-300">→</span>
+                                    <input
+                                        type="date"
+                                        className="bg-transparent border-none text-xs p-1.5 outline-none"
+                                        value={historyFilters.endDate}
+                                        onChange={e => setHistoryFilters({ ...historyFilters, endDate: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setHistoryFilters({ productId: '', type: 'All', startDate: '', endDate: '' })}
+                                className="p-2.5 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-xl border border-slate-200 transition-colors"
+                                title="Clear Filters"
+                            >
+                                <XCircleIcon size={20} />
+                            </button>
+                        </div>
+                        <button
+                            onClick={fetchStockHistoryData}
+                            className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95"
+                        >
+                            <RefreshCw size={20} className={stockHistoryLoading ? 'animate-spin' : ''} />
+                        </button>
+                        <button
+                            onClick={downloadStockHistoryPDF}
+                            disabled={stockHistory.length === 0}
+                            className="flex items-center gap-2 h-[42px] px-6 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            <Download size={18} /> Export PDF
+                        </button>
+                    </div>
+
+                    {/* History Table */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
+                        {stockHistoryLoading ? (
+                            <div className="flex justify-center p-20"><LoadingSpinner /></div>
+                        ) : stockHistory.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+                                <Package size={48} className="mb-4 opacity-20" />
+                                <p>No adjustment records found.</p>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50/50 border-b border-slate-100">
+                                    <tr>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Date</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Product</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Type</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Qty</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">User</th>
+                                        <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {stockHistory.map(item => (
+                                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-6 py-3 whitespace-nowrap">
+                                                <div className="text-sm font-medium text-slate-600">
+                                                    {new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                </div>
+                                                <div className="text-[10px] text-slate-400">
+                                                    {new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-3 whitespace-nowrap">
+                                                <div className="font-bold text-slate-800 text-sm">{item.product?.name}</div>
+                                                <div className="text-[10px] text-slate-400 font-mono italic">#{item.productId}</div>
+                                            </td>
+                                            <td className="px-6 py-3 whitespace-nowrap">
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border ${item.type === 'Addition'
+                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                    : 'bg-rose-50 text-rose-600 border-rose-100'
+                                                    }`}>
+                                                    {item.type === 'Addition' ? <Plus size={10} strokeWidth={3} /> : <Minus size={10} strokeWidth={3} />}
+                                                    {item.type}
+                                                </span>
+                                            </td>
+                                            <td className={`px-6 py-3 text-right font-black text-sm tabular-nums whitespace-nowrap ${item.type === 'Addition' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                {item.type === 'Addition' ? '+' : '-'}{item.quantity}
+                                            </td>
+                                            <td className="px-6 py-3 whitespace-nowrap">
+                                                <div className="text-sm font-semibold text-slate-700">{item.user?.name || 'System User'}</div>
+                                            </td>
+                                            <td className="px-6 py-3">
+                                                <div className="text-xs text-slate-500 max-w-[200px] truncate" title={item.remarks}>{item.remarks || '—'}</div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             )}

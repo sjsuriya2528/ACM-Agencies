@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Plus, Edit, Trash2, Loader2, Package, Minus, Search, Filter, Calendar, ChevronDown, ChevronUp, RefreshCw, XCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Package, Minus, Search, Filter, Calendar, ChevronDown, ChevronUp, RefreshCw, XCircle, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const Products = () => {
@@ -37,6 +39,116 @@ const Products = () => {
     });
     const [historyPage, setHistoryPage] = useState(1);
     const [historyTotalPages, setHistoryTotalPages] = useState(1);
+
+    // PDF Generation
+    const downloadInventoryPDF = () => {
+        const doc = new jsPDF();
+        const tableColumn = ["ID", "Name", "Category", "Stock (Btls)", "Price/Crate (P)", "Price/Crate (S)"];
+        const tableRows = [];
+
+        products.forEach(p => {
+            const bpc = p.bottlesPerCrate || 24;
+            const rowData = [
+                p.id,
+                p.name,
+                p.category || '—',
+                p.stockQuantity,
+                `₹${(p.price * bpc).toFixed(2)}`,
+                p.sellingPrice ? `₹${(p.sellingPrice * bpc).toFixed(2)}` : '—'
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.setFontSize(18);
+        doc.text("ACM AGENCIES - Current Inventory Report", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 14, 30);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 40,
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+        });
+
+        doc.save(`Inventory_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
+    const downloadGlobalHistoryPDF = () => {
+        const doc = new jsPDF();
+        const tableColumn = ["Date", "Product", "Type", "Qty", "User", "Remarks"];
+        const tableRows = [];
+
+        globalHistory.forEach(item => {
+            const rowData = [
+                new Date(item.createdAt).toLocaleDateString('en-IN'),
+                item.product?.name || '—',
+                item.type,
+                item.quantity,
+                item.user?.name || '—',
+                item.remarks || '—'
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.setFontSize(18);
+        doc.text("ACM AGENCIES - Stock Adjustment History", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+
+        let filterText = "Filters: All Records";
+        if (historyFilters.type !== 'All' || historyFilters.productId || historyFilters.startDate) {
+            filterText = `Filters: ${historyFilters.type !== 'All' ? `Type: ${historyFilters.type}` : ''} ${historyFilters.startDate ? `| From: ${historyFilters.startDate} To: ${historyFilters.endDate}` : ''}`;
+        }
+        doc.text(filterText, 14, 30);
+        doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 14, 36);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 45,
+            theme: 'grid',
+            headStyles: { fillColor: [37, 99, 235] }
+        });
+
+        doc.save(`Stock_History_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
+    const downloadProductHistoryPDF = (product, history) => {
+        const doc = new jsPDF();
+        const tableColumn = ["Date", "Type", "Quantity", "Adjusted By", "Remarks"];
+        const tableRows = [];
+
+        history.forEach(item => {
+            const rowData = [
+                new Date(item.createdAt).toLocaleString('en-IN'),
+                item.type,
+                item.quantity,
+                item.user?.name || '—',
+                item.remarks || '—'
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.setFontSize(18);
+        doc.text(`ACM AGENCIES - Stock History: ${product.name}`, 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Current Stock: ${product.stockQuantity} bottles`, 14, 30);
+        doc.text(`Report Generated: ${new Date().toLocaleString('en-IN')}`, 14, 36);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 45,
+            theme: 'striped',
+            headStyles: { fillColor: [5, 150, 105] }
+        });
+
+        doc.save(`${product.name.replace(/\s+/g, '_')}_History.pdf`);
+    };
 
     const fetchProducts = async () => {
         try {
@@ -237,20 +349,26 @@ const Products = () => {
 
             {activeTab === 'products' && (
                 <>
-                    <div className="flex gap-4 mb-4">
+                    <div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
                         <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input
                                 type="text"
                                 placeholder="Search products..."
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm bg-white"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                             />
-                            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
                         </div>
+                        <button
+                            onClick={downloadInventoryPDF}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 transition-all border border-indigo-100"
+                        >
+                            <Download size={18} /> Export Inventory
+                        </button>
                     </div>
                     {loading ? <LoadingSpinner /> : (
-                        <div className="bg-white rounded-lg shadow overflow-hidden">
+                        <div className="bg-white rounded-lg shadow overflow-x-auto">
                             <table className="w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
@@ -409,6 +527,13 @@ const Products = () => {
                             </button>
                         </div>
                         <button
+                            onClick={downloadGlobalHistoryPDF}
+                            disabled={globalHistory.length === 0}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            <Download size={18} /> Export Report
+                        </button>
+                        <button
                             onClick={fetchGlobalHistory}
                             className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95"
                         >
@@ -417,7 +542,7 @@ const Products = () => {
                     </div>
 
                     {/* History Table */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
                         {globalHistoryLoading ? (
                             <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
                         ) : globalHistory.length === 0 ? (
@@ -724,107 +849,113 @@ const Products = () => {
                             </form>
                         </div>
                     </div>
-                )
-            }
-            {
-                isStockAdjModalOpen && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-sm overflow-hidden transform transition-all">
-                            <div className={`bg-gradient-to-r ${stockAdjData.type === 'Addition' ? 'from-emerald-600 to-emerald-700' : 'from-orange-600 to-orange-700'} px-6 py-4 flex justify-between items-center`}>
+                )}
+            {isStockAdjModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-white/20">
+                        <div className={`bg-gradient-to-br ${stockAdjData.type === 'Addition' ? 'from-emerald-500 to-emerald-700' : 'from-orange-500 to-orange-700'} px-6 py-5 flex justify-between items-center relative overflow-hidden`}>
+                            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                                <Package size={80} />
+                            </div>
+                            <div className="relative z-10">
+                                <h2 className="text-xl font-bold text-white tracking-tight">Manual Stock {stockAdjData.type}</h2>
+                                <p className="text-white/90 text-sm font-medium mt-0.5">{stockAdjData.name}</p>
+                            </div>
+                            <button onClick={() => setIsStockAdjModalOpen(false)} className="text-white/70 hover:text-white transition-all bg-white/10 p-2 rounded-xl backdrop-blur-sm self-start relative z-10">
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={submitStockAdj} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-white">Manual Stock {stockAdjData.type}</h2>
-                                    <p className="text-white/80 text-sm opacity-90">{stockAdjData.name}</p>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{stockAdjData.type === 'Addition' ? 'Add' : 'Reduce'} Crates</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            autoFocus
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500 focus:border-emerald-500' : 'focus:ring-orange-500 focus:border-orange-500'} transition-all outline-none`}
+                                            value={stockAdjData.crates}
+                                            onChange={e => setStockAdjData({ ...stockAdjData, crates: e.target.value })}
+                                            placeholder="0"
+                                        />
+                                        <span className="absolute right-2 top-2.5 text-xs text-gray-400">crts</span>
+                                    </div>
                                 </div>
-                                <button onClick={() => setIsStockAdjModalOpen(false)} className="text-white/80 hover:text-white transition-colors">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{stockAdjData.type === 'Addition' ? 'Add' : 'Reduce'} Bottles</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500 focus:border-emerald-500' : 'focus:ring-orange-500 focus:border-orange-500'} transition-all outline-none`}
+                                            value={stockAdjData.bottles}
+                                            onChange={e => setStockAdjData({ ...stockAdjData, bottles: e.target.value })}
+                                            placeholder="0"
+                                        />
+                                        <span className="absolute right-2 top-2.5 text-xs text-gray-400">btls</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <form onSubmit={submitStockAdj} className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">{stockAdjData.type === 'Addition' ? 'Add' : 'Reduce'} Crates</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                autoFocus
-                                                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500 focus:border-emerald-500' : 'focus:ring-orange-500 focus:border-orange-500'} transition-all outline-none`}
-                                                value={stockAdjData.crates}
-                                                onChange={e => setStockAdjData({ ...stockAdjData, crates: e.target.value })}
-                                                placeholder="0"
-                                            />
-                                            <span className="absolute right-2 top-2.5 text-xs text-gray-400">crts</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">{stockAdjData.type === 'Addition' ? 'Add' : 'Reduce'} Bottles</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500 focus:border-emerald-500' : 'focus:ring-orange-500 focus:border-orange-500'} transition-all outline-none`}
-                                                value={stockAdjData.bottles}
-                                                onChange={e => setStockAdjData({ ...stockAdjData, bottles: e.target.value })}
-                                                placeholder="0"
-                                            />
-                                            <span className="absolute right-2 top-2.5 text-xs text-gray-400">btls</span>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks {stockAdjData.type === 'Reduction' && <span className="text-red-500">*</span>}</label>
+                                <textarea
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500' : 'focus:ring-orange-500'} transition-all outline-none`}
+                                    rows="2"
+                                    placeholder={stockAdjData.type === 'Addition' ? 'Manual stock addition' : 'Reason for reduction (e.g. Breakage, Return)'}
+                                    value={stockAdjData.remarks}
+                                    onChange={e => setStockAdjData({ ...stockAdjData, remarks: e.target.value })}
+                                    required={stockAdjData.type === 'Reduction'}
+                                />
+                            </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Remarks {stockAdjData.type === 'Reduction' && <span className="text-red-500">*</span>}</label>
-                                    <textarea
-                                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 ${stockAdjData.type === 'Addition' ? 'focus:ring-emerald-500' : 'focus:ring-orange-500'} transition-all outline-none`}
-                                        rows="2"
-                                        placeholder={stockAdjData.type === 'Addition' ? 'Manual stock addition' : 'Reason for reduction (e.g. Breakage, Return)'}
-                                        value={stockAdjData.remarks}
-                                        onChange={e => setStockAdjData({ ...stockAdjData, remarks: e.target.value })}
-                                        required={stockAdjData.type === 'Reduction'}
-                                    />
+                            <div className={`rounded-2xl p-5 space-y-3 border-2 shadow-inner transition-all ${stockAdjData.type === 'Addition' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-orange-50/50 border-orange-100'}`}>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-500 font-medium">Current Inventory</span>
+                                    <span className="font-bold text-slate-700">{stockAdjData.currentStock} <span className="text-[10px] text-slate-400 font-normal uppercase">btls</span></span>
                                 </div>
-
-                                <div className={`rounded-xl p-4 space-y-2 border ${stockAdjData.type === 'Addition' ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
-                                    <div className="flex justify-between text-sm text-gray-600">
-                                        <span>Current Stock:</span>
-                                        <span className="font-medium">{stockAdjData.currentStock} btls</span>
-                                    </div>
-                                    <div className={`flex justify-between text-sm ${stockAdjData.type === 'Addition' ? 'text-emerald-700' : 'text-orange-700'}`}>
-                                        <span>{stockAdjData.type === 'Addition' ? 'Adding' : 'Reducing'}:</span>
-                                        <span className="font-medium">{stockAdjData.type === 'Addition' ? '+' : '-'}{((parseInt(stockAdjData.crates) || 0) * stockAdjData.bpc) + (parseInt(stockAdjData.bottles) || 0)} btls</span>
-                                    </div>
-                                    <div className={`pt-2 mt-1 border-t flex justify-between items-center ${stockAdjData.type === 'Addition' ? 'border-emerald-200' : 'border-orange-200'}`}>
-                                        <span className="text-sm font-bold text-gray-800">New Total:</span>
-                                        <span className={`text-lg font-bold ${stockAdjData.type === 'Addition' ? 'text-emerald-800' : 'text-orange-800'}`}>
+                                <div className={`flex justify-between items-center text-sm ${stockAdjData.type === 'Addition' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                    <span className="font-medium underline decoration-dotted underline-offset-4">{stockAdjData.type === 'Addition' ? 'Adding' : 'Reducing'} Amount</span>
+                                    <span className="font-black">
+                                        {stockAdjData.type === 'Addition' ? '+' : '-'}{((parseInt(stockAdjData.crates) || 0) * stockAdjData.bpc) + (parseInt(stockAdjData.bottles) || 0)}
+                                        <span className="text-[10px] font-normal uppercase ml-1">btls</span>
+                                    </span>
+                                </div>
+                                <div className={`pt-3 mt-1 border-t-2 border-dashed flex justify-between items-center ${stockAdjData.type === 'Addition' ? 'border-emerald-200' : 'border-orange-200'}`}>
+                                    <span className="text-sm font-black text-slate-800 tracking-tight">Projected Total</span>
+                                    <div className="text-right">
+                                        <span className={`text-2xl font-black tabular-nums ${stockAdjData.type === 'Addition' ? 'text-emerald-700' : 'text-orange-700'}`}>
                                             {stockAdjData.type === 'Addition'
                                                 ? stockAdjData.currentStock + ((parseInt(stockAdjData.crates) || 0) * stockAdjData.bpc) + (parseInt(stockAdjData.bottles) || 0)
                                                 : stockAdjData.currentStock - ((parseInt(stockAdjData.crates) || 0) * stockAdjData.bpc) - (parseInt(stockAdjData.bottles) || 0)
                                             }
-                                            <span className="text-xs font-normal ml-1">btls</span>
                                         </span>
+                                        <span className="text-xs font-bold text-slate-400 ml-1 uppercase">btls</span>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="flex justify-end gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsStockAdjModalOpen(false)}
-                                        disabled={isSubmitting}
-                                        className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className={`px-6 py-2 text-white rounded-lg font-medium shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 ${stockAdjData.type === 'Addition' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200'}`}
-                                    >
-                                        {isSubmitting ? <><Loader2 size={18} className="animate-spin" /><span>Saving...</span></> : <span>Confirm {stockAdjData.type}</span>}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsStockAdjModalOpen(false)}
+                                    disabled={isSubmitting}
+                                    className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className={`px-6 py-2 text-white rounded-lg font-medium shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 ${stockAdjData.type === 'Addition' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200'}`}
+                                >
+                                    {isSubmitting ? <><Loader2 size={18} className="animate-spin" /><span>Saving...</span></> : <span>Confirm {stockAdjData.type}</span>}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                )
+                </div>
+            )
             }
 
             {/* Stock History Modal */}
@@ -836,9 +967,18 @@ const Products = () => {
                                 <h2 className="text-lg font-bold text-white">Stock Adjustment History</h2>
                                 <p className="text-white/80 text-sm opacity-90">{selectedProduct?.name}</p>
                             </div>
-                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-white/80 hover:text-white transition-colors">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => downloadProductHistoryPDF(selectedProduct, stockHistory)}
+                                    disabled={stockHistory.length === 0}
+                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all disabled:opacity-50"
+                                >
+                                    <Download size={16} /> Export PDF
+                                </button>
+                                <button onClick={() => setIsHistoryModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                                    <XCircle size={24} className="text-slate-400" />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6">
