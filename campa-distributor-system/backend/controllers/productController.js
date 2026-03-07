@@ -1,4 +1,5 @@
-const { Product, StockAdjustment, sequelize } = require('../models');
+const { Product, StockAdjustment, User, sequelize } = require('../models');
+const { Op } = require('sequelize');
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -175,6 +176,51 @@ const getStockHistory = async (req, res) => {
     }
 };
 
+// @desc    Get all stock adjustments with filters
+// @route   GET /api/products/stock-adjustments/history
+// @access  Private (Admin)
+const getAllStockAdjustments = async (req, res) => {
+    try {
+        const { productId, type, startDate, endDate, page = 1, limit = 50 } = req.query;
+        const where = {};
+
+        if (productId) where.productId = productId;
+        if (type && type !== 'All') where.type = type;
+
+        if (startDate || endDate) {
+            where.createdAt = {};
+            if (startDate) where.createdAt[Op.gte] = new Date(startDate);
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                where.createdAt[Op.lte] = end;
+            }
+        }
+
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await StockAdjustment.findAndCountAll({
+            where,
+            include: [
+                { model: Product, as: 'product', attributes: ['name'] },
+                { model: User, as: 'adjustedBy', attributes: ['name'] }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        res.json({
+            data: rows,
+            total: count,
+            totalPages: Math.ceil(count / limit),
+            currentPage: parseInt(page)
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getProducts,
     getProductById,
@@ -182,5 +228,6 @@ module.exports = {
     updateProduct,
     deleteProduct,
     adjustStock,
-    getStockHistory
+    getStockHistory,
+    getAllStockAdjustments
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Plus, Edit, Trash2, Loader2, Package, Minus } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Package, Minus, Search, Filter, Calendar, ChevronDown, ChevronUp, RefreshCw, XCircle } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const Products = () => {
@@ -23,6 +23,21 @@ const Products = () => {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
 
+    // Tab State
+    const [activeTab, setActiveTab] = useState('products'); // 'products' or 'history'
+
+    // Global History State
+    const [globalHistory, setGlobalHistory] = useState([]);
+    const [globalHistoryLoading, setGlobalHistoryLoading] = useState(false);
+    const [historyFilters, setHistoryFilters] = useState({
+        productId: '',
+        type: 'All',
+        startDate: '',
+        endDate: ''
+    });
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyTotalPages, setHistoryTotalPages] = useState(1);
+
     const fetchProducts = async () => {
         try {
             const response = await api.get('/products');
@@ -42,6 +57,33 @@ const Products = () => {
     useEffect(() => {
         fetchProducts();
     }, []);
+
+    const fetchGlobalHistory = async () => {
+        setGlobalHistoryLoading(true);
+        try {
+            const params = {
+                page: historyPage,
+                limit: 20,
+                productId: historyFilters.productId,
+                type: historyFilters.type,
+                startDate: historyFilters.startDate,
+                endDate: historyFilters.endDate
+            };
+            const response = await api.get('/products/stock-adjustments/history', { params });
+            setGlobalHistory(response.data.data);
+            setHistoryTotalPages(response.data.totalPages);
+        } catch (error) {
+            console.error("Failed to fetch global history:", error);
+        } finally {
+            setGlobalHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchGlobalHistory();
+        }
+    }, [activeTab, historyPage, historyFilters]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -177,131 +219,295 @@ const Products = () => {
                     <h1 className="text-2xl font-bold text-gray-800">Products</h1>
                     <div className="h-1 w-20 bg-blue-600 rounded mt-1"></div>
                 </div>
-                <div className="flex gap-4 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <input
-                            type="text"
-                            placeholder="Search products..."
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                        />
-                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                    </div>
+                <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner">
                     <button
-                        onClick={() => { setIsModalOpen(true); setEditingId(null); setFormData({ name: '', purchaseCratePrice: '', sellingCratePrice: '', stock: '', category: '', bottlesPerCrate: 24, gstPercentage: 18.00 }); }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-md transition-all transform hover:scale-105"
+                        onClick={() => setActiveTab('products')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                     >
-                        <Plus size={20} /> <span className="hidden sm:inline">Add Product</span>
+                        Inventory
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Stock History
                     </button>
                 </div>
             </div>
 
-            {loading ? <LoadingSpinner /> : (
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">ID</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <span className="text-orange-600">Purchase Price</span>
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <span className="text-emerald-600">Selling Price</span>
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
-                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {(() => {
-                                if (!Array.isArray(products)) {
-                                    console.warn("Filter warning: 'products' is not an array in Products.jsx. Type:", typeof products, "Value:", products);
-                                }
-                                return (Array.isArray(products) ? products : []).filter(p =>
-                                    (p.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
-                                    (p.category && p.category.toLowerCase().includes((searchTerm || '').toLowerCase()))
-                                ).map(product => {
-                                    const isSingle = product.name.toUpperCase().includes('SINGLE') || product.name.toUpperCase().includes('BOTTLE');
-                                    const bpc = product.bottlesPerCrate || 24;
+            {activeTab === 'products' && (
+                <>
+                    <div className="flex gap-4 mb-4">
+                        <div className="relative flex-1 max-w-md">
+                            <input
+                                type="text"
+                                placeholder="Search products..."
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm bg-white"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+                        </div>
+                    </div>
+                    {loading ? <LoadingSpinner /> : (
+                        <div className="bg-white rounded-lg shadow overflow-hidden">
+                            <table className="w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">ID</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <span className="text-orange-600">Purchase Price</span>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <span className="text-emerald-600">Selling Price</span>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {(() => {
+                                        if (!Array.isArray(products)) {
+                                            console.warn("Filter warning: 'products' is not an array in Products.jsx. Type:", typeof products, "Value:", products);
+                                        }
+                                        return (Array.isArray(products) ? products : []).filter(p =>
+                                            (p.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+                                            (p.category && p.category.toLowerCase().includes((searchTerm || '').toLowerCase()))
+                                        ).map(product => {
+                                            const isSingle = product.name.toUpperCase().includes('SINGLE') || product.name.toUpperCase().includes('BOTTLE');
+                                            const bpc = product.bottlesPerCrate || 24;
 
-                                    // Stock is now always stored as Bottles
-                                    const bottles = product.stock;
-                                    const crates = isSingle ? '-' : Math.ceil(product.stock / bpc);
+                                            // Stock is now always stored as Bottles
+                                            const bottles = product.stock;
+                                            const crates = isSingle ? '-' : Math.ceil(product.stock / bpc);
 
-                                    return (
-                                        <tr key={product.id} className="hover:bg-slate-50 transition-colors duration-150">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.id}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">{product.name}</td>
-                                            {/* Purchase Price */}
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-orange-700">
-                                                        ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
-                                                    </span>
-                                                    <span className="text-xs text-slate-400">
-                                                        ₹{Number(product.price).toFixed(4)} <span className="text-[10px]">/ btl</span>
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            {/* Selling Price */}
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                {product.sellingPrice ? (
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-emerald-700">
-                                                            ₹{(product.sellingPrice * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                            return (
+                                                <tr key={product.id} className="hover:bg-slate-50 transition-colors duration-150">
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.id}</td>
+                                                    <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">{product.name}</td>
+                                                    {/* Purchase Price */}
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-orange-700">
+                                                                ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                                            </span>
+                                                            <span className="text-xs text-slate-400">
+                                                                ₹{Number(product.price).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    {/* Selling Price */}
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        {product.sellingPrice ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-bold text-emerald-700">
+                                                                    ₹{(product.sellingPrice * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                                                </span>
+                                                                <span className="text-xs text-slate-400">
+                                                                    ₹{Number(product.sellingPrice).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-300 italic">Not set</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <div className="flex flex-col">
+                                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${bottles > 100 ? 'bg-green-100 text-green-800' :
+                                                                bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
+                                                                    'bg-red-100 text-red-800'
+                                                                }`}>{bottles} btls</span>
+                                                            <span className="text-xs text-slate-400 mt-0.5">{isSingle ? '—' : `${crates} crates`}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <span className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md border border-blue-100">
+                                                            {product.category || 'Uncategorized'}
                                                         </span>
-                                                        <span className="text-xs text-slate-400">
-                                                            ₹{Number(product.sellingPrice).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <span className="px-2 py-1 text-xs font-medium bg-orange-50 text-orange-600 rounded-md border border-orange-100">
+                                                            {product.gstPercentage}%
                                                         </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-slate-300 italic">Not set</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${bottles > 100 ? 'bg-green-100 text-green-800' :
-                                                        bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-red-100 text-red-800'
-                                                        }`}>{bottles} btls</span>
-                                                    <span className="text-xs text-slate-400 mt-0.5">{isSingle ? '—' : `${crates} crates`}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md border border-blue-100">
-                                                    {product.category || 'Uncategorized'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className="px-2 py-1 text-xs font-medium bg-orange-50 text-orange-600 rounded-md border border-orange-100">
-                                                    {product.gstPercentage}%
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
-                                                    <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 p-1.5 hover:bg-orange-50 rounded-lg transition-colors" title="Reduce Stock"><Minus size={16} /></button>
-                                                    <button onClick={() => fetchStockHistory(product)} className="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded-lg transition-colors" title="View History"><Package size={16} /></button>
-                                                    <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
-                                                    <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                });
-                            })()
-                            }
-                        </tbody>
-                    </table>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
+                                                            <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 p-1.5 hover:bg-orange-50 rounded-lg transition-colors" title="Reduce Stock"><Minus size={16} /></button>
+                                                            <button onClick={() => fetchStockHistory(product)} className="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded-lg transition-colors" title="View History"><Package size={16} /></button>
+                                                            <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
+                                                            <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        });
+                                    })()
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {activeTab === 'history' && (
+                <div className="space-y-6">
+                    {/* History Filters */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap gap-4 items-end">
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Product</label>
+                            <select
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                                value={historyFilters.productId}
+                                onChange={e => setHistoryFilters({ ...historyFilters, productId: e.target.value })}
+                            >
+                                <option value="">All Products</option>
+                                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="w-40">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Type</label>
+                            <select
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                                value={historyFilters.type}
+                                onChange={e => setHistoryFilters({ ...historyFilters, type: e.target.value })}
+                            >
+                                <option value="All">All Types</option>
+                                <option value="Addition">Addition</option>
+                                <option value="Reduction">Reduction</option>
+                            </select>
+                        </div>
+                        <div className="flex gap-2 items-end">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Date Range</label>
+                                <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                    <input
+                                        type="date"
+                                        className="bg-transparent border-none text-sm p-1.5 outline-none"
+                                        value={historyFilters.startDate}
+                                        onChange={e => setHistoryFilters({ ...historyFilters, startDate: e.target.value })}
+                                    />
+                                    <span className="text-slate-300">→</span>
+                                    <input
+                                        type="date"
+                                        className="bg-transparent border-none text-sm p-1.5 outline-none"
+                                        value={historyFilters.endDate}
+                                        onChange={e => setHistoryFilters({ ...historyFilters, endDate: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setHistoryFilters({ productId: '', type: 'All', startDate: '', endDate: '' })}
+                                className="p-2.5 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-xl border border-slate-200 transition-colors"
+                                title="Clear Filters"
+                            >
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+                        <button
+                            onClick={fetchGlobalHistory}
+                            className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95"
+                        >
+                            <RefreshCw size={20} className={globalHistoryLoading ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
+
+                    {/* History Table */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        {globalHistoryLoading ? (
+                            <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
+                        ) : globalHistory.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+                                <Package size={48} className="mb-4 opacity-20" />
+                                <p>No adjustment records found.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-50/50 border-b border-slate-100">
+                                            <tr>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Product</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Qty</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">User</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {globalHistory.map(item => (
+                                                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm font-medium text-slate-600">
+                                                            {new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400">
+                                                            {new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-sm font-bold text-slate-700">{item.product?.name}</div>
+                                                        <div className="text-[10px] text-slate-400">ID: #{item.productId}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.type === 'Addition' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-orange-50 text-orange-600 border border-orange-100'
+                                                            }`}>
+                                                            {item.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <span className={`text-sm font-black ${item.type === 'Addition' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                                            {item.type === 'Addition' ? '+' : '-'}{item.quantity}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400 ml-1">btls</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 uppercase">
+                                                                {(item.adjustedBy?.name || 'S')[0]}
+                                                            </div>
+                                                            <span className="text-xs font-medium text-slate-600">{item.adjustedBy?.name || 'System'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="text-xs text-slate-500 max-w-xs truncate" title={item.remarks}>{item.remarks}</p>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {historyTotalPages > 1 && (
+                                    <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center">
+                                        <span className="text-xs font-medium text-slate-500">Page {historyPage} of {historyTotalPages}</span>
+                                        <div className="flex gap-2">
+                                            <button
+                                                disabled={historyPage === 1}
+                                                onClick={() => setHistoryPage(p => p - 1)}
+                                                className="p-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-50 hover:bg-slate-50 transition-colors"
+                                            >
+                                                <ChevronDown size={18} className="rotate-90" />
+                                            </button>
+                                            <button
+                                                disabled={historyPage === historyTotalPages}
+                                                onClick={() => setHistoryPage(p => p + 1)}
+                                                className="p-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-50 hover:bg-slate-50 transition-colors"
+                                            >
+                                                <ChevronUp size={18} className="rotate-90" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
-            )
-            }
+            )}
 
             {
                 isModalOpen && (
