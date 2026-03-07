@@ -17,6 +17,12 @@ const Products = () => {
     const [isStockAdjModalOpen, setIsStockAdjModalOpen] = useState(false);
     const [stockAdjData, setStockAdjData] = useState({ id: null, name: '', currentStock: 0, crates: '', bottles: '', bpc: 24, type: 'Addition', remarks: '' });
 
+    // Stock History State
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [stockHistory, setStockHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+
     const fetchProducts = async () => {
         try {
             const response = await api.get('/products');
@@ -150,6 +156,20 @@ const Products = () => {
         }
     };
 
+    const fetchStockHistory = async (product) => {
+        setHistoryLoading(true);
+        setSelectedProduct(product);
+        setIsHistoryModalOpen(true);
+        try {
+            const response = await api.get(`/products/${product.id}/stock-history`);
+            setStockHistory(response.data);
+        } catch (error) {
+            console.error("Failed to fetch history:", error);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
     return (
         <div className="p-6">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -267,6 +287,7 @@ const Products = () => {
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
                                                     <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 p-1.5 hover:bg-orange-50 rounded-lg transition-colors" title="Reduce Stock"><Minus size={16} /></button>
+                                                    <button onClick={() => fetchStockHistory(product)} className="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded-lg transition-colors" title="View History"><Package size={16} /></button>
                                                     <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
                                                     <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
                                                 </div>
@@ -502,7 +523,7 @@ const Products = () => {
             {
                 isStockAdjModalOpen && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-sm overflow-hidden transform transition-all">
                             <div className={`bg-gradient-to-r ${stockAdjData.type === 'Addition' ? 'from-emerald-600 to-emerald-700' : 'from-orange-600 to-orange-700'} px-6 py-4 flex justify-between items-center`}>
                                 <div>
                                     <h2 className="text-lg font-bold text-white">Manual Stock {stockAdjData.type}</h2>
@@ -599,6 +620,73 @@ const Products = () => {
                     </div>
                 )
             }
+
+            {/* Stock History Modal */}
+            {isHistoryModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all h-[80vh] flex flex-col">
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center shrink-0">
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Stock Adjustment History</h2>
+                                <p className="text-white/80 text-sm opacity-90">{selectedProduct?.name}</p>
+                            </div>
+                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-white/80 hover:text-white transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {historyLoading ? (
+                                <div className="flex justify-center items-center h-full">
+                                    <Loader2 className="animate-spin text-blue-600" size={32} />
+                                </div>
+                            ) : stockHistory.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                                    <Package size={48} className="mb-2 opacity-20" />
+                                    <p>No stock adjustments found for this product.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {stockHistory.map((item) => (
+                                        <div key={item.id} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${item.type === 'Addition' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                        {item.type}
+                                                    </span>
+                                                    <span className="text-sm font-bold text-gray-800">{item.quantity} bottles</span>
+                                                </div>
+                                                <span className="text-xs text-gray-400">
+                                                    {new Date(item.createdAt).toLocaleString('en-IN', {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-2 italic">"{item.remarks}"</p>
+                                            <div className="flex justify-between items-center text-[10px] text-gray-400 uppercase tracking-wider">
+                                                <span>Adjusted by: {item.adjustedBy?.name || 'System'}</span>
+                                                <span>ID: #{item.id}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t flex justify-end shrink-0">
+                            <button
+                                onClick={() => setIsHistoryModalOpen(false)}
+                                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

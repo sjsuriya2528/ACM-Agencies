@@ -156,6 +156,25 @@ const adjustStock = async (req, res) => {
     }
 };
 
+// @desc    Get stock adjustment history for a product
+// @route   GET /api/products/:id/stock-history
+// @access  Private (Admin)
+const getStockHistory = async (req, res) => {
+    try {
+        const history = await StockAdjustment.findAll({
+            where: { productId: req.params.id },
+            include: [
+                { model: Product, as: 'product', attributes: ['name'] },
+                { model: User, as: 'adjustedBy', attributes: ['name'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(history);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getProducts,
     getProductById,
@@ -163,4 +182,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     adjustStock,
+    getStockHistory
 };
