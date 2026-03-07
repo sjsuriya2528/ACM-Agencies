@@ -10,7 +10,11 @@ import {
     Hash,
     ChevronDown,
     CreditCard,
-    ShoppingCart
+    ShoppingCart,
+    History,
+    Box,
+    Layers,
+    Package
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -23,8 +27,11 @@ const Reports = () => {
         startId: '',
         endId: '',
         startBillNo: '',
-        endBillNo: ''
+        endBillNo: '',
+        productId: '',
+        type: 'All'
     });
+    const [productsList, setProductsList] = useState([]); // For the product selector
     const [isGenerating, setIsGenerating] = useState(false);
     const [reportData, setReportData] = useState(null);
     const [fetchStatus, setFetchStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
@@ -44,17 +51,55 @@ const Reports = () => {
         setFetchStatus('loading');
         setReportData(null);
         try {
-            const endpoint = reportType === 'bills' ? '/reports/bills' : '/reports/collections';
-            const response = await api.get(endpoint, { params: filters });
-            setReportData(response.data);
+            let endpoint = '';
+            let params = { ...filters };
+
+            if (reportType === 'bills') endpoint = '/reports/bills';
+            else if (reportType === 'collections') endpoint = '/reports/collections';
+            else if (reportType === 'stock_history') {
+                endpoint = '/products/stock-adjustments/history';
+                params = {
+                    page: 1,
+                    limit: 1000,
+                    type: filters.type === 'All' ? undefined : filters.type,
+                    productId: filters.productId || undefined,
+                    startDate: filters.startDate || undefined,
+                    endDate: filters.endDate || undefined
+                };
+            }
+            else if (reportType === 'current_stock') {
+                endpoint = '/products';
+                params = { limit: 500 };
+            }
+
+            const response = await api.get(endpoint, { params });
+
+            if (reportType === 'current_stock') {
+                setReportData(response.data.products || response.data || []);
+            } else if (reportType === 'stock_history') {
+                setReportData(response.data.data || []);
+            } else {
+                setReportData(response.data);
+            }
+
             setFetchStatus('success');
-            console.log('Report Data received:', response.data);
         } catch (error) {
             console.error('Fetch Error:', error);
             setFetchStatus('error');
             alert("Failed to fetch report data");
         }
     };
+
+    const fetchProducts = async () => {
+        try {
+            const res = await api.get('/products?limit=500');
+            setProductsList(res.data.products || res.data || []);
+        } catch (err) { console.error(err); }
+    };
+
+    React.useEffect(() => {
+        fetchProducts();
+    }, []);
 
     const generatePDF = async () => {
         if (!reportData) return;
@@ -70,17 +115,31 @@ const Reports = () => {
             doc.setTextColor(40);
             doc.text('ACM AGENCIES', 105, 15, { align: 'center' });
 
+            let subTitle = '';
+            if (reportType === 'bills') subTitle = 'Bill Wise Sales Summary';
+            else if (reportType === 'collections') subTitle = 'Collection EntryWise Report';
+            else if (reportType === 'stock_history') subTitle = 'Stock Adjustment History';
+            else if (reportType === 'current_stock') subTitle = 'Current Available Stock levels';
+
             doc.setFontSize(14);
-            doc.text(reportType === 'bills' ? 'Bill Wise Sales Summary' : 'Collection EntryWise Report', 105, 25, { align: 'center' });
+            doc.text(subTitle, 105, 25, { align: 'center' });
 
             doc.setFontSize(10);
             doc.setTextColor(100);
-            doc.text(`Period: ${filters.startDate} to ${filters.endDate}`, 105, 32, { align: 'center' });
-            if (filters.status) doc.text(`Status: ${filters.status}`, 105, 38, { align: 'center' });
+            if (reportType !== 'current_stock') {
+                doc.text(`Period: ${filters.startDate} to ${filters.endDate}`, 105, 32, { align: 'center' });
+            } else {
+                doc.text(`Total Products: ${data.length}`, 105, 32, { align: 'center' });
+            }
+
+            if (filters.status && reportType === 'bills') doc.text(`Status: ${filters.status}`, 105, 38, { align: 'center' });
+            if (filters.productId && reportType === 'stock_history') {
+                const prod = productsList.find(p => p.id == filters.productId);
+                if (prod) doc.text(`Product: ${prod.name}`, 105, 38, { align: 'center' });
+            }
 
             if (reportType === 'bills') {
                 const tableData = [];
-                // Process Invoices
                 data.invoices.forEach(inv => {
                     tableData.push([
                         inv.Order?.billNumber || inv.invoiceNumber,
@@ -90,8 +149,6 @@ const Reports = () => {
                         `Rs. ${Number(inv.netTotal).toFixed(2)}`
                     ]);
                 });
-
-                // Process Cancelled
                 data.cancelled.forEach(can => {
                     tableData.push([
                         can.billNumber || `CAN-${can.id}`,
@@ -114,7 +171,7 @@ const Reports = () => {
                 const total = [...data.invoices, ...data.cancelled].reduce((sum, item) => sum + Number(item.netTotal || item.totalAmount || 0), 0);
                 doc.text(`Summary Total: Rs. ${total.toLocaleString()}`, 190, doc.lastAutoTable.finalY + 10, { align: 'right' });
 
-            } else {
+            } else if (reportType === 'collections') {
                 const tableData = data.map(p => [
                     formatDate(p.paymentDate),
                     p.Invoice?.Order?.billNumber || p.Invoice?.invoiceNumber || 'N/A',
@@ -129,12 +186,45 @@ const Reports = () => {
                     head: [['Date', 'Bill No', 'Retailer', 'Mode', 'Collected By', 'Amount']],
                     body: tableData,
                     theme: 'striped',
-                    headStyles: { fillColor: [245, 158, 11] }, // Amber for collections
+                    headStyles: { fillColor: [245, 158, 11] },
                     alternateRowStyles: { fillColor: [255, 251, 235] },
                 });
 
                 const total = data.reduce((sum, item) => sum + Number(item.amount), 0);
                 doc.text(`Collection Total: Rs. ${total.toLocaleString()}`, 190, doc.lastAutoTable.finalY + 10, { align: 'right' });
+            } else if (reportType === 'stock_history') {
+                const tableData = data.map(item => [
+                    new Date(item.createdAt).toLocaleDateString('en-IN'),
+                    item.product?.name || '—',
+                    item.type || '—',
+                    item.quantity,
+                    item.user?.name || 'System',
+                    item.remarks || '—'
+                ]);
+
+                autoTable(doc, {
+                    startY: 45,
+                    head: [['Date', 'Product', 'Type', 'Qty', 'User', 'Remarks']],
+                    body: tableData,
+                    theme: 'striped',
+                    headStyles: { fillColor: [37, 99, 235] },
+                });
+            } else if (reportType === 'current_stock') {
+                const tableData = data.map(p => [
+                    p.sku || '—',
+                    p.name || '—',
+                    p.category || '—',
+                    p.stockLevel || '0',
+                    `Rs. ${Number(p.price || 0).toFixed(2)}`
+                ]);
+
+                autoTable(doc, {
+                    startY: 45,
+                    head: [['SKU', 'Product Name', 'Category', 'Stock', 'Price']],
+                    body: tableData,
+                    theme: 'striped',
+                    headStyles: { fillColor: [79, 70, 229] },
+                });
             }
 
             // Footer
@@ -189,6 +279,26 @@ const Reports = () => {
                                 <CreditCard size={20} />
                                 <span className="font-semibold">Collection EntryWise</span>
                             </button>
+                            <button
+                                onClick={() => setReportType('stock_history')}
+                                className={`flex items-center gap-3 p-3 rounded-xl transition-all border-2 ${reportType === 'stock_history'
+                                    ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm'
+                                    : 'border-slate-50 hover:bg-slate-50 text-slate-600'
+                                    }`}
+                            >
+                                <History size={20} />
+                                <span className="font-semibold">Stock History</span>
+                            </button>
+                            <button
+                                onClick={() => setReportType('current_stock')}
+                                className={`flex items-center gap-3 p-3 rounded-xl transition-all border-2 ${reportType === 'current_stock'
+                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm'
+                                    : 'border-slate-50 hover:bg-slate-50 text-slate-600'
+                                    }`}
+                            >
+                                <Box size={20} />
+                                <span className="font-semibold">Current Available Stock</span>
+                            </button>
                         </div>
                     </div>
                     <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
@@ -203,10 +313,14 @@ const Reports = () => {
 
                         <button
                             onClick={generatePDF}
-                            disabled={isGenerating || !reportData || (reportType === 'bills' ? (reportData.invoices.length === 0 && reportData.cancelled.length === 0) : reportData.length === 0)}
-                            className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${reportType === 'bills'
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
-                                : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200'
+                            disabled={isGenerating || !reportData || (
+                                reportType === 'bills' ? (reportData.invoices.length === 0 && reportData.cancelled.length === 0) :
+                                    reportData.length === 0
+                            )}
+                            className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${reportType === 'bills' ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' :
+                                reportType === 'collections' ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200' :
+                                    reportType === 'stock_history' ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' :
+                                        'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
                                 } disabled:opacity-50`}
                         >
                             {isGenerating ? <LoadingSpinner size="sm" /> : <Download size={20} />}
@@ -222,32 +336,43 @@ const Reports = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
-                                    <Calendar size={16} /> Start Date
-                                </label>
-                                <input
-                                    type="date"
-                                    name="startDate"
-                                    value={filters.startDate}
-                                    onChange={handleFilterChange}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                />
+                        {reportType !== 'current_stock' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                                        <Calendar size={16} /> Start Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="startDate"
+                                        value={filters.startDate}
+                                        onChange={handleFilterChange}
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                                        <Calendar size={16} /> End Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="endDate"
+                                        value={filters.endDate}
+                                        onChange={handleFilterChange}
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
-                                    <Calendar size={16} /> End Date
-                                </label>
-                                <input
-                                    type="date"
-                                    name="endDate"
-                                    value={filters.endDate}
-                                    onChange={handleFilterChange}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                />
+                        )}
+                        {reportType === 'current_stock' && (
+                            <div className="space-y-6 flex items-center justify-center">
+                                <div className="text-center p-8 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                    <Box size={40} className="text-indigo-500 mx-auto mb-3" />
+                                    <p className="text-indigo-900 font-bold">Live Inventory Report</p>
+                                    <p className="text-indigo-600 text-sm">No date filters required. This will generate a report of all products currently in stock.</p>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="space-y-6">
                             {reportType === 'bills' && (
@@ -273,29 +398,71 @@ const Reports = () => {
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
-                                    <Hash size={16} /> Order ID / Bill No Range
-                                </label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input
-                                        type="text"
-                                        name="startBillNo"
-                                        placeholder="From Bill No"
-                                        value={filters.startBillNo}
-                                        onChange={handleFilterChange}
-                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                    />
-                                    <input
-                                        type="text"
-                                        name="endBillNo"
-                                        placeholder="To Bill No"
-                                        value={filters.endBillNo}
-                                        onChange={handleFilterChange}
-                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                    />
+                            {reportType === 'stock_history' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                                            <Package size={16} /> Select Product
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                name="productId"
+                                                value={filters.productId}
+                                                onChange={handleFilterChange}
+                                                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+                                            >
+                                                <option value="">All Products</option>
+                                                {productsList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-4 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                                            <Layers size={16} /> Adjustment Type
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                name="type"
+                                                value={filters.type}
+                                                onChange={handleFilterChange}
+                                                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+                                            >
+                                                <option value="All">All Adjustments</option>
+                                                <option value="Addition">Stock Addition</option>
+                                                <option value="Reduction">Stock Reduction</option>
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-4 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {reportType === 'bills' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-600 mb-2 flex items-center gap-2">
+                                        <Hash size={16} /> Order ID / Bill No Range
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input
+                                            type="text"
+                                            name="startBillNo"
+                                            placeholder="From Bill No"
+                                            value={filters.startBillNo}
+                                            onChange={handleFilterChange}
+                                            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        />
+                                        <input
+                                            type="text"
+                                            name="endBillNo"
+                                            placeholder="To Bill No"
+                                            value={filters.endBillNo}
+                                            onChange={handleFilterChange}
+                                            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
 
@@ -327,17 +494,48 @@ const Reports = () => {
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                                 <tr>
-                                    <th className="px-6 py-4 font-semibold">Bill No</th>
-                                    <th className="px-6 py-4 font-semibold">Date</th>
-                                    <th className="px-6 py-4 font-semibold">Retailer</th>
-                                    <th className="px-6 py-4 font-semibold">Status</th>
-                                    <th className="px-6 py-4 font-semibold text-right">Amount</th>
+                                    {reportType === 'bills' && (
+                                        <>
+                                            <th className="px-6 py-4 font-semibold">Bill No</th>
+                                            <th className="px-6 py-4 font-semibold">Date</th>
+                                            <th className="px-6 py-4 font-semibold">Retailer</th>
+                                            <th className="px-6 py-4 font-semibold">Status</th>
+                                            <th className="px-6 py-4 font-semibold text-right">Amount</th>
+                                        </>
+                                    )}
+                                    {reportType === 'collections' && (
+                                        <>
+                                            <th className="px-6 py-4 font-semibold">Date</th>
+                                            <th className="px-6 py-4 font-semibold">Bill No</th>
+                                            <th className="px-6 py-4 font-semibold">Retailer</th>
+                                            <th className="px-6 py-4 font-semibold">Mode</th>
+                                            <th className="px-6 py-4 font-semibold text-right">Amount</th>
+                                        </>
+                                    )}
+                                    {reportType === 'stock_history' && (
+                                        <>
+                                            <th className="px-6 py-4 font-semibold">Date</th>
+                                            <th className="px-6 py-4 font-semibold">Product</th>
+                                            <th className="px-6 py-4 font-semibold">Type</th>
+                                            <th className="px-6 py-4 font-semibold">User</th>
+                                            <th className="px-6 py-4 font-semibold text-right">Qty</th>
+                                        </>
+                                    )}
+                                    {reportType === 'current_stock' && (
+                                        <>
+                                            <th className="px-6 py-4 font-semibold">SKU</th>
+                                            <th className="px-6 py-4 font-semibold">Product</th>
+                                            <th className="px-6 py-4 font-semibold">Category</th>
+                                            <th className="px-6 py-4 font-semibold">Price</th>
+                                            <th className="px-6 py-4 font-semibold text-right">Stock</th>
+                                        </>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                                {reportType === 'bills' ? (
+                                {reportType === 'bills' && (
                                     <>
-                                        {reportData.invoices.slice(0, 5).map((inv, idx) => (
+                                        {reportData.invoices.slice(0, 10).map((inv, idx) => (
                                             <tr key={`inv-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
                                                 <td className="px-6 py-4">{inv.Order?.billNumber || inv.invoiceNumber}</td>
                                                 <td className="px-6 py-4">{inv.invoiceDate}</td>
@@ -346,7 +544,7 @@ const Reports = () => {
                                                 <td className="px-6 py-4 text-right">Rs. {Number(inv.netTotal).toLocaleString()}</td>
                                             </tr>
                                         ))}
-                                        {reportData.cancelled.slice(0, 5).map((can, idx) => (
+                                        {reportData.cancelled.slice(0, 10).map((can, idx) => (
                                             <tr key={`can-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
                                                 <td className="px-6 py-4">{can.billNumber || `CAN-${can.id}`}</td>
                                                 <td className="px-6 py-4">{new Date(can.originalCreatedAt).toLocaleDateString('en-CA')}</td>
@@ -356,17 +554,40 @@ const Reports = () => {
                                             </tr>
                                         ))}
                                     </>
-                                ) : (
-                                    reportData.slice(0, 5).map((p, idx) => (
-                                        <tr key={`p-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
-                                            <td className="px-6 py-4">{p.Invoice?.Order?.billNumber || p.Invoice?.invoiceNumber || 'N/A'}</td>
-                                            <td className="px-6 py-4">{formatDate(p.paymentDate)}</td>
-                                            <td className="px-6 py-4">{p.retailerName || 'N/A'}</td>
-                                            <td className="px-6 py-4"><span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-xs">{p.paymentMode}</span></td>
-                                            <td className="px-6 py-4 text-right">Rs. {Number(p.amount).toLocaleString()}</td>
-                                        </tr>
-                                    ))
                                 )}
+                                {reportType === 'collections' && reportData.slice(0, 20).map((p, idx) => (
+                                    <tr key={`p-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
+                                        <td className="px-6 py-4">{formatDate(p.paymentDate)}</td>
+                                        <td className="px-6 py-4">{p.Invoice?.Order?.billNumber || p.Invoice?.invoiceNumber || 'N/A'}</td>
+                                        <td className="px-6 py-4">{p.retailerName || 'N/A'}</td>
+                                        <td className="px-6 py-4"><span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-xs">{p.paymentMode}</span></td>
+                                        <td className="px-6 py-4 text-right">Rs. {Number(p.amount).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                                {reportType === 'stock_history' && reportData.slice(0, 20).map((item, idx) => (
+                                    <tr key={`sh-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
+                                        <td className="px-6 py-4">{new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
+                                        <td className="px-6 py-4">{item.product?.name || '—'}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-lg text-xs ${item.type === 'Addition' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                {item.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">{item.user?.name || 'System'}</td>
+                                        <td className={`px-6 py-4 text-right font-bold ${item.type === 'Addition' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {item.type === 'Addition' ? '+' : '-'}{item.quantity}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {reportType === 'current_stock' && reportData.slice(0, 20).map((p, idx) => (
+                                    <tr key={`cs-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
+                                        <td className="px-6 py-4 font-mono text-xs">{p.sku || '—'}</td>
+                                        <td className="px-6 py-4 font-bold">{p.name || '—'}</td>
+                                        <td className="px-6 py-4 text-slate-500">{p.category || '—'}</td>
+                                        <td className="px-6 py-4 text-slate-500 text-xs">Rs. {Number(p.price || 0).toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right font-black text-indigo-600">{p.stockLevel || 0}</td>
+                                    </tr>
+                                ))}
                                 {(reportType === 'bills' ? (reportData.invoices.length + reportData.cancelled.length) : reportData.length) === 0 && (
                                     <tr>
                                         <td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic">
