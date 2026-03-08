@@ -22,8 +22,9 @@ const recordPayment = async (req, res) => {
             return res.status(400).json({ message: 'Payment amount exceeds balance' });
         }
 
-        // Admin-recorded payments are immediately Approved; employees submit as Pending
-        const approvalStatus = isAdmin ? 'Approved' : 'Pending';
+        // All payments are now immediately Approved to ensure credit balances update automatically.
+        // Admin verification can still happen via reporting, but the balance reflects the collection.
+        const approvalStatus = 'Approved';
 
         const payment = await Payment.create({
             invoiceId,
@@ -34,7 +35,7 @@ const recordPayment = async (req, res) => {
             collectedById,
             retailerName: invoice.customerName,
             approvalStatus,
-            approvedById: isAdmin ? req.user.id : null,
+            approvedById: collectedById, // Auto-approved by the system/collector
         });
 
         res.status(201).json(payment);
