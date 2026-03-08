@@ -147,41 +147,43 @@ const Retailers = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner / GSTIN</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-3 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Shop Name</th>
+                                <th className="px-3 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Owner / GSTIN</th>
+                                <th className="px-3 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Mobile</th>
+                                <th className="px-3 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Address</th>
+                                <th className="px-3 py-3 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {retailers.map(retailer => (
                                 <tr key={retailer.id} className="hover:bg-purple-50 transition-colors duration-150">
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-3 py-3">
                                         <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold text-lg">
+                                            <div className="flex-shrink-0 h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-extrabold text-sm shadow-inner">
                                                 {retailer.shopName?.charAt(0).toUpperCase() || 'R'}
                                             </div>
-                                            <div className="ml-4">
-                                                <Link to={`/retailers/${retailer.id}`} className="text-sm font-medium text-purple-600 hover:text-purple-900 hover:underline transition-all">
+                                            <div className="ml-3">
+                                                <Link to={`/retailers/${retailer.id}`} className="text-[13px] font-bold text-purple-700 hover:text-purple-900 hover:underline transition-all block break-words min-w-[100px] leading-tight">
                                                     {retailer.shopName}
                                                 </Link>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900 font-bold">{retailer.ownerName}</div>
-                                        <div className="text-[10px] text-gray-400 font-mono tracking-tighter">{retailer.gstin || 'NO GSTIN'}</div>
+                                    <td className="px-3 py-3">
+                                        <div className="text-[13px] text-gray-900 font-bold leading-tight break-words">{retailer.ownerName}</div>
+                                        <div className="text-[10px] text-gray-400 font-mono tracking-tighter mt-0.5 bg-gray-50 w-fit px-1 rounded border border-gray-100">{retailer.gstin || 'NO GSTIN'}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    <td className="px-3 py-3 whitespace-nowrap">
+                                        <span className="px-2 py-0.5 inline-flex text-[11px] leading-5 font-bold rounded-md bg-gray-100 border border-gray-200 text-gray-800 shadow-sm">
                                             {retailer.phone}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={retailer.address}>{retailer.address}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => startEdit(retailer)} className="text-indigo-600 hover:text-indigo-900 mr-3 p-1 hover:bg-indigo-50 rounded-full transition-colors"><Edit size={18} /></button>
-                                        <button onClick={() => handleDelete(retailer.id)} className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={18} /></button>
+                                    <td className="px-3 py-3 text-[12px] text-gray-500 break-words max-w-[180px] leading-snug" title={retailer.address}>{retailer.address}</td>
+                                    <td className="px-3 py-3 whitespace-nowrap text-right">
+                                        <div className="flex justify-end gap-1">
+                                            <button onClick={() => startEdit(retailer)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 hover:bg-indigo-100 rounded-lg transition-colors shadow-sm"><Edit size={16} strokeWidth={2.5} /></button>
+                                            <button onClick={() => handleDelete(retailer.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 hover:bg-red-100 rounded-lg transition-colors shadow-sm"><Trash2 size={16} strokeWidth={2.5} /></button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

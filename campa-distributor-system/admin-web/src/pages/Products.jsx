@@ -372,18 +372,18 @@ const Products = () => {
                             <table className="w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">ID</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            <span className="text-orange-600">Purchase Price</span>
+                                        <th className="px-2 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider w-10">ID</th>
+                                        <th className="px-2 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th className="px-2 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                            <span className="text-orange-600">Buy</span>
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            <span className="text-emerald-600">Selling Price</span>
+                                        <th className="px-2 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                            <span className="text-emerald-600">Sell</span>
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-2 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Stock</th>
+                                        <th className="px-2 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Cat.</th>
+                                        <th className="px-2 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">GST</th>
+                                        <th className="px-2 py-3 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -404,60 +404,60 @@ const Products = () => {
 
                                             return (
                                                 <tr key={product.id} className="hover:bg-slate-50 transition-colors duration-150">
-                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.id}</td>
-                                                    <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">{product.name}</td>
+                                                    <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">{product.id}</td>
+                                                    <td className="px-2 py-2 text-sm font-bold text-slate-800 leading-tight min-w-[100px] break-words">{product.name}</td>
                                                     {/* Purchase Price */}
-                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                    <td className="px-2 py-2 whitespace-nowrap">
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-bold text-orange-700">
-                                                                ₹{(product.price * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                                            <span className="text-xs font-bold text-orange-700">
+                                                                ₹{(product.price * bpc).toFixed(2)} <span className="text-[10px] text-slate-400 font-normal">/ crt</span>
                                                             </span>
-                                                            <span className="text-xs text-slate-400">
-                                                                ₹{Number(product.price).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                            <span className="text-[10px] text-slate-400">
+                                                                ₹{Number(product.price).toFixed(2)} <span className="text-[10px]">/ btl</span>
                                                             </span>
                                                         </div>
                                                     </td>
                                                     {/* Selling Price */}
-                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                    <td className="px-2 py-2 whitespace-nowrap">
                                                         {product.sellingPrice ? (
                                                             <div className="flex flex-col">
-                                                                <span className="text-sm font-bold text-emerald-700">
-                                                                    ₹{(product.sellingPrice * bpc).toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ crate</span>
+                                                                <span className="text-xs font-bold text-emerald-700">
+                                                                    ₹{(product.sellingPrice * bpc).toFixed(2)} <span className="text-[10px] text-slate-400 font-normal">/ crt</span>
                                                                 </span>
-                                                                <span className="text-xs text-slate-400">
-                                                                    ₹{Number(product.sellingPrice).toFixed(4)} <span className="text-[10px]">/ btl</span>
+                                                                <span className="text-[10px] text-slate-400">
+                                                                    ₹{Number(product.sellingPrice).toFixed(2)} <span className="text-[10px]">/ btl</span>
                                                                 </span>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs text-slate-300 italic">Not set</span>
+                                                            <span className="text-[10px] text-slate-300 italic">Not set</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap">
-                                                        <div className="flex flex-col">
-                                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${bottles > 100 ? 'bg-green-100 text-green-800' :
-                                                                bottles > 0 ? 'bg-yellow-100 text-yellow-800' :
-                                                                    'bg-red-100 text-red-800'
+                                                    <td className="px-2 py-2 whitespace-nowrap">
+                                                        <div className="flex flex-col border border-gray-100 bg-gray-50 px-1.5 py-1 rounded-lg w-fit">
+                                                            <span className={`text-[11px] font-bold ${bottles > 100 ? 'text-green-700' :
+                                                                bottles > 0 ? 'text-yellow-700' :
+                                                                    'text-red-700'
                                                                 }`}>{bottles} btls</span>
-                                                            <span className="text-xs text-slate-400 mt-0.5">{isSingle ? '—' : `${crates} crates`}</span>
+                                                            <span className="text-[9px] text-slate-400 font-semibold uppercase">{isSingle ? '—' : `${crates} crt`}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap">
-                                                        <span className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md border border-blue-100">
-                                                            {product.category || 'Uncategorized'}
+                                                    <td className="px-2 py-2">
+                                                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-600 rounded border border-blue-100 block break-words leading-tight shadow-sm max-w-[80px]">
+                                                            {product.category || 'Uncat.'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap">
-                                                        <span className="px-2 py-1 text-xs font-medium bg-orange-50 text-orange-600 rounded-md border border-orange-100">
+                                                    <td className="px-2 py-2 whitespace-nowrap">
+                                                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-50 text-orange-600 rounded border border-orange-100 shadow-sm">
                                                             {product.gstPercentage}%
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Add Stock"><Plus size={16} /></button>
-                                                            <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 p-1.5 hover:bg-orange-50 rounded-lg transition-colors" title="Reduce Stock"><Minus size={16} /></button>
-                                                            <button onClick={() => fetchStockHistory(product)} className="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded-lg transition-colors" title="View History"><Package size={16} /></button>
-                                                            <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit"><Edit size={16} /></button>
-                                                            <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={16} /></button>
+                                                    <td className="px-2 py-2 text-right">
+                                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 w-14 lg:w-[5.5rem] ml-auto">
+                                                            <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 bg-emerald-50 p-1.5 hover:bg-emerald-100 rounded-md transition-colors flex justify-center items-center shadow-sm" title="Add"><Plus size={14} strokeWidth={2.5} /></button>
+                                                            <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 bg-orange-50 p-1.5 hover:bg-orange-100 rounded-md transition-colors flex justify-center items-center shadow-sm" title="Reduce"><Minus size={14} strokeWidth={2.5} /></button>
+                                                            <button onClick={() => fetchStockHistory(product)} className="text-blue-600 hover:text-blue-900 bg-blue-50 p-1.5 hover:bg-blue-100 rounded-md transition-colors flex justify-center items-center shadow-sm" title="History"><Package size={14} strokeWidth={2.5} /></button>
+                                                            <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 hover:bg-indigo-100 rounded-md transition-colors flex justify-center items-center shadow-sm" title="Edit"><Edit size={14} strokeWidth={2.5} /></button>
+                                                            <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 hover:bg-red-100 rounded-md transition-colors flex justify-center items-center shadow-sm col-span-2 lg:col-span-1" title="Delete"><Trash2 size={14} strokeWidth={2.5} /></button>
                                                         </div>
                                                     </td>
                                                 </tr>
