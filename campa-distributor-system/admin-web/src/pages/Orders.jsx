@@ -1546,17 +1546,17 @@ const Orders = () => {
                                                         <p className="font-bold text-center">Your station is empty. Add products to start.</p>
                                                     </div>
                                                 ) : (
-                                                    Object.entries(cart).map(([pId, qty]) => {
+                                                    Object.entries(cart).map(([pId, data]) => {
                                                         const product = products.find(p => p.id === parseInt(pId));
                                                         if (!product) return null;
                                                         const bpc = product.bottlesPerCrate || 24;
-                                                        const crates = Math.floor(qty / bpc);
-                                                        const pieces = qty % bpc;
+                                                        const totalQty = data.quantity;
+                                                        const crates = Math.floor(totalQty / bpc);
+                                                        const pieces = totalQty % bpc;
 
-                                                        const pData = cart[pId];
-                                                        const priceInputValue = parseFloat(pData.priceInput) || 0;
-                                                        const taxInclusivePricePerBottle = pData.priceInputType === 'crate' ? (priceInputValue / bpc) : priceInputValue;
-                                                        const itemGrossTotal = qty * taxInclusivePricePerBottle;
+                                                        const priceInputValue = parseFloat(data.priceInput) || 0;
+                                                        const taxInclusivePricePerBottle = data.priceInputType === 'crate' ? (priceInputValue / bpc) : priceInputValue;
+                                                        const itemGrossTotal = totalQty * taxInclusivePricePerBottle;
 
                                                         return (
                                                             <div key={pId} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 animate-in slide-in-from-right-4 transition-all hover:border-slate-300">
