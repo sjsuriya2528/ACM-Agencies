@@ -111,7 +111,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     ).toList();
   }
 
-  void _addOrUpdateCartItem(Product product, bool isCrate, int quantity, [double? customPrice]) {
+  void _addOrUpdateCartItem(Product product, bool isCrate, int quantity, [double? priceInput, String? priceInputType]) {
     if (quantity < 0) return;
     
     setState(() {
@@ -137,15 +137,37 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         } else {
           _cart[existingIndex].pieces = quantity;
         }
-        if (customPrice != null) {
-          _cart[existingIndex].customPrice = customPrice;
+        if (priceInput != null) {
+          _cart[existingIndex].priceInput = priceInput;
+        }
+        if (priceInputType != null) {
+          _cart[existingIndex].priceInputType = priceInputType;
         }
       } else {
         _cart.add(CartItem(
           product: product, 
           crates: isCrate ? quantity : 0, 
           pieces: isCrate ? 0 : quantity,
-          customPrice: customPrice ?? product.price
+          priceInput: priceInput ?? product.price,
+          priceInputType: priceInputType ?? 'bottle'
+        ));
+      }
+    });
+  }
+
+  void _updateCartItemPrice(Product product, double priceInput, String priceInputType) {
+    setState(() {
+      final existingIndex = _cart.indexWhere((item) => item.product.id == product.id);
+      if (existingIndex >= 0) {
+        _cart[existingIndex].priceInput = priceInput;
+        _cart[existingIndex].priceInputType = priceInputType;
+      } else {
+        _cart.add(CartItem(
+          product: product,
+          crates: 0,
+          pieces: 0,
+          priceInput: priceInput,
+          priceInputType: priceInputType,
         ));
       }
     });
@@ -238,14 +260,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           : 'Location unavailable';
 
       // 2. Prepare Payload exactly like React web app
-      final orderItems = _cart.map((item) => {
-        'productId': item.product.id,
-        'quantity': item.totalPieces, // Send total pieces as quantity
-        'pricePerUnit': item.customPrice, // Use custom price if overridden
-        'crates': item.crates,
-        'pieces': item.pieces,
-        'gstSelected': true,
-        'gstPercentage': item.product.gstPercentage,
+      final orderItems = _cart.map((item) {
+        final taxInclusivePerBottle = item.priceInputType == 'crate' ? (item.priceInput / item.product.bottlesPerCrate) : item.priceInput;
+        final taxablePerBottle = taxInclusivePerBottle / (1 + item.product.gstPercentage / 100);
+        return {
+          'productId': item.product.id,
+          'quantity': item.totalPieces, // Send total pieces as quantity
+          'pricePerUnit': taxablePerBottle, // Taxable price per bottle
+          'crates': item.crates,
+          'pieces': item.pieces,
+          'gstSelected': true,
+          'gstPercentage': item.product.gstPercentage,
+        };
       }).toList();
 
       final payload = {
@@ -837,7 +863,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     
     final initialCrates = (cartItem?.crates ?? 0) > 0 ? cartItem!.crates.toString() : '';
     final initialPieces = (cartItem?.pieces ?? 0) > 0 ? cartItem!.pieces.toString() : '';
-    final initialPrice = cartItem?.customPrice.toStringAsFixed(2) ?? product.price.toStringAsFixed(2);
+    final initialPrice = cartItem?.priceInput.toStringAsFixed(2) ?? product.price.toStringAsFixed(2);
 
     final isSelected = cartItem != null && (cartItem.crates > 0 || cartItem.pieces > 0);
 
@@ -908,8 +934,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
                           onChanged: (val) {
                             int valInt = int.tryParse(val) ?? 0;
-                            double customP = cartItem?.customPrice ?? product.price;
-                            _addOrUpdateCartItem(product, true, valInt, customP);
+                            double pInput = cartItem?.priceInput ?? product.price;
+                            String pType = cartItem?.priceInputType ?? 'bottle';
+                            _addOrUpdateCartItem(product, true, valInt, pInput, pType);
                           },
                         ),
                       ),
@@ -935,8 +962,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
                           onChanged: (val) {
                             int valInt = int.tryParse(val) ?? 0;
-                            double customP = cartItem?.customPrice ?? product.price;
-                            _addOrUpdateCartItem(product, false, valInt, customP);
+                            double pInput = cartItem?.priceInput ?? product.price;
+                            String pType = cartItem?.priceInputType ?? 'bottle';
+                            _addOrUpdateCartItem(product, false, valInt, pInput, pType);
                           },
                         ),
                       ),
@@ -946,29 +974,60 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 const SizedBox(width: 12),
                 // Price Override
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Price/Pc', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                      const Text('Price (Tax Incl.)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
                       const SizedBox(height: 6),
                       Container(
                         height: 40,
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
-                        child: TextFormField(
-                          initialValue: initialPrice,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981)), // Emerald
-                          decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero, prefixText: '₹ ', prefixStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-                          onChanged: (val) {
-                            if (cartIndex >= 0) {
-                               double customP = double.tryParse(val) ?? product.price;
-                               setState(() {
-                                 _cart[cartIndex].customPrice = customP;
-                               });
-                            }
-                          },
+                        child: Row(
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Text('₹', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: TextFormField(
+                                initialValue: initialPrice,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 13), // Emerald
+                                decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
+                                onChanged: (val) {
+                                  double pInput = double.tryParse(val) ?? product.price;
+                                  String pType = cartItem?.priceInputType ?? 'bottle';
+                                  _updateCartItemPrice(product, pInput, pType);
+                                },
+                              ),
+                            ),
+                            Container(width: 1, color: const Color(0xFFE2E8F0)),
+                            Expanded(
+                              flex: 2,
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: cartItem?.priceInputType ?? 'bottle',
+                                  isExpanded: true,
+                                  icon: const SizedBox.shrink(),
+                                  alignment: Alignment.center,
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                  items: const [
+                                    DropdownMenuItem(value: 'bottle', child: Center(child: Text('/ Btl'))),
+                                    DropdownMenuItem(value: 'crate', child: Center(child: Text('/ Crt'))),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      double pInput = cartItem?.priceInput ?? product.price;
+                                      _updateCartItemPrice(product, pInput, val);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -1127,16 +1186,28 @@ class CartItem {
   final Product product;
   int crates;
   int pieces;
-  double customPrice;
+  double priceInput;
+  String priceInputType;
 
   CartItem({
     required this.product, 
     required this.crates,
     required this.pieces,
-    required this.customPrice,
+    required this.priceInput,
+    this.priceInputType = 'bottle',
   });
 
   int get totalPieces => (crates * product.bottlesPerCrate) + pieces;
-  double get originalAmount => totalPieces * customPrice;
-  double get gstAmount => (originalAmount * product.gstPercentage) / 100;
+
+  double get taxInclusivePricePerBottle {
+    return priceInputType == 'crate' ? (priceInput / product.bottlesPerCrate) : priceInput;
+  }
+
+  double get originalAmount {
+    return (taxInclusivePricePerBottle / (1 + product.gstPercentage / 100)) * totalPieces;
+  }
+
+  double get gstAmount {
+    return originalAmount * (product.gstPercentage / 100);
+  }
 }

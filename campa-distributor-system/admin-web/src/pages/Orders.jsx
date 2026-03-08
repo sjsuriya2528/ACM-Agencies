@@ -297,7 +297,7 @@ const Orders = () => {
         if (!product) return;
 
         const bottlesPerCrate = product.bottlesPerCrate || 24;
-        const currentData = cart[productId] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
+        const currentData = cart[productId] || { quantity: 0, priceInput: product.sellingPrice ?? product.price, priceInputType: 'bottle' };
         const currentTotal = currentData.quantity;
 
         let currentCrates = Math.floor(currentTotal / bottlesPerCrate);
@@ -326,14 +326,18 @@ const Orders = () => {
         });
     };
 
-    const handlePriceChange = (productId, value) => {
-        setCart(prev => ({
-            ...prev,
-            [productId]: {
-                ...(prev[productId] || { quantity: 0 }),
-                pricePerUnit: value
-            }
-        }));
+    const handlePriceChange = (productId, value, type) => {
+        setCart(prev => {
+            const currentData = prev[productId] || { quantity: 0, priceInputType: 'bottle' };
+            return {
+                ...prev,
+                [productId]: {
+                    ...currentData,
+                    priceInput: value,
+                    priceInputType: type || currentData.priceInputType || 'bottle'
+                }
+            };
+        });
     };
 
     const calculateTotal = () => {
@@ -341,10 +345,11 @@ const Orders = () => {
             const product = products.find(p => p.id === parseInt(productId));
             if (!product) return total;
 
-            const price = parseFloat(data.pricePerUnit) || 0;
-            const taxable = price * data.quantity;
-            const gstRate = Number(product.gstPercentage || 18) / 100;
-            return total + (taxable * (1 + gstRate));
+            const bottlesPerCrate = product.bottlesPerCrate || 24;
+            const priceInputValue = parseFloat(data.priceInput) || 0;
+            const taxInclusivePricePerBottle = data.priceInputType === 'crate' ? (priceInputValue / bottlesPerCrate) : priceInputValue;
+
+            return total + (taxInclusivePricePerBottle * data.quantity);
         }, 0);
     };
 
@@ -353,11 +358,21 @@ const Orders = () => {
         const itemsCount = Object.values(cart).reduce((a, b) => a + b.quantity, 0);
         if (itemsCount === 0) return alert("Cart is empty");
 
-        const orderItems = Object.entries(cart).map(([productId, data]) => ({
-            productId: parseInt(productId),
-            quantity: data.quantity,
-            pricePerUnit: parseFloat(data.pricePerUnit) || 0
-        }));
+        const orderItems = Object.entries(cart).map(([productId, data]) => {
+            const product = products.find(p => p.id === parseInt(productId));
+            const bottlesPerCrate = product?.bottlesPerCrate || 24;
+            const gstRate = Number(product?.gstPercentage || 18) / 100;
+
+            const priceInputValue = parseFloat(data.priceInput) || 0;
+            const taxInclusivePricePerBottle = data.priceInputType === 'crate' ? (priceInputValue / bottlesPerCrate) : priceInputValue;
+            const taxablePricePerBottle = taxInclusivePricePerBottle / (1 + gstRate);
+
+            return {
+                productId: parseInt(productId),
+                quantity: data.quantity,
+                pricePerUnit: taxablePricePerBottle
+            };
+        });
 
         try {
             const totalAmount = calculateTotal();
@@ -391,12 +406,24 @@ const Orders = () => {
 
     const startEditOrder = async (order) => {
         setEditingOrder(order);
+
+        let currentProducts = products;
+        // Ensure catalog data is loaded
+        if (products.length === 0) {
+            await fetchCreateOrderData();
+        }
+
         // Pre-fill cart from order items
         const initialCart = {};
         order.items.forEach(item => {
+            const productModel = item.Product || products.find(p => p.id === item.productId);
+            const gstRate = Number(productModel?.gstPercentage || 18) / 100;
+            const taxInclusivePrice = item.pricePerUnit * (1 + gstRate);
+
             initialCart[item.productId] = {
                 quantity: item.quantity,
-                pricePerUnit: item.pricePerUnit
+                priceInput: Number(taxInclusivePrice.toFixed(2)) || item.pricePerUnit,
+                priceInputType: 'bottle'
             };
         });
         setCart(initialCart);
@@ -406,11 +433,6 @@ const Orders = () => {
         setRemarks(order.remarks || '');
         setIsRounded(order.roundOff !== 0);
 
-        // Ensure catalog data is loaded
-        if (products.length === 0) {
-            await fetchCreateOrderData();
-        }
-
         setShowEditModal(true);
     };
 
@@ -418,11 +440,21 @@ const Orders = () => {
         const itemsCount = Object.values(cart).reduce((a, b) => a + b.quantity, 0);
         if (itemsCount === 0) return alert("Cart is empty");
 
-        const orderItems = Object.entries(cart).map(([productId, data]) => ({
-            productId: parseInt(productId),
-            quantity: data.quantity,
-            pricePerUnit: parseFloat(data.pricePerUnit) || 0
-        }));
+        const orderItems = Object.entries(cart).map(([productId, data]) => {
+            const product = products.find(p => p.id === parseInt(productId));
+            const bottlesPerCrate = product?.bottlesPerCrate || 24;
+            const gstRate = Number(product?.gstPercentage || 18) / 100;
+
+            const priceInputValue = parseFloat(data.priceInput) || 0;
+            const taxInclusivePricePerBottle = data.priceInputType === 'crate' ? (priceInputValue / bottlesPerCrate) : priceInputValue;
+            const taxablePricePerBottle = taxInclusivePricePerBottle / (1 + gstRate);
+
+            return {
+                productId: parseInt(productId),
+                quantity: data.quantity,
+                pricePerUnit: taxablePricePerBottle
+            };
+        });
 
         try {
             const totalAmount = calculateTotal();
@@ -1388,13 +1420,17 @@ const Orders = () => {
                                                             console.warn("Filter warning: 'products' is not an array in Orders.jsx (Create Modal). Type:", typeof products, "Value:", products);
                                                         }
                                                         return (Array.isArray(products) ? products : []).filter(p => (p.name || '').toLowerCase().includes((productSearchTerm || '').toLowerCase())).map(product => {
-                                                            const cartData = cart[product.id] || { quantity: 0, pricePerUnit: product.sellingPrice ?? product.price };
+                                                            const cartData = cart[product.id] || { quantity: 0, priceInput: product.sellingPrice ?? product.price, priceInputType: 'bottle' };
                                                             const totalQty = cartData.quantity;
-                                                            const pricePerUnit = cartData.pricePerUnit;
+                                                            const priceInput = cartData.priceInput;
+                                                            const priceInputType = cartData.priceInputType;
                                                             const bottlesPerCrate = product.bottlesPerCrate || 24;
                                                             const crates = Math.floor(totalQty / bottlesPerCrate);
                                                             const pieces = totalQty % bottlesPerCrate;
                                                             const gstRate = Number(product.gstPercentage || 18);
+
+                                                            const taxInclusivePricePerBottle = priceInputType === 'crate' ? ((parseFloat(priceInput) || 0) / bottlesPerCrate) : (parseFloat(priceInput) || 0);
+                                                            const grossTotal = taxInclusivePricePerBottle * totalQty;
 
                                                             return (
                                                                 <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-400/20 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300 shadow-sm'}`}>
@@ -1409,22 +1445,30 @@ const Orders = () => {
                                                                         {totalQty > 0 && (
                                                                             <div className="text-right">
                                                                                 <p className="text-[10px] font-black text-slate-400 uppercase">Gross Total</p>
-                                                                                <p className="font-black text-blue-600">₹{((parseFloat(pricePerUnit) || 0) * totalQty * (1 + gstRate / 100)).toFixed(2)}</p>
+                                                                                <p className="font-black text-blue-600">₹{grossTotal.toFixed(2)}</p>
                                                                             </div>
                                                                         )}
                                                                     </div>
                                                                     <div className="grid grid-cols-1 gap-3">
                                                                         <div className="space-y-1">
-                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Taxable)</label>
+                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Tax Incl.)</label>
                                                                             <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
                                                                                 <div className="pl-3 py-2 text-slate-400"><IndianRupee size={12} /></div>
                                                                                 <input
                                                                                     type="number"
                                                                                     step="0.01"
                                                                                     className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
-                                                                                    value={pricePerUnit}
-                                                                                    onChange={(e) => handlePriceChange(product.id, e.target.value)}
+                                                                                    value={priceInput}
+                                                                                    onChange={(e) => handlePriceChange(product.id, e.target.value, priceInputType)}
                                                                                 />
+                                                                                <select
+                                                                                    className="bg-slate-100 border-l border-slate-200 text-xs font-bold text-slate-600 px-2 py-2 outline-none cursor-pointer"
+                                                                                    value={priceInputType}
+                                                                                    onChange={(e) => handlePriceChange(product.id, priceInput, e.target.value)}
+                                                                                >
+                                                                                    <option value="bottle">/ Btl</option>
+                                                                                    <option value="crate">/ Crt</option>
+                                                                                </select>
                                                                             </div>
                                                                         </div>
                                                                         <div className="grid grid-cols-2 gap-3">
@@ -1509,6 +1553,11 @@ const Orders = () => {
                                                         const crates = Math.floor(qty / bpc);
                                                         const pieces = qty % bpc;
 
+                                                        const pData = cart[pId];
+                                                        const priceInputValue = parseFloat(pData.priceInput) || 0;
+                                                        const taxInclusivePricePerBottle = pData.priceInputType === 'crate' ? (priceInputValue / bpc) : priceInputValue;
+                                                        const itemGrossTotal = qty * taxInclusivePricePerBottle;
+
                                                         return (
                                                             <div key={pId} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 animate-in slide-in-from-right-4 transition-all hover:border-slate-300">
                                                                 <div>
@@ -1518,7 +1567,7 @@ const Orders = () => {
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <p className="font-black text-slate-800">₹{(qty * (product.sellingPrice ?? product.price)).toFixed(2)}</p>
+                                                                    <p className="font-black text-slate-800">₹{itemGrossTotal.toFixed(2)}</p>
                                                                     <button
                                                                         onClick={() => {
                                                                             const { [pId]: _, ...rest } = cart;
@@ -1585,6 +1634,37 @@ const Orders = () => {
                                                 </div>
 
                                                 <div className="p-6 bg-slate-900 rounded-3xl text-white shadow-2xl shadow-slate-400">
+                                                    <div className="space-y-2 mb-4">
+                                                        {(() => {
+                                                            let subtotal = 0;
+                                                            let taxAmount = 0;
+                                                            Object.entries(cart).forEach(([pId, data]) => {
+                                                                const product = products.find(p => p.id === parseInt(pId));
+                                                                if (!product) return;
+                                                                const bpc = product.bottlesPerCrate || 24;
+                                                                const gstRate = Number(product.gstPercentage || 18) / 100;
+                                                                const priceInputValue = parseFloat(data.priceInput) || 0;
+                                                                const taxInclBottle = data.priceInputType === 'crate' ? (priceInputValue / bpc) : priceInputValue;
+                                                                const taxableBottle = taxInclBottle / (1 + gstRate);
+
+                                                                subtotal += (taxableBottle * data.quantity);
+                                                                taxAmount += (taxableBottle * data.quantity * gstRate);
+                                                            });
+                                                            return (
+                                                                <>
+                                                                    <div className="flex justify-between text-slate-400 text-sm font-medium">
+                                                                        <span>Subtotal (Taxable)</span>
+                                                                        <span>₹{subtotal.toFixed(2)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-slate-400 text-sm font-medium">
+                                                                        <span>Total Tax (GST)</span>
+                                                                        <span>₹{taxAmount.toFixed(2)}</span>
+                                                                    </div>
+                                                                    <div className="my-2 border-t border-slate-700/50"></div>
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                     <div className="flex justify-between items-end mb-6">
                                                         <div>
                                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
