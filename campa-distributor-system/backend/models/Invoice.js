@@ -140,6 +140,13 @@ module.exports = (sequelize, DataTypes) => {
             balanceAmount: newBalance,
             paymentStatus: status
         });
+
+        // Directly trigger retailer credit balance update to ensure reliability
+        const { Order, Retailer } = sequelize.models;
+        const order = await Order.findByPk(invoice.orderId);
+        if (order && order.retailerId) {
+            await Retailer.updateCreditBalance(order.retailerId);
+        }
     };
 
     return Invoice;
