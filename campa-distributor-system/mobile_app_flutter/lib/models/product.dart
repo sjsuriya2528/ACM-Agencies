@@ -3,6 +3,7 @@ class Product {
   final String name;
   final String? description;
   final double price;
+  final double? sellingPrice;
   final int stockQuantity;
   final String? category;
   final double gstPercentage;
@@ -13,6 +14,7 @@ class Product {
     required this.name,
     this.description,
     required this.price,
+    this.sellingPrice,
     required this.stockQuantity,
     this.category,
     this.gstPercentage = 18.0,
@@ -25,6 +27,7 @@ class Product {
       name: json['name']?.toString() ?? '',
       description: json['description']?.toString(),
       price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      sellingPrice: json['sellingPrice'] != null ? double.tryParse(json['sellingPrice'].toString()) : null,
       stockQuantity: int.tryParse(json['stockQuantity']?.toString() ?? '0') ?? 0,
       category: json['category']?.toString(),
       gstPercentage: double.tryParse(json['gstPercentage']?.toString() ?? '18') ?? 18.0,

@@ -1464,7 +1464,20 @@ const Orders = () => {
                                                                                 <select
                                                                                     className="bg-slate-100 border-l border-slate-200 text-xs font-bold text-slate-600 px-2 py-2 outline-none cursor-pointer"
                                                                                     value={priceInputType}
-                                                                                    onChange={(e) => handlePriceChange(product.id, priceInput, e.target.value)}
+                                                                                    onChange={(e) => {
+                                                                                        const newType = e.target.value;
+                                                                                        if (newType !== priceInputType) {
+                                                                                            let newVal = parseFloat(priceInput) || 0;
+                                                                                            if (newType === 'crate') {
+                                                                                                newVal = newVal * bottlesPerCrate;
+                                                                                            } else {
+                                                                                                newVal = newVal / bottlesPerCrate;
+                                                                                            }
+                                                                                            // Ensure no weird precision artifacts
+                                                                                            newVal = parseFloat(newVal.toFixed(2));
+                                                                                            handlePriceChange(product.id, newVal, newType);
+                                                                                        }
+                                                                                    }}
                                                                                 >
                                                                                     <option value="bottle">/ Btl</option>
                                                                                     <option value="crate">/ Crt</option>

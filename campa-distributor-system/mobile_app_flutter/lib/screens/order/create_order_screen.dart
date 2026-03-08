@@ -148,7 +148,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           product: product, 
           crates: isCrate ? quantity : 0, 
           pieces: isCrate ? 0 : quantity,
-          priceInput: priceInput ?? product.price,
+          priceInput: priceInput ?? (product.sellingPrice ?? product.price),
           priceInputType: priceInputType ?? 'bottle'
         ));
       }
@@ -863,7 +863,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     
     final initialCrates = (cartItem?.crates ?? 0) > 0 ? cartItem!.crates.toString() : '';
     final initialPieces = (cartItem?.pieces ?? 0) > 0 ? cartItem!.pieces.toString() : '';
-    final initialPrice = cartItem?.priceInput.toStringAsFixed(2) ?? product.price.toStringAsFixed(2);
+    final initialPrice = cartItem?.priceInput.toStringAsFixed(2) ?? (product.sellingPrice ?? product.price).toStringAsFixed(2);
 
     final isSelected = cartItem != null && (cartItem.crates > 0 || cartItem.pieces > 0);
 
@@ -934,7 +934,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
                           onChanged: (val) {
                             int valInt = int.tryParse(val) ?? 0;
-                            double pInput = cartItem?.priceInput ?? product.price;
+                            double pInput = cartItem?.priceInput ?? (product.sellingPrice ?? product.price);
                             String pType = cartItem?.priceInputType ?? 'bottle';
                             _addOrUpdateCartItem(product, true, valInt, pInput, pType);
                           },
@@ -962,7 +962,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
                           onChanged: (val) {
                             int valInt = int.tryParse(val) ?? 0;
-                            double pInput = cartItem?.priceInput ?? product.price;
+                            double pInput = cartItem?.priceInput ?? (product.sellingPrice ?? product.price);
                             String pType = cartItem?.priceInputType ?? 'bottle';
                             _addOrUpdateCartItem(product, false, valInt, pInput, pType);
                           },
@@ -998,7 +998,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 13), // Emerald
                                 decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
                                 onChanged: (val) {
-                                  double pInput = double.tryParse(val) ?? product.price;
+                                  double pInput = double.tryParse(val) ?? (product.sellingPrice ?? product.price);
                                   String pType = cartItem?.priceInputType ?? 'bottle';
                                   _updateCartItemPrice(product, pInput, pType);
                                 },
@@ -1020,7 +1020,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   ],
                                   onChanged: (val) {
                                     if (val != null) {
-                                      double pInput = cartItem?.priceInput ?? product.price;
+                                      double pInput = cartItem?.priceInput ?? (product.sellingPrice ?? product.price);
+                                      if (val != (cartItem?.priceInputType ?? 'bottle')) {
+                                        if (val == 'crate') {
+                                           pInput = pInput * product.bottlesPerCrate;
+                                        } else {
+                                           pInput = pInput / product.bottlesPerCrate;
+                                        }
+                                      }
                                       _updateCartItemPrice(product, pInput, val);
                                     }
                                   },
