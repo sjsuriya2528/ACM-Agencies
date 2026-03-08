@@ -167,9 +167,10 @@ const getLedgerReportData = async (req, res) => {
                 attributes: ['id', 'invoiceDate', 'invoiceNumber', 'netTotal'],
                 raw: true
             });
+            const invoiceIds = invoices.map(i => i.id);
 
             // Fetch Payments (Credits)
-            const paymentWhere = { orderId: orderIds, approvalStatus: 'Approved' };
+            const paymentWhere = { invoiceId: invoiceIds, approvalStatus: 'Approved' };
             if (startDate || endDate) {
                 paymentWhere[Op.and] = [];
                 if (startDate) paymentWhere[Op.and].push(sequelize.where(sequelize.fn('DATE', sequelize.col('paymentDate')), { [Op.gte]: startDate }));
@@ -178,7 +179,7 @@ const getLedgerReportData = async (req, res) => {
 
             const payments = await Payment.findAll({
                 where: paymentWhere,
-                attributes: ['id', 'paymentDate', 'amount', 'receiptNumber', 'orderId'],
+                attributes: ['id', 'paymentDate', 'amount', 'transactionId', 'paymentReference', 'invoiceId'],
                 raw: true
             });
 
@@ -191,7 +192,7 @@ const getLedgerReportData = async (req, res) => {
                     raw: true
                 });
                 const pastPayments = await Payment.findAll({
-                    where: { orderId: orderIds, approvalStatus: 'Approved', [Op.and]: [sequelize.where(sequelize.fn('DATE', sequelize.col('paymentDate')), { [Op.lt]: startDate })] },
+                    where: { invoiceId: invoiceIds, approvalStatus: 'Approved', [Op.and]: [sequelize.where(sequelize.fn('DATE', sequelize.col('paymentDate')), { [Op.lt]: startDate })] },
                     attributes: [[sequelize.fn('SUM', sequelize.col('amount')), 'totalCredit']],
                     raw: true
                 });
@@ -231,10 +232,11 @@ const getLedgerReportData = async (req, res) => {
 
             // Add Payments
             payments.forEach(pay => {
-                const order = orders.find(o => o.id === pay.orderId);
+                const inv = invoices.find(i => i.id === pay.invoiceId);
+                const order = inv ? orders.find(o => o.id === inv.orderId) : null;
                 ledgerEntries.push({
                     date: pay.paymentDate ? pay.paymentDate.toISOString().split('T')[0] : '', // format to YYYY-MM-DD
-                    billNo: pay.receiptNumber || (order ? order.billNumber : ''),
+                    billNo: pay.paymentReference || pay.transactionId || (inv ? inv.invoiceNumber : ''),
                     particular: 'COLLECTION',
                     debit: 0,
                     credit: parseFloat(pay.amount || 0),
