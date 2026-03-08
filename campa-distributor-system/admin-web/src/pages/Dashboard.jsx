@@ -8,8 +8,9 @@ import RetailerDetail from './RetailerDetail';
 import Users from './Users';
 import Orders from './Orders';
 import Payments from './Payments';
-import Deliveries from './Deliveries';
 import Reports from './Reports';
+import LedgerReport from './LedgerReport';
+import Deliveries from './Deliveries';
 import RepPerformance from './RepPerformance';
 import Purchases from './Purchases';
 
@@ -28,6 +29,7 @@ const Dashboard = () => {
                     <Route path="/deliveries" element={<Deliveries />} />
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/reports" element={<Reports />} />
+                    <Route path="/ledger-report" element={<LedgerReport />} />
                     <Route path="/rep-performance" element={<RepPerformance />} />
                     <Route path="/purchases" element={<Purchases />} />
                 </Routes>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, X } from 'lucide-react';
 
 const Retailers = () => {
     const [retailers, setRetailers] = useState([]);
@@ -151,6 +151,7 @@ const Retailers = () => {
                                 <th className="px-3 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Owner / GSTIN</th>
                                 <th className="px-3 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Mobile</th>
                                 <th className="px-3 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Address</th>
+                                <th className="px-3 py-3 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">Credit Balance</th>
                                 <th className="px-3 py-3 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -179,6 +180,11 @@ const Retailers = () => {
                                         </span>
                                     </td>
                                     <td className="px-3 py-3 text-[12px] text-gray-500 break-words max-w-[180px] leading-snug" title={retailer.address}>{retailer.address}</td>
+                                    <td className="px-3 py-3 whitespace-nowrap text-right">
+                                        <span className={`px-2 py-1 inline-flex text-[12px] font-black rounded-lg ${parseFloat(retailer.creditBalance) > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                                            ₹{parseFloat(retailer.creditBalance || 0).toFixed(2)}
+                                        </span>
+                                    </td>
                                     <td className="px-3 py-3 whitespace-nowrap text-right">
                                         <div className="flex justify-end gap-1">
                                             <button onClick={() => startEdit(retailer)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 hover:bg-indigo-100 rounded-lg transition-colors shadow-sm"><Edit size={16} strokeWidth={2.5} /></button>

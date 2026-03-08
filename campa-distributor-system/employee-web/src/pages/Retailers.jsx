@@ -105,6 +105,11 @@ const Retailers = () => {
                                             </p>
                                         </div>
                                     </div>
+                                    {/* Credit Balance Badge */}
+                                    <div className={`px-3 py-1.5 rounded-xl border ${parseFloat(retailer.creditBalance) > 0 ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
+                                        <div className="text-[10px] uppercase font-black tracking-wider opacity-70">Credit</div>
+                                        <div className="text-sm font-black">₹{parseFloat(retailer.creditBalance || 0).toFixed(2)}</div>
+                                    </div>
                                 </div>
 
                                 <div className="mt-5 flex flex-col gap-3 pl-[4.5rem] relative z-10">
