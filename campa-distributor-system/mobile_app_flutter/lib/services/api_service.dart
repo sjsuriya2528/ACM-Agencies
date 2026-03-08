@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://acm-agencies-backend.vercel.app/api';
+  static const String baseUrl = 'https://api.acmagencies.store/api';
   
   final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
