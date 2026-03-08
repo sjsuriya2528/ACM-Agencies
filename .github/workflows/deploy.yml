@@ -18,9 +18,16 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
 
           script: |
-            cd ~/ACM-Agencies/campa-distributor-system/backend
+            cd ~/ACM-Agencies
 
-            git pull origin main
+            if [ ! -d "campa-distributor-system" ]; then
+              git clone https://github.com/sjsuriya2528/ACM-Agencies.git
+            fi
+
+            cd campa-distributor-system/backend
+
+            git fetch origin
+            git reset --hard origin/main
 
             docker stop campa-backend-container || true
             docker rm campa-backend-container || true
