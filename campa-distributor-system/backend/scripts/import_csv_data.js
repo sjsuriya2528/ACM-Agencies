@@ -106,7 +106,7 @@ const processOrder = (row) => ({
 });
 
 const processOrderItem = (row) => ({
-    id: parseInt(row.id),
+    // removed id to allow auto-generation and avoid duplicates
     quantity: parseInt(row.quantity),
     pricePerUnit: parseNullableFloat(row.pricePerUnit),
     totalPrice: parseNullableFloat(row.totalPrice),
@@ -164,14 +164,16 @@ const processInvoice = (row) => ({
 });
 
 const processPayment = (row) => ({
-    id: parseInt(row.id),
+    // id removed to allow auto-generation
     amount: parseFloat(row.amount),
     paymentMode: row.paymentMode,
     transactionId: row.transactionId,
+    paymentReference: row.paymentReference,
     paymentDate: parseDateOnly(row.paymentDate),
     invoiceId: parseNullableInt(row.invoiceId),
     collectedById: parseNullableInt(row.collectedById),
-    retailerName: row.retailerName
+    retailerName: row.retailerName,
+    approvalStatus: 'Approved'
 });
 
 const run = async () => {
@@ -206,7 +208,7 @@ const run = async () => {
             }
             if (!productId) productId = 1;
             return {
-                id: parseInt(row.id),
+                // id removed to avoid duplicates
                 cancelledOrderId: parseNullableInt(row.cancelledOrderId),
                 productId: productId,
                 productName: row.productName,
