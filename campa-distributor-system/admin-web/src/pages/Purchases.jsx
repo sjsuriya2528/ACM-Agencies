@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import {
     Package, Plus, Eye, Trash2, Search, X, Printer,
@@ -99,6 +99,87 @@ const PrintTemplate = ({ bill }) => {
 
 const emptyItem = () => ({ productId: '', description: '', quantity: '', rate: '', amount: 0, _bpc: 1 });
 
+// ─── Searchable Product Select Component ─────────────────────────────────────
+const SearchableProductSelect = ({ value, products, onChange, placeholder = "Select Product..." }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const wrapperRef = useRef(null);
+    const inputRef = useRef(null);
+
+    const selectedProduct = products.find(p => String(p.id) === String(value));
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filtered = products.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()))
+    ).slice(0, 10);
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            <div
+                onClick={() => {
+                    setIsOpen(!isOpen);
+                    if (!isOpen) setTimeout(() => inputRef.current?.focus(), 10);
+                }}
+                className={`w-full px-3 py-2.5 bg-white border rounded-lg text-sm cursor-pointer flex justify-between items-center transition-all ${isOpen ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'}`}
+            >
+                <span className={selectedProduct ? 'text-slate-900 font-bold' : 'text-slate-400'}>
+                    {selectedProduct ? selectedProduct.name : placeholder}
+                </span>
+                <Search size={14} className="text-slate-400" />
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-50 w-80 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-3 border-b border-slate-50 bg-slate-50/50">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Type to search..."
+                            className="w-full px-4 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 transition-all font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                    <div className="max-h-72 overflow-auto">
+                        {filtered.length > 0 ? (
+                            filtered.map(p => (
+                                <div
+                                    key={p.id}
+                                    onClick={() => {
+                                        onChange(p.id);
+                                        setIsOpen(false);
+                                        setSearch('');
+                                    }}
+                                    className={`px-4 py-3 text-sm cursor-pointer hover:bg-indigo-50 border-b border-slate-50 last:border-0 flex flex-col gap-0.5 ${String(p.id) === String(value) ? 'bg-indigo-50/50' : ''}`}
+                                >
+                                    <div className="font-bold text-slate-800">{p.name}</div>
+                                    <div className="flex items-center gap-3">
+                                        {p.sku && <span className="text-[11px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-bold uppercase">{p.sku}</span>}
+                                        <span className="text-[11px] text-indigo-500 font-bold">₹{p.price}/btl</span>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-3 py-4 text-center text-xs text-slate-400">No products found</div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const Purchases = () => {
     const [activeTab, setActiveTab] = useState('bills');
@@ -133,6 +214,8 @@ const Purchases = () => {
     const [reportFrom, setReportFrom] = useState(new Date().toISOString().split('T')[0]);
     const [reportTo, setReportTo] = useState(new Date().toISOString().split('T')[0]);
     const [reportLoading, setReportLoading] = useState(false);
+    const [showCatalog, setShowCatalog] = useState(false);
+    const [catalogSearch, setCatalogSearch] = useState('');
 
     // ── Fetch ─────────────────────────────────────────────────────────────────
     const fetchBills = async () => {
@@ -221,6 +304,33 @@ const Purchases = () => {
             console.warn("Filter warning: 'items' is not an array in Purchases.jsx (removeItem). Type:", typeof items, "Value:", items);
         }
         setItems(p => (Array.isArray(p) ? p : []).filter((_, i) => i !== idx));
+    };
+
+    const addProductToItems = (product) => {
+        setItems(prev => {
+            // If the last item is empty, fill it. Otherwise add new.
+            const last = prev[prev.length - 1];
+            if (last && !last.productId && !last.description) {
+                const copy = [...prev];
+                copy[prev.length - 1] = {
+                    ...emptyItem(),
+                    productId: product.id,
+                    description: product.name,
+                    _bpc: product.bottlesPerCrate || 1,
+                    rate: product.price ? +(Number(product.price) * (product.bottlesPerCrate || 1)).toFixed(2) : '',
+                    amount: product.price ? +(Number(product.price) * (product.bottlesPerCrate || 1)).toFixed(2) : 0
+                };
+                return copy;
+            }
+            return [...prev, {
+                ...emptyItem(),
+                productId: product.id,
+                description: product.name,
+                _bpc: product.bottlesPerCrate || 1,
+                rate: product.price ? +(Number(product.price) * (product.bottlesPerCrate || 1)).toFixed(2) : '',
+                amount: product.price ? +(Number(product.price) * (product.bottlesPerCrate || 1)).toFixed(2) : 0
+            }];
+        });
     };
 
     const resetForm = () => {
@@ -541,23 +651,35 @@ const Purchases = () => {
                         {/* Items Table */}
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                    <Layers size={12} className="text-indigo-400" /> Purchase Items
+                                <p className="text-sm font-black uppercase tracking-widest text-slate-800 flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-100">
+                                        <Layers size={18} />
+                                    </div>
+                                    Purchase Entry Details
                                 </p>
-                                <span className="text-xs font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">
-                                    {items.filter(i => i.description).length} item(s)
-                                </span>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => setShowCatalog(!showCatalog)}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showCatalog ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                                    >
+                                        <Package size={14} />
+                                        {showCatalog ? 'Close Catalog' : 'Quick Catalog'}
+                                    </button>
+                                    <span className="text-xs font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">
+                                        {items.filter(i => i.description).length} item(s)
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Column headers */}
-                            <div className="grid text-[10px] font-bold uppercase tracking-wider text-slate-400 px-5 py-3 bg-slate-50 border-b border-slate-100"
-                                style={{ gridTemplateColumns: '28px 1fr 190px 88px 120px 108px 32px' }}>
+                            <div className="grid text-xs font-bold uppercase tracking-wider text-slate-500 px-5 py-4 bg-slate-50 border-b border-slate-200"
+                                style={{ gridTemplateColumns: '44px 1fr 240px 100px 140px 130px 48px' }}>
                                 <div className="text-center">#</div>
-                                <div>Description</div>
-                                <div>Link to Product</div>
+                                <div>Item Description</div>
+                                <div>Product Link</div>
                                 <div className="text-center">Crates</div>
                                 <div className="text-center">Rate / Crate</div>
-                                <div className="text-right">Amount</div>
+                                <div className="text-right pr-4">Amount</div>
                                 <div></div>
                             </div>
 
@@ -568,43 +690,42 @@ const Purchases = () => {
                                     const bottles = (Number(item.quantity) || 0) * bpc;
                                     return (
                                         <div key={idx}
-                                            className={`grid items-center gap-2 px-4 py-3 hover:bg-indigo-50/20 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}
-                                            style={{ gridTemplateColumns: '28px 1fr 190px 88px 120px 108px 32px' }}>
-                                            <div className="text-center text-xs text-slate-300 font-bold">{idx + 1}</div>
+                                            className={`grid items-center gap-4 px-4 py-5 hover:bg-indigo-50/30 transition-colors border-b border-slate-50 last:border-0 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                                            style={{ gridTemplateColumns: '44px 1fr 240px 100px 140px 130px 48px' }}>
+                                            <div className="text-center text-sm text-slate-400 font-black">{idx + 1}</div>
                                             <div>
                                                 <input type="text" value={item.description}
                                                     onChange={e => updateItem(idx, 'description', e.target.value)}
-                                                    placeholder="Product name..."
-                                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-300 outline-none" />
+                                                    placeholder="Enter product description..."
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none transition-all" />
                                             </div>
                                             <div>
-                                                <select value={item.productId}
-                                                    onChange={e => updateItem(idx, 'productId', e.target.value)}
-                                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-300 outline-none">
-                                                    <option value="">— None —</option>
-                                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                </select>
+                                                <SearchableProductSelect
+                                                    value={item.productId}
+                                                    products={products}
+                                                    onChange={val => updateItem(idx, 'productId', val)}
+                                                />
                                             </div>
                                             <div>
                                                 <input type="number" min="1" value={item.quantity}
                                                     onChange={e => updateItem(idx, 'quantity', e.target.value)}
                                                     placeholder="0"
-                                                    className="w-full px-2 py-2 bg-white border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-indigo-300 outline-none" />
+                                                    className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl text-base font-black text-center focus:ring-2 focus:ring-indigo-400 outline-none transition-all" />
                                                 {bottles > 0 && (
-                                                    <div className="text-center text-[10px] text-violet-500 font-bold mt-0.5">{bottles} btls</div>
+                                                    <div className="text-center text-[11px] text-indigo-600 font-black mt-1.5 bg-indigo-50 py-0.5 rounded-lg uppercase tracking-tighter">{bottles} Bottles</div>
                                                 )}
                                             </div>
                                             <div className="relative">
-                                                <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs font-semibold">₹</span>
+                                                <span className="absolute left-3.5 top-3.5 text-slate-400 text-sm font-black">₹</span>
                                                 <input type="number" min="0" step="0.01" value={item.rate}
                                                     onChange={e => updateItem(idx, 'rate', e.target.value)}
                                                     placeholder="0.00"
-                                                    className="w-full pl-6 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-sm text-right focus:ring-2 focus:ring-indigo-300 outline-none" />
+                                                    className="w-full pl-8 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-base font-black text-right focus:ring-2 focus:ring-indigo-400 outline-none transition-all" />
                                             </div>
-                                            <div className="text-right pr-1">
+                                            <div className="text-right pr-4">
                                                 {item.amount > 0
-                                                    ? <span className="font-bold text-slate-800 text-sm">₹{fmt(item.amount)}</span>
-                                                    : <span className="text-slate-200 text-lg">—</span>}
+                                                    ? <span className="font-black text-slate-900 text-base">₹{fmt(item.amount)}</span>
+                                                    : <span className="text-slate-200 text-xl font-black">—</span>}
                                             </div>
                                             <div className="flex justify-center">
                                                 {items.length > 1 && (
@@ -640,60 +761,111 @@ const Purchases = () => {
                     </div>
 
                     {/* ── Right: Sticky Summary Panel ── */}
-                    <div className="w-72 shrink-0 border-l border-slate-200 bg-white px-6 py-8 space-y-6 sticky top-14 self-start">
-                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Bill Summary</p>
+                    <div className={`${showCatalog ? 'w-[480px]' : 'w-72'} shrink-0 border-l border-slate-200 bg-white space-y-0 sticky top-14 self-start transition-all duration-300 flex flex-col h-[calc(100vh-56px)] overflow-hidden`}>
 
-                        <div className="space-y-2.5 text-sm">
-                            <div className="flex justify-between text-slate-500">
-                                <span>Total Items</span>
-                                <span className="font-bold text-slate-700">{items.filter(i => i.description).length}</span>
-                            </div>
-                            <div className="flex justify-between text-slate-500">
-                                <span>Total Crates</span>
-                                <span className="font-bold text-slate-700">{totalCrates}</span>
-                            </div>
-                            <div className="flex justify-between text-slate-500 border-t border-slate-100 pt-2.5">
-                                <span>Sub Total</span>
-                                <span className="font-bold text-slate-800">₹{fmt(subTotal)}</span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Tax &amp; Adjustments</p>
-                            {[
-                                { key: 'cgstAmount', label: 'CGST' },
-                                { key: 'sgstAmount', label: 'SGST' },
-                                { key: 'roundOff', label: 'Round Off' },
-                            ].map(({ key, label }) => (
-                                <div key={key} className="flex items-center gap-3">
-                                    <label className="text-xs font-semibold text-slate-500 w-20 shrink-0">{label} ₹</label>
-                                    <input type="number" step="0.01" value={form[key]}
-                                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                                        placeholder="0.00"
-                                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none text-right bg-slate-50" />
+                        {showCatalog && (
+                            <div className="flex-1 flex flex-col min-h-0 border-b border-slate-100">
+                                <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Package size={16} className="text-indigo-600" />
+                                        <span className="font-bold text-slate-800 text-sm italic uppercase tracking-wider">Product Catalog</span>
+                                    </div>
+                                    <button onClick={() => setShowCatalog(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                                        <X size={16} />
+                                    </button>
                                 </div>
-                            ))}
-                        </div>
-
-                        <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-5 text-white">
-                            <p className="text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Net Total</p>
-                            <p className="text-4xl font-black tracking-tight">₹{fmt(netTotal)}</p>
-                            <div className="mt-3 pt-3 border-t border-white/20 space-y-1 text-xs opacity-75">
-                                <div className="flex justify-between"><span>Sub Total</span><span>₹{fmt(subTotal)}</span></div>
-                                <div className="flex justify-between"><span>GST</span><span>₹{fmt(cgst + sgst)}</span></div>
-                                {ro !== 0 && <div className="flex justify-between"><span>Round Off</span><span>₹{fmt(ro)}</span></div>}
+                                <div className="p-4 border-b border-slate-100 bg-white">
+                                    <div className="relative">
+                                        <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search items to add..."
+                                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
+                                            value={catalogSearch}
+                                            onChange={e => setCatalogSearch(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-auto p-2 bg-slate-50/30 font-sans">
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {products.filter(p => !catalogSearch || p.name.toLowerCase().includes(catalogSearch.toLowerCase())).map(p => (
+                                            <div
+                                                key={p.id}
+                                                onClick={() => addProductToItems(p)}
+                                                className="group bg-white p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+                                            >
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-slate-800 text-[13px] truncate">{p.name}</p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">{p.sku || 'No SKU'}</span>
+                                                        <span className="text-[10px] text-slate-400">₹{p.price}/btl</span>
+                                                    </div>
+                                                </div>
+                                                <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all">
+                                                    <Plus size={16} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        <button onClick={handleSubmit} disabled={saving}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60">
-                            {saving ? <LoadingSpinner size="sm" /> : <Plus size={17} />}
-                            Save Purchase Bill
-                        </button>
-                        <button onClick={() => setShowCreate(false)}
-                            className="w-full py-2.5 text-slate-500 hover:text-slate-700 font-semibold text-sm transition-colors">
-                            Cancel
-                        </button>
+                        <div className="p-6 space-y-6 overflow-auto">
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Bill Summary</p>
+
+                            <div className="space-y-2.5 text-sm">
+                                <div className="flex justify-between text-slate-500">
+                                    <span>Total Items</span>
+                                    <span className="font-bold text-slate-700">{items.filter(i => i.description).length}</span>
+                                </div>
+                                <div className="flex justify-between text-slate-500">
+                                    <span>Total Crates</span>
+                                    <span className="font-bold text-slate-700">{totalCrates}</span>
+                                </div>
+                                <div className="flex justify-between text-slate-500 border-t border-slate-100 pt-2.5">
+                                    <span>Sub Total</span>
+                                    <span className="font-bold text-slate-800">₹{fmt(subTotal)}</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Tax &amp; Adjustments</p>
+                                {[
+                                    { key: 'cgstAmount', label: 'CGST' },
+                                    { key: 'sgstAmount', label: 'SGST' },
+                                    { key: 'roundOff', label: 'Round Off' },
+                                ].map(({ key, label }) => (
+                                    <div key={key} className="flex items-center gap-3">
+                                        <label className="text-xs font-semibold text-slate-500 w-20 shrink-0">{label} ₹</label>
+                                        <input type="number" step="0.01" value={form[key]}
+                                            onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                                            placeholder="0.00"
+                                            className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none text-right bg-slate-50" />
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-5 text-white">
+                                <p className="text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Net Total</p>
+                                <p className="text-4xl font-black tracking-tight">₹{fmt(netTotal)}</p>
+                                <div className="mt-3 pt-3 border-t border-white/20 space-y-1 text-xs opacity-75">
+                                    <div className="flex justify-between"><span>Sub Total</span><span>₹{fmt(subTotal)}</span></div>
+                                    <div className="flex justify-between"><span>GST</span><span>₹{fmt(cgst + sgst)}</span></div>
+                                    {ro !== 0 && <div className="flex justify-between"><span>Round Off</span><span>₹{fmt(ro)}</span></div>}
+                                </div>
+                            </div>
+
+                            <button onClick={handleSubmit} disabled={saving}
+                                className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60">
+                                {saving ? <LoadingSpinner size="sm" /> : <Plus size={17} />}
+                                Save Purchase Bill
+                            </button>
+                            <button onClick={() => setShowCreate(false)}
+                                className="w-full py-2.5 text-slate-500 hover:text-slate-700 font-semibold text-sm transition-colors">
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
