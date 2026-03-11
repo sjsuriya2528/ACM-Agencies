@@ -409,29 +409,49 @@ const getRepList = async (req, res) => {
 const getRepHistory = async (req, res) => {
     try {
         const { repId, startDate, endDate } = req.query;
+        
+        console.log('\x1b[32m%s\x1b[0m', '------------------------------------------------');
+        console.log('\x1b[32m%s\x1b[0m', `🚀 RECP PERFORMANCE FETCH: Rep=${repId} v=3`);
+        console.log('\x1b[32m%s\x1b[0m', `📅 Range: ${startDate} to ${endDate}`);
+        console.log('\x1b[32m%s\x1b[0m', '------------------------------------------------');
+
         if (!repId) return res.status(400).json({ message: 'repId is required' });
 
         const start = startDate || new Date().toISOString().split('T')[0];
         const end = endDate || new Date().toISOString().split('T')[0];
 
-        // ---- Sales per day (Invoice.netTotal via Order.salesRepId) ----
-        const salesRows = await Invoice.findAll({
-            attributes: [
-                ['invoiceDate', 'date'],
-                [sequelize.fn('SUM', sequelize.col('Invoice.netTotal')), 'sales'],
-                [sequelize.fn('COUNT', sequelize.col('Invoice.id')), 'orders']
-            ],
+        // ---- Detailed Sales (Invoices with Order and Retailer info) ----
+        const invoices = await Invoice.findAll({
+            where: {
+                invoiceDate: {
+                    [Op.between]: [
+                        new Date(start + 'T00:00:00.000Z'),
+                        new Date(end + 'T23:59:59.999Z')
+                    ]
+                }
+            },
             include: [{
                 model: Order,
-                attributes: [],
-                where: { salesRepId: repId }
+                as: 'order',
+                where: { salesRepId: repId }, // Correct: salesRepId is on Order
+                include: [
+                    {
+                        model: Retailer,
+                        as: 'retailer',
+                        attributes: ['id', 'shopName']
+                    },
+                    {
+                        model: OrderItem,
+                        as: 'items',
+                        include: [{
+                            model: Product,
+                            as: 'product',
+                            attributes: ['id', 'name']
+                        }]
+                    }
+                ]
             }],
-            where: {
-                invoiceDate: { [Op.between]: [start, end] }
-            },
-            group: ['invoiceDate'],
             order: [['invoiceDate', 'ASC']],
-            raw: true
         });
 
         // ---- Collections per day (Payment.amount via collectedById) ----
@@ -458,20 +478,59 @@ const getRepHistory = async (req, res) => {
         // ---- Merge into unified day-keyed map ----
         const dayMap = {};
 
-        salesRows.forEach(row => {
-            const d = row.date;
-            if (!dayMap[d]) dayMap[d] = { date: d, sales: 0, collections: 0, orders: 0 };
-            dayMap[d].sales = Number(row.sales) || 0;
-            dayMap[d].orders = Number(row.orders) || 0;
+        const formatDate = (date) => {
+            if (!date) return 'Unknown';
+            const d = new Date(date);
+            if (isNaN(d.getTime())) return String(date).split(' ')[0] || String(date).split('T')[0];
+            return d.toISOString().split('T')[0];
+        };
+
+        invoices.forEach(invInstance => {
+            const inv = invInstance.get({ plain: true });
+            const d = formatDate(inv.invoiceDate);
+            
+            if (!dayMap[d]) {
+                dayMap[d] = { date: d, sales: 0, collections: 0, orders: 0, ordersList: [] };
+            }
+            
+            const entry = dayMap[d];
+            entry.sales += parseFloat(inv.netTotal) || 0;
+            entry.orders += 1;
+            
+            // Standardizing to lowercase 'order' as per the alias in index.js
+            const orderData = inv.order || inv.Order; 
+            
+            entry.ordersList.push({
+                invoiceNumber: String(inv.invoiceNumber),
+                customerName: String(inv.customerName || orderData?.retailer?.shopName || 'Unknown'),
+                amount: parseFloat(inv.netTotal) || 0,
+                paymentStatus: String(inv.paymentStatus || 'Pending'),
+                orderStatus: String(orderData?.status || 'Active'),
+                items: (orderData?.items || []).map(item => ({
+                    name: item.product?.name || 'Unknown Item',
+                    qty: item.quantity,
+                    price: item.pricePerUnit
+                }))
+            });
         });
 
         collectionRows.forEach(row => {
-            const d = row.date;
-            if (!dayMap[d]) dayMap[d] = { date: d, sales: 0, collections: 0, orders: 0 };
-            dayMap[d].collections = Number(row.collections) || 0;
+            const d = formatDate(row.date);
+
+            if (!dayMap[d]) {
+                dayMap[d] = { date: d, sales: 0, collections: 0, orders: 0, ordersList: [] };
+            }
+            dayMap[d].collections += parseFloat(row.collections) || 0;
         });
 
         const result = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+
+        // Versioning and Birthmark for debugging
+        const RESPONSE_VERSION = 3;
+        const serverTime = new Date().toISOString();
+        const debugId = Math.random().toString(36).substring(7).toUpperCase();
+        
+        console.log(`\n\x1b[42m\x1b[30m 🚀 V3 IS ALIVE | Rep:${repId} | ID:${debugId} \x1b[0m\n`);
 
         // ---- Totals ----
         const totals = result.reduce(
@@ -483,7 +542,15 @@ const getRepHistory = async (req, res) => {
             { totalSales: 0, totalCollections: 0, totalOrders: 0 }
         );
 
-        res.json({ rows: result, totals });
+        res.json({
+            success: true,
+            repId,
+            debugId,
+            v: RESPONSE_VERSION,
+            serverTime,
+            totals,
+            rows: result
+        });
     } catch (error) {
         console.error('Error fetching rep history:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });

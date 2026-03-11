@@ -38,6 +38,16 @@ app.get('/', (req, res) => {
   res.send('Campa Distributor System API Running');
 });
 
+// Forensic Diagnostic Route
+app.get('/api/who-am-i', (req, res) => {
+    res.json({ 
+        version: "3.0.0-FORENSIC", 
+        processId: process.pid,
+        status: "I AM ALIVE AND UPDATED",
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/retailers', retailerRoutes);
