@@ -176,21 +176,22 @@ const getOrders = async (req, res) => {
             });
         }
 
-        // 5. Date Range Filter
+        // 5. Date Range Filter (IST Aware)
+        const istOffset = 5.5 * 60 * 60 * 1000;
         if (startDate && endDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            conditions.push({ createdAt: { [Op.between]: [start, end] } });
+            const startStr = `${startDate}T00:00:00.000Z`;
+            const endStr = `${endDate}T23:59:59.999Z`;
+            const startUtc = new Date(new Date(startStr).getTime() - istOffset);
+            const endUtc = new Date(new Date(endStr).getTime() - istOffset);
+            conditions.push({ createdAt: { [Op.between]: [startUtc, endUtc] } });
         } else if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            conditions.push({ createdAt: { [Op.gte]: start } });
+            const startStr = `${startDate}T00:00:00.000Z`;
+            const startUtc = new Date(new Date(startStr).getTime() - istOffset);
+            conditions.push({ createdAt: { [Op.gte]: startUtc } });
         } else if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            conditions.push({ createdAt: { [Op.lte]: end } });
+            const endStr = `${endDate}T23:59:59.999Z`;
+            const endUtc = new Date(new Date(endStr).getTime() - istOffset);
+            conditions.push({ createdAt: { [Op.lte]: endUtc } });
         }
 
         const whereClause = conditions.length > 0 ? { [Op.and]: conditions } : {};
@@ -463,7 +464,7 @@ const generateInvoiceData = (order) => {
     return {
         orderId: order.id,
         invoiceNumber: `INV-${order.id}-${Date.now().toString().slice(-4)}`,
-        invoiceDate: new Date(),
+        invoiceDate: new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)).toISOString().split('T')[0],
         customerName: order.retailer?.shopName || 'Unknown Customer',
         customerAddress: order.retailer?.address,
         customerGSTIN: order.retailer?.gstin,
@@ -703,26 +704,27 @@ const getCancelledOrders = async (req, res) => {
             ];
         }
 
-        // Apply Date Range Filter Based on Cancellation Date
+        // Apply Date Range Filter Based on Cancellation Date (IST Aware)
+        const istOffset = 5.5 * 60 * 60 * 1000;
         if (startDate && endDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
+            const startStr = `${startDate}T00:00:00.000Z`;
+            const endStr = `${endDate}T23:59:59.999Z`;
+            const startUtc = new Date(new Date(startStr).getTime() - istOffset);
+            const endUtc = new Date(new Date(endStr).getTime() - istOffset);
             whereClause.cancelledAt = {
-                [Op.between]: [start, end]
+                [Op.between]: [startUtc, endUtc]
             };
         } else if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
+            const startStr = `${startDate}T00:00:00.000Z`;
+            const startUtc = new Date(new Date(startStr).getTime() - istOffset);
             whereClause.cancelledAt = {
-                [Op.gte]: start
+                [Op.gte]: startUtc
             };
         } else if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
+            const endStr = `${endDate}T23:59:59.999Z`;
+            const endUtc = new Date(new Date(endStr).getTime() - istOffset);
             whereClause.cancelledAt = {
-                [Op.lte]: end
+                [Op.lte]: endUtc
             };
         }
 

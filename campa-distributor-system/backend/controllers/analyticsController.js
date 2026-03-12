@@ -3,32 +3,25 @@ const { Op } = require('sequelize');
 
 // Helper to get today's date in YYYY-MM-DD format (IST Timezone)
 const getTodayDateString = () => {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Kolkata',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).format(new Date());
+    // Returns YYYY-MM-DD in IST
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffset);
+    return istDate.toISOString().split('T')[0];
 };
 
 // Helper to get start of today in IST
 const getStartOfToday = () => {
+    // Get current time in IST
     const now = new Date();
-    const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Kolkata',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    }).formatToParts(now);
-
-    const map = {};
-    parts.forEach(p => map[p.type] = p.value);
-
-    return new Date(`${map.year}-${map.month}-${map.day}T00:00:00+05:30`);
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffset);
+    
+    // Create a new date at 00:00:00 of that IST date
+    const startOfIstToday = new Date(istDate.toISOString().split('T')[0] + 'T00:00:00.000Z');
+    
+    // Shift back to UTC to get the actual UTC timestamp that corresponds to 00:00:00 IST
+    return new Date(startOfIstToday.getTime() - istOffset);
 };
 
 // @desc    Get dashboard summary statistics

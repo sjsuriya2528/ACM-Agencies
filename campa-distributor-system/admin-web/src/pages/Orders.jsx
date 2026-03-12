@@ -815,9 +815,49 @@ const Orders = () => {
 
                     {/* Date Range & Payment Row */}
                     <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
-                        {/* Date Range */}
-                        <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
+                        {/* Date Range & Quick Filters */}
+                        <div className="flex flex-col md:flex-row items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
                             <Calendar size={18} className="ml-2 text-slate-400" />
+                            
+                            {/* Quick Select */}
+                            <select 
+                                className="bg-white border border-slate-200 text-xs font-bold text-slate-600 rounded-lg px-2 py-1.5 outline-none cursor-pointer hover:border-blue-300 transition-colors"
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    const today = new Date();
+                                    const istOffset = 5.5 * 60 * 60 * 1000;
+                                    const getIstDate = (date) => new Date(date.getTime() + istOffset).toISOString().split('T')[0];
+                                    
+                                    if (val === 'today') {
+                                        const d = getIstDate(today);
+                                        setStartDate(d); setEndDate(d);
+                                    } else if (val === 'yesterday') {
+                                        const y = new Date(today);
+                                        y.setDate(y.getDate() - 1);
+                                        const d = getIstDate(y);
+                                        setStartDate(d); setEndDate(d);
+                                    } else if (val === 'last7') {
+                                        const s = new Date(today);
+                                        s.setDate(s.getDate() - 6);
+                                        setStartDate(getIstDate(s));
+                                        setEndDate(getIstDate(today));
+                                    } else if (val === 'thisMonth') {
+                                        const s = new Date(today.getFullYear(), today.getMonth(), 1);
+                                        setStartDate(getIstDate(s));
+                                        setEndDate(getIstDate(today));
+                                    }
+                                }}
+                                defaultValue=""
+                            >
+                                <option value="" disabled>Quick Filter</option>
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="last7">Last 7 Days</option>
+                                <option value="thisMonth">This Month</option>
+                            </select>
+
+                            <div className="h-4 w-[1px] bg-slate-200 mx-1 hidden md:block"></div>
+
                             <input
                                 type="date"
                                 value={startDate}
