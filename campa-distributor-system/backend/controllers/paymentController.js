@@ -56,13 +56,25 @@ const getPayments = async (req, res) => {
         if (status && status !== 'All') where.approvalStatus = status;
         if (mode && mode !== 'All') where.paymentMode = mode;
         if (search) {
-            where[Op.or] = [
+            const searchConditions = [
                 { retailerName: { [Op.iLike]: `%${search}%` } },
                 { transactionId: { [Op.iLike]: `%${search}%` } },
                 { '$collectedBy.name$': { [Op.iLike]: `%${search}%` } },
-                { '$Invoice.customerName$': { [Op.iLike]: `%${search}%` } },
-                { '$Invoice.Order.retailer.shopName$': { [Op.iLike]: `%${search}%` } },
+                { '$invoice.customerName$': { [Op.iLike]: `%${search}%` } },
+                { '$invoice.order.retailer.shopName$': { [Op.iLike]: `%${search}%` } },
             ];
+
+            // If search is a number, search by ID
+            if (!isNaN(search)) {
+                searchConditions.push({ id: parseInt(search) });
+            }
+
+            // If search is a date (YYYY-MM-DD)
+            if (/^\d{4}-\d{2}-\d{2}$/.test(search)) {
+                searchConditions.push({ paymentDate: search });
+            }
+
+            where[Op.or] = searchConditions;
         }
 
         const { count, rows: payments } = await Payment.findAndCountAll({
@@ -72,9 +84,11 @@ const getPayments = async (req, res) => {
                 { model: User, as: 'approvedBy', attributes: ['id', 'name'] },
                 {
                     model: Invoice,
+                    as: 'invoice',
                     attributes: ['id', 'netTotal', 'balanceAmount', 'customerName'],
                     include: [{
                         model: Order,
+                        as: 'order',
                         attributes: ['id', 'retailerId'],
                         include: [{ model: Retailer, as: 'retailer', attributes: ['shopName'] }]
                     }]
@@ -93,12 +107,16 @@ const getPayments = async (req, res) => {
         const totalApprovedAmount = await Payment.sum('amount', {
             where: { ...where, approvalStatus: 'Approved' },
             include: where[Op.or] ? [
-                { model: User, as: 'collectedBy' },
+                { model: User, as: 'collectedBy', attributes: [] },
                 {
                     model: Invoice,
+                    as: 'invoice',
+                    attributes: [],
                     include: [{
                         model: Order,
-                        include: [{ model: Retailer, as: 'retailer' }]
+                        as: 'order',
+                        attributes: [],
+                        include: [{ model: Retailer, as: 'retailer', attributes: [] }]
                     }]
                 }
             ] : []
@@ -107,12 +125,16 @@ const getPayments = async (req, res) => {
         const totalPendingCount = await Payment.count({
             where: { ...where, approvalStatus: 'Pending' },
             include: where[Op.or] ? [
-                { model: User, as: 'collectedBy' },
+                { model: User, as: 'collectedBy', attributes: [] },
                 {
                     model: Invoice,
+                    as: 'invoice',
+                    attributes: [],
                     include: [{
                         model: Order,
-                        include: [{ model: Retailer, as: 'retailer' }]
+                        as: 'order',
+                        attributes: [],
+                        include: [{ model: Retailer, as: 'retailer', attributes: [] }]
                     }]
                 }
             ] : []
@@ -120,10 +142,10 @@ const getPayments = async (req, res) => {
 
         const results = payments.map(p => {
             const json = p.toJSON();
-            if (!json.retailerName && json.Invoice?.Order?.retailer?.shopName) {
-                json.retailerName = json.Invoice.Order.retailer.shopName;
-            } else if (!json.retailerName && json.Invoice?.customerName) {
-                json.retailerName = json.Invoice.customerName;
+            if (!json.retailerName && json.invoice?.order?.retailer?.shopName) {
+                json.retailerName = json.invoice.order.retailer.shopName;
+            } else if (!json.retailerName && json.invoice?.customerName) {
+                json.retailerName = json.invoice.customerName;
             }
             return json;
         });
@@ -225,7 +247,8 @@ const bulkApprovePayments = async (req, res) => {
             where: { approvalStatus: 'Pending' },
             include: [{
                 model: Invoice,
-                include: [{ model: Order, attributes: ['retailerId'] }]
+                as: 'invoice',
+                include: [{ model: Order, as: 'order', attributes: ['retailerId'] }]
             }]
         });
 
@@ -234,7 +257,7 @@ const bulkApprovePayments = async (req, res) => {
         }
 
         const invoiceIds = [...new Set(pendingPayments.map(p => p.invoiceId))];
-        const retailerIds = [...new Set(pendingPayments.map(p => p.Invoice?.Order?.retailerId).filter(id => id))];
+        const retailerIds = [...new Set(pendingPayments.map(p => p.invoice?.order?.retailerId).filter(id => id))];
 
         // 2. Perform bulk update on Payments (disable individual hooks to prevent O(N^2))
         await Payment.update({
@@ -271,9 +294,11 @@ const getPaymentReceipt = async (req, res) => {
                 { model: User, as: 'collectedBy', attributes: ['name'] },
                 {
                     model: Invoice,
+                    as: 'invoice',
                     attributes: ['id', 'invoiceNumber', 'invoiceDate', 'netTotal', 'customerName', 'customerAddress'],
                     include: [{
                         model: Order,
+                        as: 'order',
                         attributes: ['id', 'createdAt'],
                         include: [{ model: Retailer, as: 'retailer', attributes: ['shopName', 'address'] }]
                     }]

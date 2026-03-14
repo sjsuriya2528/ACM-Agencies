@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import '../../models/retailer.dart';
 import '../../models/product.dart';
 import '../../services/api_service.dart';
+import '../../theme/app_theme.dart';
+import '../../providers/auth_provider.dart';
 
 class CreateOrderScreen extends StatefulWidget {
   const CreateOrderScreen({super.key});
@@ -181,6 +184,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return _cart.fold(0, (sum, item) => sum + item.gstAmount);
   }
 
+  int get _totalPiecesInCart {
+    return _cart.fold(0, (sum, item) => sum + item.totalPieces);
+  }
+
   double get _finalTotalAmount {
     double total = _totalOriginalAmount + _totalGstAmount;
     return _roundOffTotal ? total.roundToDouble() : total;
@@ -311,9 +318,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     child: const Icon(LucideIcons.checkCircle, color: Color(0xFF10B981), size: 40),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Order Placed!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  const Text('Order Placed!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('GPS Logged: $gpsString', textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                  Text('GPS Logged: $gpsString', textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13)),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -324,7 +331,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         Navigator.of(context).pop(); // Close CreateOrderScreen
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F172A),
+                        backgroundColor: Theme.of(context).primaryColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: const Text('Back to Dashboard', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
@@ -358,7 +365,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateDialog) {
           return Dialog(
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).cardTheme.color,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -369,9 +376,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Add New Retailer', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                      const Text('Add New Retailer', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       IconButton(
-                        icon: const Icon(LucideIcons.x, color: Color(0xFF64748B)),
+                        icon: Icon(LucideIcons.x, color: Theme.of(context).textTheme.bodySmall?.color),
                         onPressed: () => Navigator.pop(context),
                       )
                     ],
@@ -398,7 +405,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F172A),
+                        backgroundColor: Theme.of(context).primaryColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: isSaving ? null : () async {
@@ -451,7 +458,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget _buildInputLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+      child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodySmall?.color)),
     );
   }
 
@@ -463,17 +470,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
       ),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+        style: const TextStyle(fontWeight: FontWeight.w600),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 20),
+          prefixIcon: Icon(icon, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5), size: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
@@ -484,18 +491,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardTheme.color,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF1E293B)),
+          icon: Icon(LucideIcons.arrowLeft, color: Theme.of(context).textTheme.bodySmall?.color),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Create Order',
-          style: TextStyle(color: Color(0xFF1E293B), fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
         ),
       ),
       body: _isLoadingProducts || _isLoadingRetailers
@@ -516,15 +523,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                    padding: const EdgeInsets.only(top: 80),
                                    child: Column(
                                      children: [
-                                       Container(
-                                         padding: const EdgeInsets.all(24),
-                                         decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-                                         child: const Icon(LucideIcons.store, size: 48, color: Color(0xFFCBD5E1)),
-                                       ),
-                                       const SizedBox(height: 24),
-                                       const Text('Select a Retailer', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
-                                       const SizedBox(height: 8),
-                                       const Text('Search for a retailer above to start\nadding products to the order.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF64748B), fontSize: 14, height: 1.5)),
+                                        Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(color: Theme.of(context).dividerColor.withOpacity(0.1), shape: BoxShape.circle),
+                                          child: Icon(LucideIcons.store, size: 48, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.3)),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        const Text('Select a Retailer', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                        const SizedBox(height: 8),
+                                        Text('Search for a retailer above to start\nadding products to the order.', textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 14, height: 1.5)),
                                      ],
                                    ),
                                  ),
@@ -533,27 +540,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                const SizedBox(height: 24),
                                _buildOrderSettings(),
                                const SizedBox(height: 24),
-                               const Text('Products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                               const _SectionHeader(title: 'Products'),
                                const SizedBox(height: 12),
                                Container(
                                  decoration: BoxDecoration(
-                                   color: Colors.white,
+                                   color: Theme.of(context).cardTheme.color,
                                    borderRadius: BorderRadius.circular(16),
-                                   border: Border.all(color: const Color(0xFFE2E8F0)),
+                                   border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
                                  ),
                                  child: TextField(
                                    controller: _productSearchController,
                                    onChanged: (val) => setState(() => _productSearchQuery = val),
-                                   style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                                   style: const TextStyle(fontWeight: FontWeight.w600),
                                    decoration: InputDecoration(
                                      hintText: 'Search products...',
-                                     hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
-                                     prefixIcon: const Icon(LucideIcons.search, size: 20, color: Color(0xFF94A3B8)),
+                                     hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5), fontWeight: FontWeight.normal),
+                                     prefixIcon: Icon(LucideIcons.search, size: 20, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5)),
                                      border: InputBorder.none,
                                      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 0),
                                      suffixIcon: _productSearchQuery.isNotEmpty
                                         ? IconButton(
-                                            icon: const Icon(LucideIcons.x, size: 18, color: Color(0xFF94A3B8)),
+                                            icon: Icon(LucideIcons.x, size: 18, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5)),
                                             onPressed: () {
                                               setState(() {
                                                 _productSearchController.clear();
@@ -594,19 +601,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget _buildRetailerSelection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Retailer Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+              const _SectionHeader(title: 'Retailer Details'),
               InkWell(
                 onTap: _showNewRetailerDialog,
                 child: Container(
@@ -632,24 +638,24 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
              // Search Box
              Container(
                decoration: BoxDecoration(
-                 color: const Color(0xFFF8FAFC),
+                 color: Theme.of(context).scaffoldBackgroundColor,
                  borderRadius: BorderRadius.circular(16),
-                 border: Border.all(color: const Color(0xFFE2E8F0)),
+                 border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
                ),
                child: TextField(
                  controller: _retailerSearchController,
                  focusNode: _retailerSearchFocus,
                  onChanged: (val) => setState(() => _retailerSearchQuery = val),
-                 style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                 style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color),
                  decoration: InputDecoration(
                    hintText: 'Search shop or owner...',
-                   hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
-                   prefixIcon: const Icon(LucideIcons.search, size: 20, color: Color(0xFF94A3B8)),
+                   hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5), fontWeight: FontWeight.normal),
+                   prefixIcon: Icon(LucideIcons.search, size: 20, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5)),
                    border: InputBorder.none,
                    contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 0),
                    suffixIcon: _isSearchingRetailer && _selectedRetailer != null
                       ? IconButton(
-                          icon: const Icon(LucideIcons.x, size: 18, color: Color(0xFF94A3B8)),
+                          icon: Icon(LucideIcons.x, size: 18, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5)),
                           onPressed: () {
                             setState(() {
                               _isSearchingRetailer = false;
@@ -667,9 +673,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                Container(
                  margin: const EdgeInsets.only(top: 8),
                  decoration: BoxDecoration(
-                   color: Colors.white,
+                   color: Theme.of(context).cardTheme.color,
                    borderRadius: BorderRadius.circular(16),
-                   border: Border.all(color: const Color(0xFFE2E8F0)),
+                   border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
                  ),
                  constraints: const BoxConstraints(maxHeight: 200),
                  child: ListView.builder(
@@ -679,8 +685,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                    itemBuilder: (context, index) {
                      final r = _filteredRetailers[index];
                      return ListTile(
-                       title: Text(r.shopName, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                       subtitle: Text(r.phone, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                       title: Text(r.shopName, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                       subtitle: Text(r.phone, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7), fontSize: 12)),
                        dense: true,
                        onTap: () {
                          setState(() {
@@ -700,9 +706,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
              Container(
                padding: const EdgeInsets.all(16),
                decoration: BoxDecoration(
-                 color: const Color(0xFFF8FAFC),
+                 color: Theme.of(context).scaffoldBackgroundColor,
                  borderRadius: BorderRadius.circular(16),
-                 border: Border.all(color: const Color(0xFFE2E8F0)),
+                 border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
                ),
                child: Row(
                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -711,7 +717,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                      child: Column(
                        crossAxisAlignment: CrossAxisAlignment.start,
                        children: [
-                         Text(_selectedRetailer!.shopName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                         Text(_selectedRetailer!.shopName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color)),
                          const SizedBox(height: 4),
                           Wrap(
                             spacing: 12,
@@ -721,17 +727,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(LucideIcons.user, size: 12, color: Color(0xFF94A3B8)),
+                                  Icon(LucideIcons.user, size: 12, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5)),
                                   const SizedBox(width: 4),
-                                  Text(_selectedRetailer!.ownerName, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
+                                  Text(_selectedRetailer!.ownerName, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500)),
                                 ],
                               ),
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(LucideIcons.phone, size: 12, color: Color(0xFF94A3B8)),
+                                  Icon(LucideIcons.phone, size: 12, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5)),
                                   const SizedBox(width: 4),
-                                  Text(_selectedRetailer!.phone, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
+                                  Text(_selectedRetailer!.phone, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500)),
                                 ],
                               ),
                             ],
@@ -740,7 +746,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                      ),
                    ),
                    IconButton(
-                     icon: const Icon(LucideIcons.edit2, size: 18, color: Color(0xFF3B82F6)),
+                     icon: Icon(LucideIcons.edit2, size: 18, color: Theme.of(context).primaryColor),
                      onPressed: () {
                        setState(() {
                          _isSearchingRetailer = true;
@@ -748,8 +754,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                        });
                      },
                      style: IconButton.styleFrom(
-                       backgroundColor: Colors.white,
-                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFE2E8F0))),
+                       backgroundColor: Theme.of(context).cardTheme.color,
+                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
                      ),
                    ),
                  ],
@@ -764,16 +770,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget _buildOrderSettings() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Order Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+          const _SectionHeader(title: 'Order Settings'),
           const SizedBox(height: 16),
           
           // Payment Mode
@@ -785,13 +791,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: _paymentMode == 'Credit' ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      color: _paymentMode == 'Credit' ? Theme.of(context).primaryColor : Theme.of(context).scaffoldBackgroundColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _paymentMode == 'Credit' ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
+                      border: Border.all(color: _paymentMode == 'Credit' ? Theme.of(context).primaryColor : Theme.of(context).dividerColor.withOpacity(0.1)),
                     ),
                     alignment: Alignment.center,
                     child: Text('Credit', style: TextStyle(
-                      color: _paymentMode == 'Credit' ? Colors.white : const Color(0xFF64748B),
+                      color: _paymentMode == 'Credit' ? Colors.white : Theme.of(context).textTheme.bodySmall?.color,
                       fontWeight: FontWeight.bold,
                     )),
                   ),
@@ -804,13 +810,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: _paymentMode == 'Cash' ? const Color(0xFF10B981) : const Color(0xFFF8FAFC),
+                      color: _paymentMode == 'Cash' ? const Color(0xFF10B981) : Theme.of(context).scaffoldBackgroundColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _paymentMode == 'Cash' ? const Color(0xFF10B981) : const Color(0xFFE2E8F0)),
+                      border: Border.all(color: _paymentMode == 'Cash' ? const Color(0xFF10B981) : Theme.of(context).dividerColor.withOpacity(0.1)),
                     ),
                     alignment: Alignment.center,
                     child: Text('Cash', style: TextStyle(
-                      color: _paymentMode == 'Cash' ? Colors.white : const Color(0xFF64748B),
+                      color: _paymentMode == 'Cash' ? Colors.white : Theme.of(context).textTheme.bodySmall?.color,
                       fontWeight: FontWeight.bold,
                     )),
                   ),
@@ -819,24 +825,23 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ],
           ),
           
-          const Divider(height: 32, color: Color(0xFFF1F5F9)),
+          Divider(height: 32, color: Theme.of(context).dividerColor.withOpacity(0.1)),
           
           // Round Off Toggle
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(LucideIcons.coins, size: 18, color: Color(0xFF64748B)),
-                  SizedBox(width: 8),
-                  Text('Round Off Total', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                   Icon(LucideIcons.coins, size: 18, color: Theme.of(context).textTheme.bodySmall?.color),
+                   const SizedBox(width: 8),
+                   const Text('Round Off Total', style: TextStyle(fontWeight: FontWeight.w600)),
                 ],
               ),
               Switch(
                 value: _roundOffTotal,
                 onChanged: (val) => setState(() => _roundOffTotal = val),
-                activeColor: const Color(0xFF0F172A),
-                activeTrackColor: const Color(0xFFCBD5E1),
+                activeColor: AppTheme.primaryColor,
               ),
             ],
           ),
@@ -845,16 +850,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Widget _buildProductList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
-        const SizedBox(height: 16),
-        ..._products.map((p) => _buildProductCard(p)),
-      ],
-    );
-  }
 
   Widget _buildProductCard(Product product) {
     // Find if it's already in cart
@@ -870,9 +865,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFF8FAFC) : Colors.white,
+        color: isSelected 
+            ? Theme.of(context).primaryColor.withOpacity(0.05) 
+            : Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isSelected ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0), width: isSelected ? 2 : 1),
+        border: Border.all(
+          color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).dividerColor.withOpacity(0.05), 
+          width: isSelected ? 2 : 1
+        ),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Column(
@@ -887,7 +887,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E293B))),
+                      Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 4),
                       Wrap(
                         crossAxisAlignment: WrapCrossAlignment.center,
@@ -896,10 +896,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(4)),
-                            child: Text('GST: ${product.gstPercentage}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                            decoration: BoxDecoration(color: Theme.of(context).primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: Text('GST: ${product.gstPercentage}%', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
                           ),
-                          Text('${product.bottlesPerCrate} pcs/crate', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                          Text('${product.bottlesPerCrate} pcs/crate', style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color)),
                         ],
                       ),
                     ],
@@ -909,7 +909,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
           ),
           
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1)),
           
           // Inputs
           Padding(
@@ -921,17 +921,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Crates', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                      Text('Crates', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodySmall?.color)),
                       const SizedBox(height: 6),
                       Container(
                         height: 40,
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+                        decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1))),
                         child: TextFormField(
                           initialValue: initialCrates,
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                          decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero, fillColor: Colors.transparent),
                           onChanged: (val) {
                             int valInt = int.tryParse(val) ?? 0;
                             double pInput = cartItem?.priceInput ?? (product.sellingPrice ?? product.price);
@@ -949,16 +949,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Pieces', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                      Text('Pieces', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodySmall?.color)),
                       const SizedBox(height: 6),
                       Container(
                         height: 40,
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+                        decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1))),
                         child: TextFormField(
                           initialValue: initialPieces,
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                           decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
                           onChanged: (val) {
                             int valInt = int.tryParse(val) ?? 0;
@@ -978,16 +978,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Price (Tax Incl.)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                      Text('Price (Tax Incl.)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodySmall?.color)),
                       const SizedBox(height: 6),
                       Container(
                         height: 40,
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+                        decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1))),
                         child: Row(
                           children: [
-                            const Padding(
-                              padding: EdgeInsets.only(left: 8),
-                              child: Text('₹', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.bold)),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Text('₹', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                             Expanded(
                               flex: 3,
@@ -995,7 +995,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 initialValue: initialPrice,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 13), // Emerald
+                                style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF10B981), fontSize: 13), 
                                 decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
                                 onChanged: (val) {
                                   double pInput = double.tryParse(val) ?? (product.sellingPrice ?? product.price);
@@ -1004,7 +1004,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 },
                               ),
                             ),
-                            Container(width: 1, color: const Color(0xFFE2E8F0)),
+                            Container(width: 1, color: Theme.of(context).dividerColor.withOpacity(0.1)),
                             Expanded(
                               flex: 2,
                               child: DropdownButtonHideUnderline(
@@ -1013,7 +1013,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                   isExpanded: true,
                                   icon: const SizedBox.shrink(),
                                   alignment: Alignment.center,
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyMedium?.color),
                                   items: const [
                                     DropdownMenuItem(value: 'bottle', child: Center(child: Text('/ Btl'))),
                                     DropdownMenuItem(value: 'crate', child: Center(child: Text('/ Crt'))),
@@ -1045,21 +1045,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           ),
           
           if (isSelected) 
-             Container(
-               width: double.infinity,
-               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-               decoration: const BoxDecoration(
-                 color: Color(0xFF0F172A),
-                 borderRadius: BorderRadius.only(bottomLeft: Radius.circular(22), bottomRight: Radius.circular(22)),
-               ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.white.withOpacity(0.05) 
+                      : const Color(0xFF0F172A),
+                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(22), bottomRight: Radius.circular(22)),
+                ),
                child: Row(
                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                  children: [
                    Row(
-                     children: [
-                       Text('Total Pcs: ${cartItem.totalPieces}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600)),
-                       const SizedBox(width: 8),
-                       Text('GST: ₹${cartItem.gstAmount.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600)),
+                     children: [                       Text('Total Pcs: ${cartItem.totalPieces}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w600)),
+                       const SizedBox(width: 12),
+                       Text('GST: ₹${cartItem.gstAmount.toStringAsFixed(2)}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w600)),
                      ],
                    ),
                    Text('₹${(cartItem.originalAmount + cartItem.gstAmount).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
@@ -1074,7 +1075,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Widget _buildBottomSummaryBar() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
       ),
       child: SafeArea(
@@ -1087,13 +1088,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Subtotal', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                  Text('Subtotal', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.w600)),
                   const SizedBox(width: 8),
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
-                      child: Text('₹${_totalOriginalAmount.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold)),
+                      child: Text('₹${_totalOriginalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -1103,20 +1104,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('GST Amount', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                   Text('GST Amount', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.w600)),
                   const SizedBox(width: 8),
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
-                      child: Text('+ ₹${_totalGstAmount.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.bold)),
+                      child: Text('+ ₹${_totalGstAmount.toStringAsFixed(2)}', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+               Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1)),
               ),
               // Final Total
               Row(
@@ -1128,14 +1129,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('TOTAL AMOUNT', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        Text('TOTAL AMOUNT', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                         const SizedBox(height: 4),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Wrap(
                             crossAxisAlignment: WrapCrossAlignment.end,
                             children: [
-                              Text('₹${_finalTotalAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), height: 1)),
+                              Text('₹${_finalTotalAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1)),
                               if (_roundOffTotal)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 8, bottom: 4),
@@ -1157,8 +1158,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       height: 54,
                       child: ElevatedButton(
                         onPressed: _isSubmitting ? null : _submitOrder,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4F46E5), // Indigo 600
+                         style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1216,5 +1217,17 @@ class CartItem {
 
   double get gstAmount {
     return originalAmount * (product.gstPercentage / 100);
+  }
+}
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+    );
   }
 }

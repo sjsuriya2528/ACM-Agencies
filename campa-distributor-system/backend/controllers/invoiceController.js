@@ -19,7 +19,7 @@ const getInvoices = async (req, res) => {
             whereClause[Op.or] = [
                 { invoiceNumber: { [Op.iLike]: `%${search}%` } },
                 { customerName: { [Op.iLike]: `%${search}%` } },
-                { '$Order.retailer.shopName$': { [Op.iLike]: `%${search}%` } }
+                { '$order.retailer.shopName$': { [Op.iLike]: `%${search}%` } }
             ];
         }
 
@@ -28,6 +28,7 @@ const getInvoices = async (req, res) => {
             include: [
                 {
                     model: Order,
+                    as: 'order',
                     where: status === 'Pending' ? { status: 'Delivered' } : {},
                     include: [
                         { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'address'] },
@@ -36,6 +37,7 @@ const getInvoices = async (req, res) => {
                 },
                 {
                     model: require('../models').Payment,
+                    as: 'payments',
                     include: [{ model: User, as: 'collectedBy', attributes: ['name'] }]
                 }
             ],
@@ -57,18 +59,20 @@ const getInvoiceById = async (req, res) => {
             include: [
                 {
                     model: Order,
+                    as: 'order',
                     include: [
                         { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'address', 'phone'] },
                         { model: User, as: 'salesRep', attributes: ['name'] },
                         {
                             model: require('../models').OrderItem,
                             as: 'items',
-                            include: [{ model: require('../models').Product, attributes: ['name', 'price', 'gstPercentage', 'hsnCode'] }]
+                            include: [{ model: require('../models').Product, as: 'product', attributes: ['name', 'price', 'gstPercentage', 'hsnCode'] }]
                         }
                     ]
                 },
                 {
                     model: require('../models').Payment,
+                    as: 'payments',
                     include: [{ model: User, as: 'collectedBy', attributes: ['name'] }]
                 }
             ]

@@ -27,6 +27,8 @@ ChartJS.register(
     Filler
 );
 
+import { useTheme } from '../context/ThemeContext';
+
 const formatLabel = (label) => {
     // If it's a date like 2023-10-27
     if (label.includes('-') && !label.includes('W')) {
@@ -41,7 +43,7 @@ const formatLabel = (label) => {
     return label;
 };
 
-const commonOptions = {
+const getCommonOptions = (theme) => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
@@ -58,15 +60,17 @@ const commonOptions = {
                 pointStyle: 'circle',
                 padding: 20,
                 font: { size: 10, weight: 'bold', family: "'Outfit', sans-serif" },
-                color: '#64748b'
+                color: theme === 'dark' ? '#94a3b8' : '#64748b'
             }
         },
         tooltip: {
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
             padding: 12,
             titleFont: { size: 14, weight: 'bold', family: "'Outfit', sans-serif" },
             bodyFont: { size: 13, family: "'Outfit', sans-serif" },
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            titleColor: theme === 'dark' ? '#fff' : '#1e293b',
+            bodyColor: theme === 'dark' ? '#cbd5e1' : '#475569',
+            borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             borderWidth: 1,
             displayColors: false,
             cornerRadius: 12,
@@ -91,7 +95,7 @@ const commonOptions = {
     scales: {
         y: {
             beginAtZero: true,
-            grid: { color: 'rgba(241, 245, 249, 0.5)', drawBorder: false },
+            grid: { color: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(241, 245, 249, 0.5)', drawBorder: false },
             ticks: {
                 font: { size: 10, weight: '500' },
                 color: '#94a3b8',
@@ -106,9 +110,10 @@ const commonOptions = {
             }
         }
     }
-};
+});
 
 export const SalesLineChart = ({ data }) => {
+    const { theme } = useTheme();
     const chartData = {
         labels: data.map(item => formatLabel(item.date)),
         datasets: [
@@ -119,7 +124,7 @@ export const SalesLineChart = ({ data }) => {
                 backgroundColor: (context) => {
                     const ctx = context.chart.ctx;
                     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                    gradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
+                    gradient.addColorStop(0, theme === 'dark' ? 'rgba(37, 99, 235, 0.4)' : 'rgba(37, 99, 235, 0.2)');
                     gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
                     return gradient;
                 },
@@ -135,10 +140,11 @@ export const SalesLineChart = ({ data }) => {
         ],
     };
 
-    return <Line options={commonOptions} data={chartData} />;
+    return <Line options={getCommonOptions(theme)} data={chartData} />;
 };
 
 export const CollectionLineChart = ({ data }) => {
+    const { theme } = useTheme();
     const chartData = {
         labels: data.map(item => formatLabel(item.date)),
         datasets: [
@@ -149,7 +155,7 @@ export const CollectionLineChart = ({ data }) => {
                 backgroundColor: (context) => {
                     const ctx = context.chart.ctx;
                     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                    gradient.addColorStop(0, 'rgba(5, 150, 105, 0.2)');
+                    gradient.addColorStop(0, theme === 'dark' ? 'rgba(5, 150, 105, 0.4)' : 'rgba(5, 150, 105, 0.2)');
                     gradient.addColorStop(1, 'rgba(5, 150, 105, 0)');
                     return gradient;
                 },
@@ -165,18 +171,20 @@ export const CollectionLineChart = ({ data }) => {
         ],
     };
 
-    return <Line options={commonOptions} data={chartData} />;
+    return <Line options={getCommonOptions(theme)} data={chartData} />;
 };
 
 export const ProductBarChart = ({ data }) => {
+    const { theme } = useTheme();
+    const common = getCommonOptions(theme);
     const options = {
-        ...commonOptions,
+        ...common,
         indexAxis: 'y',
         plugins: {
-            ...commonOptions.plugins,
+            ...common.plugins,
             legend: { display: false },
             tooltip: {
-                ...commonOptions.plugins.tooltip,
+                ...common.plugins.tooltip,
                 callbacks: {
                     label: function (context) {
                         return `Total Quantity: ${context.parsed.x}`;
@@ -186,14 +194,14 @@ export const ProductBarChart = ({ data }) => {
         },
         scales: {
             x: {
-                grid: { color: 'rgba(241, 245, 249, 0.5)' },
+                grid: { color: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(241, 245, 249, 0.5)' },
                 ticks: { font: { size: 10 }, color: '#94a3b8' }
             },
             y: {
                 grid: { display: false },
                 ticks: {
                     font: { size: 10, weight: 'bold' },
-                    color: '#475569',
+                    color: theme === 'dark' ? '#94a3b8' : '#475569',
                     callback: function (value) {
                         const label = this.getLabelForValue(value);
                         return label.length > 12 ? label.substr(0, 12) + '...' : label;

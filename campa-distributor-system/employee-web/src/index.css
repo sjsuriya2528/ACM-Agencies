@@ -1,8 +1,69 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
 
-body {
-    background-color: #f3f4f6;
-    font-family: 'Inter', sans-serif;
+@layer base {
+    body {
+        transition: color 0.5s, background-color 0.5s;
+        background-color: white;
+        color: #0f172a; /* slate-900 */
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    :where(.dark) body {
+        background-color: #020617; /* slate-950 */
+        color: #e2e8f0; /* slate-200 */
+    }
+
+    /* Webkit browsers (Chrome, Edge, Safari) */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; /* slate-300 */
+        border-radius: 10px;
+        border: 2px solid transparent; /* padding effect */
+        background-clip: content-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; /* slate-400 */
+        background-clip: content-box;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+        background: #334155; /* slate-700 */
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+        background: #475569; /* slate-600 */
+    }
+
+    /* Firefox support */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .dark * {
+        scrollbar-color: #334155 transparent;
+    }
+}
+
+* {
+    border-color: #e2e8f0; /* slate-200 */
+}
+
+:where(.dark) * {
+    border-color: rgba(255, 255, 255, 0.1); /* white/10 */
 }
 
 @keyframes fade-in {

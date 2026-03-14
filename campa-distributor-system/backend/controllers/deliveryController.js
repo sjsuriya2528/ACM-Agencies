@@ -43,8 +43,10 @@ const getDeliveries = async (req, res) => {
             include: [
                 {
                     model: Invoice,
+                    as: 'invoice',
                     include: [{
                         model: Order,
+                        as: 'order',
                         include: [{ model: Retailer, as: 'retailer' }]
                     }]
                 },

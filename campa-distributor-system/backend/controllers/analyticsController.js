@@ -220,9 +220,10 @@ const getProductSales = async (req, res) => {
             ],
             include: [{
                 model: Product,
+                as: 'product',
                 attributes: ['name', 'sku']
             }],
-            group: ['productId', 'Product.id'],
+            group: ['productId', 'product.id', 'product.name', 'product.sku'],
             order: [[sequelize.fn('SUM', sequelize.col('quantity')), 'DESC']],
             limit: 5
         });
@@ -281,6 +282,7 @@ const getRepPerformance = async (req, res) => {
             const salesTodayResult = await Invoice.sum('netTotal', {
                 include: [{
                     model: Order,
+                    as: 'order',
                     where: { salesRepId: rep.id },
                     attributes: []
                 }],
@@ -299,6 +301,7 @@ const getRepPerformance = async (req, res) => {
             const totalSalesResult = await Invoice.sum('netTotal', {
                 include: [{
                     model: Order,
+                    as: 'order',
                     where: { salesRepId: rep.id },
                     attributes: []
                 }]

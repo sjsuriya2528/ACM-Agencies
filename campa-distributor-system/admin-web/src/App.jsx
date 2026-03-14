@@ -1,11 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { LoaderProvider, useLoader } from './context/LoaderContext';
 import GlobalLoader from './components/GlobalLoader';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyOtp from './pages/VerifyOtp';
 import ProtectedRoute from './components/ProtectedRoute';
 import api, { setLoaderHandler } from './api/axios';
 
@@ -24,13 +27,15 @@ const LoaderInitializer = () => {
 
 function App() {
   return (
-    <LoaderProvider>
+    <ThemeProvider>
+      <LoaderProvider>
       <LoaderInitializer />
       <AuthProvider>
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route
               path="/*"
               element={
@@ -43,7 +48,8 @@ function App() {
           </Routes>
         </Router>
       </AuthProvider>
-    </LoaderProvider>
+      </LoaderProvider>
+    </ThemeProvider>
   );
 }
 

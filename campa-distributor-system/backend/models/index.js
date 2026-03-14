@@ -71,6 +71,8 @@ db.CancelledOrder = require('./CancelledOrder')(sequelize, Sequelize);
 db.CancelledOrderItem = require('./CancelledOrderItem')(sequelize, Sequelize);
 db.PurchaseBill = require('./PurchaseBill')(sequelize, Sequelize);
 db.PurchaseBillItem = require('./PurchaseBillItem')(sequelize, Sequelize);
+db.UserOTP = require('./UserOTP')(sequelize, Sequelize);
+
 
 // Associations
 db.User.hasMany(db.Order, { as: 'orders', foreignKey: 'salesRepId' });
@@ -81,12 +83,12 @@ db.Order.hasMany(db.OrderItem, { as: 'items', foreignKey: 'orderId' });
 db.OrderItem.belongsTo(db.Order, { foreignKey: 'orderId' });
 db.Product.hasMany(db.OrderItem, { foreignKey: 'productId' });
 db.OrderItem.belongsTo(db.Product, { as: 'product', foreignKey: 'productId' });
-db.Order.hasOne(db.Invoice, { foreignKey: 'orderId' });
+db.Order.hasOne(db.Invoice, { as: 'invoice', foreignKey: 'orderId' });
 db.Invoice.belongsTo(db.Order, { as: 'order', foreignKey: 'orderId' });
-db.Invoice.hasMany(db.Payment, { foreignKey: 'invoiceId' });
-db.Payment.belongsTo(db.Invoice, { foreignKey: 'invoiceId' });
-db.Invoice.hasOne(db.Delivery, { foreignKey: 'invoiceId' });
-db.Delivery.belongsTo(db.Invoice, { foreignKey: 'invoiceId' });
+db.Invoice.hasMany(db.Payment, { as: 'payments', foreignKey: 'invoiceId' });
+db.Payment.belongsTo(db.Invoice, { as: 'invoice', foreignKey: 'invoiceId' });
+db.Invoice.hasOne(db.Delivery, { as: 'delivery', foreignKey: 'invoiceId' });
+db.Delivery.belongsTo(db.Invoice, { as: 'invoice', foreignKey: 'invoiceId' });
 db.User.hasMany(db.Delivery, { as: 'deliveries', foreignKey: 'driverId' });
 db.Delivery.belongsTo(db.User, { as: 'driver', foreignKey: 'driverId' });
 db.User.hasMany(db.Payment, { as: 'paymentsCollected', foreignKey: 'collectedById' });
@@ -99,6 +101,11 @@ db.CancelledOrder.belongsTo(db.Retailer, { as: 'retailer', foreignKey: 'retailer
 db.CancelledOrder.belongsTo(db.User, { as: 'salesRep', foreignKey: 'salesRepId' });
 db.Product.hasMany(db.CancelledOrderItem, { foreignKey: 'productId' });
 db.CancelledOrderItem.belongsTo(db.Product, { foreignKey: 'productId' });
+
+// UserOTP associations
+db.User.hasMany(db.UserOTP, { as: 'otps', foreignKey: 'userId' });
+db.UserOTP.belongsTo(db.User, { as: 'user', foreignKey: 'userId' });
+
 
 db.StockAdjustment = require('./StockAdjustment')(sequelize, Sequelize);
 

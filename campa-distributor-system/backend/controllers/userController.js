@@ -6,10 +6,34 @@ const bcrypt = require('bcryptjs');
 // @access  Private/Admin
 const getUsers = async (req, res) => {
     try {
-        const users = await User.findAll({
+        const { page = 1, limit = 50, search } = req.query;
+        const offset = (page - 1) * limit;
+
+        const { Op } = require('sequelize');
+        const where = {};
+        if (search) {
+            where[Op.or] = [
+                { name: { [Op.iLike]: `%${search}%` } },
+                { email: { [Op.iLike]: `%${search}%` } },
+                { phone: { [Op.iLike]: `%${search}%` } },
+                { role: { [Op.iLike]: `%${search}%` } },
+            ];
+        }
+
+        const { count, rows: users } = await User.findAndCountAll({
+            where,
             attributes: { exclude: ['password'] },
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            order: [['name', 'ASC']],
         });
-        res.json(users);
+
+        res.json({
+            total: count,
+            page: parseInt(page),
+            totalPages: Math.ceil(count / limit),
+            data: users
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

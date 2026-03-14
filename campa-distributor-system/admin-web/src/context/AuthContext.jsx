@@ -24,6 +24,26 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', { email, password }, {
                 headers: { 'x-loading-term': 'Authenticating' }
             });
+            const data = response.data;
+
+            if (data.role !== 'admin') {
+                return { success: false, message: "Access Denied: Admins only" };
+            }
+
+            localStorage.setItem('adminUser', JSON.stringify(data));
+            setUser(data);
+            return { success: true };
+        } catch (error) {
+            console.error("Login failed", error);
+            return { success: false, message: error.response?.data?.message || "Login failed" };
+        }
+    };
+
+    const verifyOTP = async (userId, otpCode) => {
+        try {
+            const response = await api.post('/auth/verify-otp', { userId, otpCode }, {
+                headers: { 'x-loading-term': 'Verifying OTP' }
+            });
             const userData = response.data;
 
             if (userData.role !== 'admin') {
@@ -34,8 +54,8 @@ export const AuthProvider = ({ children }) => {
             setUser(userData);
             return { success: true };
         } catch (error) {
-            console.error("Login failed", error);
-            return { success: false, message: error.response?.data?.error || "Login failed" };
+            console.error("OTP verification failed", error);
+            return { success: false, message: error.response?.data?.message || "Invalid OTP" };
         }
     };
 
@@ -45,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, verifyOTP, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );

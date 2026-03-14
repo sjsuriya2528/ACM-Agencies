@@ -51,13 +51,15 @@ const getRetailerById = async (req, res) => {
                         {
                             model: OrderItem,
                             as: 'items',
-                            include: [{ model: Product, attributes: ['id', 'name', 'price'] }]
+                            include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'price'] }]
                         },
                         {
                             model: Invoice,
+                            as: 'invoice',
                             include: [
                                 {
                                     model: Payment,
+                                    as: 'payments',
                                     include: [{ model: User, as: 'collectedBy', attributes: ['id', 'name'] }]
                                 }
                             ]

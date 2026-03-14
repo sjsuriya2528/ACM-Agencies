@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import SalesDashboard from './pages/SalesDashboard';
@@ -16,6 +17,8 @@ import PaymentHistory from './pages/PaymentHistory';
 import CollectionDashboard from './pages/CollectionDashboard';
 import InvoiceView from './pages/InvoiceView';
 import Unauthorized from './pages/Unauthorized';
+import ForgotPassword from './pages/ForgotPassword';
+import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import { LoaderProvider, useLoader } from './context/LoaderContext';
@@ -50,13 +53,15 @@ const HomeRedirect = () => {
 
 function App() {
   return (
-    <LoaderProvider>
+    <ThemeProvider>
+      <LoaderProvider>
       <LoaderInitializer />
       <AuthProvider>
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             <Route path="/" element={<HomeRedirect />} />
@@ -158,10 +163,19 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={['sales_rep', 'driver', 'collection_agent']}>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Router>
       </AuthProvider>
-    </LoaderProvider>
+      </LoaderProvider>
+    </ThemeProvider>
   );
 }
 

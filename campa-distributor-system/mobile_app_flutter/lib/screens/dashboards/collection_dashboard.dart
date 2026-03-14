@@ -8,6 +8,7 @@ import '../../widgets/stat_card.dart';
 import '../../widgets/quick_action_card.dart';
 import '../collection/collect_payment_screen.dart';
 import '../collection/payment_history_screen.dart';
+import '../profile_screen.dart';
 
 class CollectionDashboard extends StatefulWidget {
   const CollectionDashboard({super.key});
@@ -94,13 +95,13 @@ class _CollectionDashboardState extends State<CollectionDashboard> {
       expandedHeight: 180,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardTheme.color,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color,
+            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
           ),
           padding: const EdgeInsets.fromLTRB(24, 60, 24, 0),
           child: Row(
@@ -122,13 +123,13 @@ class _CollectionDashboardState extends State<CollectionDashboard> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Market Collection', style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text('Market Collection', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.bold, fontSize: 12)),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Hi, ${name.split(' ')[0]}!',
-                        style: const TextStyle(color: Color(0xFF1E293B), fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
                       ),
                     ),
                   ],
@@ -136,8 +137,14 @@ class _CollectionDashboardState extends State<CollectionDashboard> {
               ),
               const Spacer(),
               IconButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                ),
+                icon: Icon(LucideIcons.user, color: Theme.of(context).textTheme.bodySmall?.color),
+              ),
+              IconButton(
                 onPressed: () => Provider.of<AuthProvider>(context, listen: false).logout(),
-                icon: const Icon(LucideIcons.logOut, color: Color(0xFFCBD5E1)),
+                icon: Icon(LucideIcons.logOut, color: Theme.of(context).textTheme.bodySmall?.color),
               ),
             ],
           ),

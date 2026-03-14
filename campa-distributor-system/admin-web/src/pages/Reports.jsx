@@ -148,10 +148,10 @@ const Reports = () => {
                 const tableData = [];
                 data.invoices.forEach(inv => {
                     tableData.push([
-                        inv.Order?.billNumber || inv.invoiceNumber,
+                        inv.order?.billNumber || inv.invoiceNumber,
                         new Date(inv.invoiceDate).toLocaleDateString('en-IN'),
-                        inv.Order?.retailer?.shopName || 'N/A',
-                        inv.Order?.status || 'Final',
+                        inv.order?.retailer?.shopName || 'N/A',
+                        inv.order?.status || 'Final',
                         `Rs. ${Number(inv.netTotal).toFixed(2)}`
                     ]);
                 });
@@ -180,7 +180,7 @@ const Reports = () => {
             } else if (reportType === 'collections') {
                 const tableData = data.map(p => [
                     formatDate(p.paymentDate),
-                    p.Invoice?.Order?.billNumber || p.Invoice?.invoiceNumber || 'N/A',
+                    p.invoice?.order?.billNumber || p.invoice?.invoiceNumber || 'N/A',
                     p.retailerName || 'N/A',
                     p.paymentMode,
                     p.collectedBy?.name || 'Admin',
@@ -541,10 +541,10 @@ const Reports = () => {
                                     <>
                                         {reportData.invoices.slice(0, 10).map((inv, idx) => (
                                             <tr key={`inv-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
-                                                <td className="px-6 py-4">{inv.Order?.billNumber || inv.invoiceNumber}</td>
+                                                <td className="px-6 py-4">{inv.order?.billNumber || inv.invoiceNumber}</td>
                                                 <td className="px-6 py-4">{inv.invoiceDate}</td>
-                                                <td className="px-6 py-4">{inv.Order?.retailer?.shopName || 'N/A'}</td>
-                                                <td className="px-6 py-4"><span className="px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs">{inv.Order?.status || 'Final'}</span></td>
+                                                <td className="px-6 py-4">{inv.order?.retailer?.shopName || 'N/A'}</td>
+                                                <td className="px-6 py-4"><span className="px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs">{inv.order?.status || 'Final'}</span></td>
                                                 <td className="px-6 py-4 text-right">Rs. {Number(inv.netTotal).toLocaleString()}</td>
                                             </tr>
                                         ))}
@@ -562,7 +562,7 @@ const Reports = () => {
                                 {reportType === 'collections' && reportData.slice(0, 20).map((p, idx) => (
                                     <tr key={`p-${idx}`} className="hover:bg-slate-50 transition-colors text-sm">
                                         <td className="px-6 py-4">{formatDate(p.paymentDate)}</td>
-                                        <td className="px-6 py-4">{p.Invoice?.Order?.billNumber || p.Invoice?.invoiceNumber || 'N/A'}</td>
+                                        <td className="px-6 py-4">{p.invoice?.order?.billNumber || p.invoice?.invoiceNumber || 'N/A'}</td>
                                         <td className="px-6 py-4">{p.retailerName || 'N/A'}</td>
                                         <td className="px-6 py-4"><span className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-xs">{p.paymentMode}</span></td>
                                         <td className="px-6 py-4 text-right">Rs. {Number(p.amount).toLocaleString()}</td>

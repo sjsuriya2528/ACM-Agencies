@@ -129,13 +129,23 @@ const Orders = () => {
     }, [searchTerm]);
 
     useEffect(() => {
+        // Skip fetch if only one date is provided (wait for both)
+        const isPartiallyFilled = (startDate && !endDate) || (!startDate && endDate);
+        if (isPartiallyFilled) return;
+
         const controller = new AbortController();
-        if (filterStatus === 'Cancelled') {
-            fetchCancelledOrders(controller.signal);
-        } else {
-            fetchOrders(controller.signal);
-        }
-        return () => controller.abort();
+        const timeoutId = setTimeout(() => {
+            if (filterStatus === 'Cancelled') {
+                fetchCancelledOrders(controller.signal);
+            } else {
+                fetchOrders(controller.signal);
+            }
+        }, 500); // 500ms debounce for filters
+        
+        return () => {
+            timeoutId && clearTimeout(timeoutId);
+            controller.abort();
+        };
     }, [startDate, endDate, filterStatus, paymentFilter, activeSearch, page]);
 
     // Body Scroll Lock for Modal
@@ -202,11 +212,12 @@ const Orders = () => {
 
     const fetchDrivers = async () => {
         try {
-            const response = await api.get('/users');
-            if (Array.isArray(response.data)) {
-                setDrivers(response.data.filter(u => u.role === 'driver'));
+            const response = await api.get('/users?limit=1000');
+            const userData = response.data.data || response.data;
+            if (Array.isArray(userData)) {
+                setDrivers(userData.filter(u => u.role === 'driver'));
             } else {
-                console.warn("Filter warning: 'drivers' response.data is not an array in Orders.jsx. Type:", typeof response.data, "Value:", response.data);
+                console.warn("Filter warning: 'drivers' response.data is not an array in Orders.jsx. Type:", typeof userData, "Value:", userData);
                 setDrivers([]);
             }
         } catch (error) {
@@ -228,8 +239,9 @@ const Orders = () => {
             // direct products
             setProducts(productsRes.data || []);
             // sales reps
-            if (Array.isArray(usersRes.data)) {
-                setSalesReps(usersRes.data.filter(u => u.role === 'sales_rep'));
+            const userData = usersRes.data.data || usersRes.data;
+            if (Array.isArray(userData)) {
+                setSalesReps(userData.filter(u => u.role === 'sales_rep'));
             }
         } catch (error) {
             console.error("Failed to fetch data for create order", error);
@@ -416,7 +428,7 @@ const Orders = () => {
         // Pre-fill cart from order items
         const initialCart = {};
         order.items.forEach(item => {
-            const productModel = item.Product || products.find(p => p.id === item.productId);
+            const productModel = item.product || products.find(p => p.id === item.productId);
             const gstRate = Number(productModel?.gstPercentage || 18) / 100;
             const taxInclusivePrice = item.pricePerUnit * (1 + gstRate);
 
@@ -523,7 +535,7 @@ const Orders = () => {
 
             // Priority: Snapshot (if not default 18), then Product, then 18
             const snapshotRate = Number(item.gstPercentage || 0);
-            const productRate = Number(item.Product?.gstPercentage || 0);
+            const productRate = Number(item.product?.gstPercentage || 0);
 
             let gstRate = 18;
             if (snapshotRate !== 0 && snapshotRate !== 18) {
@@ -562,8 +574,8 @@ const Orders = () => {
             totalGSTValueCount += gstAmount;
 
             return {
-                description: item.Product?.name || item.productName || 'Unknown',
-                hsn: item.Product?.hsnCode || '',
+                description: item.product?.name || item.productName || 'Unknown',
+                hsn: item.product?.hsnCode || '',
                 qty,
                 rate: taxableRatePerUnit, // Show Taxable Rate
                 gstRate,
@@ -575,7 +587,7 @@ const Orders = () => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Bill #${order.Invoice?.invoiceNumber || order.id}</title>
+                <title>Bill #${order.invoice?.invoiceNumber || order.id}</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: sans-serif; font-size: 11px; color: #000; padding: 15px; }
@@ -638,7 +650,7 @@ const Orders = () => {
                             <div class="info-row"><span class="info-label">Cust GSTin</span><span class="info-value">: ${order.retailer?.gstin || ''}</span></div>
                         </div>
                         <div class="invoice-info">
-                            <div class="info-row"><span class="info-label">Invoice No</span><span class="info-value">: ${order.Invoice?.invoiceNumber || order.id}</span></div>
+                            <div class="info-row"><span class="info-label">Invoice No</span><span class="info-value">: ${order.invoice?.invoiceNumber || order.id}</span></div>
                             <div class="info-row"><span class="info-label">Date</span><span class="info-value">: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div>
                             <div class="info-row"><span class="info-label">Vehicle</span><span class="info-value">: </span></div>
                             <div class="gst-invoice-header">GST INVOICE</div>
@@ -764,24 +776,24 @@ const Orders = () => {
         <div className="animate-fade-in-up space-y-8 p-2">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Order Management</h1>
-                    <p className="text-slate-500 mt-1">Track and manage retailer orders</p>
+                    <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Order Management</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Track and manage retailer orders</p>
                 </div>
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 flex-shrink-0">
-                    <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex flex-col items-end min-w-[140px]">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Total for filter</span>
-                        <span className="text-xl md:text-2xl font-black text-blue-600 truncate">₹{currentTotalSumAmount.toLocaleString()}</span>
+                    <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-end min-w-[140px]">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Total for filter</span>
+                        <span className="text-xl md:text-2xl font-black text-blue-600 dark:text-blue-400 truncate">₹{currentTotalSumAmount.toLocaleString()}</span>
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
                         <button
                             onClick={() => { setShowCreateModal(true); fetchCreateOrderData(); }}
-                            className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
+                            className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/40 transition-all active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
                         >
                             <Plus size={18} /> Create Order
                         </button>
                         <button
                             onClick={() => { fetchOrders(); fetchCancelledOrders(); }}
-                            className="bg-white hover:bg-gray-50 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2"
+                            className="bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2"
                         >
                             <RefreshCw size={16} />
                         </button>
@@ -790,15 +802,15 @@ const Orders = () => {
             </header>
 
             {/* Filters & Search */}
-            <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-6">
                 {/* Top Row: Search, Date, Payment */}
                 <div className="flex flex-col xl:flex-row gap-4 items-center justify-between">
                     <div className="relative w-full xl:w-96 group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" size={20} />
                         <input
                             type="text"
                             placeholder="Search Retailer, Sales Rep, or ID... (Enter)"
-                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={handleSearch}
@@ -806,7 +818,7 @@ const Orders = () => {
                         {searchTerm && (
                             <button
                                 onClick={clearSearch}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 dark:text-slate-500 transition-colors"
                             >
                                 <XCircle size={18} />
                             </button>
@@ -816,12 +828,12 @@ const Orders = () => {
                     {/* Date Range & Payment Row */}
                     <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
                         {/* Date Range & Quick Filters */}
-                        <div className="flex flex-col md:flex-row items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
-                            <Calendar size={18} className="ml-2 text-slate-400" />
+                        <div className="flex flex-col md:flex-row items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm w-full md:w-auto">
+                            <Calendar size={18} className="ml-2 text-slate-400 dark:text-slate-500" />
                             
                             {/* Quick Select */}
                             <select 
-                                className="bg-white border border-slate-200 text-xs font-bold text-slate-600 rounded-lg px-2 py-1.5 outline-none cursor-pointer hover:border-blue-300 transition-colors"
+                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 rounded-lg px-2 py-1.5 outline-none cursor-pointer hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
                                 onChange={(e) => {
                                     const val = e.target.value;
                                     const today = new Date();
@@ -856,25 +868,25 @@ const Orders = () => {
                                 <option value="thisMonth">This Month</option>
                             </select>
 
-                            <div className="h-4 w-[1px] bg-slate-200 mx-1 hidden md:block"></div>
+                            <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1 hidden md:block"></div>
 
                             <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
-                                className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 p-2"
+                                className="bg-transparent border-none text-sm font-medium text-slate-700 dark:text-slate-200 focus:ring-0 p-2"
                             />
-                            <span className="text-slate-400 font-bold">→</span>
+                            <span className="text-slate-400 dark:text-slate-500 font-bold">→</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
-                                className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 p-2"
+                                className="bg-transparent border-none text-sm font-medium text-slate-700 dark:text-slate-200 focus:ring-0 p-2"
                             />
                             {(startDate || endDate) && (
                                 <button
                                     onClick={() => { setStartDate(''); setEndDate(''); }}
-                                    className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-rose-500 transition-all mr-1"
+                                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-500 transition-all mr-1"
                                     title="Clear Dates"
                                 >
                                     <XCircle size={16} />
@@ -883,12 +895,12 @@ const Orders = () => {
                         </div>
 
                         {/* Payment Mode */}
-                        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto justify-center">
+                        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm w-full md:w-auto justify-center">
                             {['All', 'Cash', 'Credit'].map(mode => (
                                 <button
                                     key={mode}
                                     onClick={() => setPaymentFilter(mode)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${paymentFilter === mode ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${paymentFilter === mode ? 'bg-white dark:bg-slate-700 shadow text-blue-700 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
                                     {mode}
                                 </button>
@@ -904,8 +916,8 @@ const Orders = () => {
                             key={status}
                             onClick={() => setFilterStatus(status)}
                             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap border ${filterStatus === status
-                                ? 'bg-slate-800 text-white border-slate-800 shadow-md scale-105 z-10'
-                                : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
+                                ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 border-slate-800 dark:border-slate-200 shadow-md scale-105 z-10'
+                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800'
                                 }`}
                         >
                             {status}
@@ -915,29 +927,33 @@ const Orders = () => {
             </div>
 
             {/* Orders Table */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
-                        <tr className="bg-slate-50/80 border-b border-slate-100 text-left">
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Order ID</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Retailer</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">{filterStatus !== 'Cancelled' ? 'Sales Rep' : 'Cancelled By'}</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Mode</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">{filterStatus !== 'Cancelled' ? 'Status' : 'Cancellation Date'}</th>
-                            <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                        <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-left">
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Order ID</th>
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Retailer</th>
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">{filterStatus !== 'Cancelled' ? 'Sales Rep' : 'Cancelled By'}</th>
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mode</th>
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Amount</th>
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">{filterStatus !== 'Cancelled' ? 'Status' : 'Cancellation Date'}</th>
+                            <th className="p-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                         {filteredOrders.length > 0 ? (
                             filteredOrders.map(order => (
                                 <React.Fragment key={order.id}>
                                     <tr
-                                        className={`group hover:bg-slate-50/80 transition-all cursor-pointer ${expandedOrder === order.id ? 'bg-slate-50/50' : ''}`}
+                                        className={`group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all cursor-pointer ${expandedOrder === order.id ? 'bg-slate-50/50 dark:bg-slate-800/30' : ''}`}
                                         onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
                                     >
                                         <td className="p-5">
-                                            <span className="font-mono text-sm font-semibold text-slate-600 bg-slate-100 px-2 py-1 rounded">#{order.id}</span>
+                                            <span className="font-mono text-sm font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">#{order.id}</span>
+                                        </td>
+                                        <td className="p-5 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                            {new Date(order.createdAt).toLocaleDateString('en-GB')}
                                         </td>
                                         <td className="p-5">
                                             <div className="flex items-center gap-3">
@@ -945,46 +961,46 @@ const Orders = () => {
                                                     {order.retailer?.shopName.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-slate-800">{order.retailer?.shopName}</p>
-                                                    <p className="text-xs text-slate-400 hidden group-hover:block transition-all">{order.retailer?.phone || 'No phone'}</p>
+                                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{order.retailer?.shopName}</p>
+                                                    <p className="text-xs text-slate-400 dark:text-slate-500 hidden group-hover:block transition-all">{order.retailer?.phone || 'No phone'}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="p-5 text-sm text-slate-600 font-medium text-center">
+                                        <td className="p-5 text-sm text-slate-600 dark:text-slate-400 font-medium text-center">
                                             {filterStatus !== 'Cancelled' ? order.salesRep?.name : order.salesRep?.name || 'System'}
                                         </td>
                                         <td className="p-5">
-                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${order.paymentMode === 'Cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${order.paymentMode === 'Cash' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'}`}>
                                                 {order.paymentMode || 'Credit'}
                                             </span>
                                         </td>
-                                        <td className="p-5 font-bold text-slate-800">
+                                        <td className="p-5 font-bold text-slate-800 dark:text-slate-200">
                                             ₹{Number(order.totalAmount).toLocaleString()}
                                         </td>
                                         <td className="p-5 text-center">
                                             {filterStatus !== 'Cancelled' ? getStatusBadge(order.status) : (
-                                                <span className="text-xs font-semibold text-slate-500">
+                                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                                                     {new Date(order.cancelledAt).toLocaleDateString('en-GB')}
                                                 </span>
                                             )}
                                         </td>
                                         <td className="p-5 text-right">
-                                            <button className={`p-2 rounded-full hover:bg-slate-200 transition-colors ${expandedOrder === order.id ? 'bg-slate-200' : ''}`}>
-                                                {expandedOrder === order.id ? <ChevronUp size={18} className="text-slate-600" /> : <ChevronDown size={18} className="text-slate-400" />}
+                                            <button className={`p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors ${expandedOrder === order.id ? 'bg-slate-200 dark:bg-slate-700' : ''}`}>
+                                                {expandedOrder === order.id ? <ChevronUp size={18} className="text-slate-600 dark:text-slate-300" /> : <ChevronDown size={18} className="text-slate-400 dark:text-slate-500" />}
                                             </button>
                                         </td>
                                     </tr>
 
                                     {/* Expanded Detail View */}
                                     {expandedOrder === order.id && (
-                                        <tr className="bg-slate-50/30">
-                                            <td colSpan="7" className="p-6">
-                                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 animate-fade-in-up">
+                                        <tr className="bg-slate-50/30 dark:bg-slate-800/20">
+                                            <td colSpan="8" className="p-6">
+                                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 animate-fade-in-up">
 
                                                     {/* Header Actions */}
-                                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-100 gap-4">
+                                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-100 dark:border-slate-800 gap-4">
                                                         <div>
-                                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                                                 <Package size={20} className="text-blue-500" /> Order Details
                                                             </h3>
                                                         </div>
@@ -994,7 +1010,7 @@ const Orders = () => {
                                                             {filterStatus !== 'Cancelled' && order.status === 'Requested' && (
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); startEditOrder(order); }}
-                                                                    className="flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                                                                    className="flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
                                                                 >
                                                                     <RefreshCw size={16} /> Edit Order
                                                                 </button>
@@ -1004,7 +1020,7 @@ const Orders = () => {
                                                             {filterStatus !== 'Cancelled' && ['Approved', 'Dispatched', 'Delivered'].includes(order.status) && (
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); handleViewBill(order); }}
-                                                                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                                                                    className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
                                                                 >
                                                                     <IndianRupee size={16} /> View Bill
                                                                 </button>
@@ -1012,7 +1028,7 @@ const Orders = () => {
 
                                                             {/* Cancelled badge for cancelled view */}
                                                             {filterStatus === 'Cancelled' && (
-                                                                <span className="bg-rose-100 text-rose-700 px-4 py-2 rounded-xl text-sm font-bold border border-rose-200">
+                                                                <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-4 py-2 rounded-xl text-sm font-bold border border-rose-200 dark:border-rose-800/50">
                                                                     Order Cancelled
                                                                 </span>
                                                             )}
@@ -1022,19 +1038,19 @@ const Orders = () => {
                                                                 <>
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.id, 'Approved'); }}
-                                                                        className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md shadow-emerald-200 transition-all hover:-translate-y-0.5"
+                                                                        className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-md shadow-emerald-200 dark:shadow-none transition-all hover:-translate-y-0.5"
                                                                     >
                                                                         <CheckCircle size={16} /> Approve Order
                                                                     </button>
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order.id, 'Rejected'); }}
-                                                                        className="flex items-center gap-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
+                                                                        className="flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
                                                                     >
                                                                         <XCircle size={16} /> Reject
                                                                     </button>
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleDeleteOrder(order.id); }}
-                                                                        className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
+                                                                        className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
                                                                         title="Permanently Delete"
                                                                     >
                                                                         <Trash2 size={16} /> Cancel
@@ -1044,11 +1060,11 @@ const Orders = () => {
 
                                                             {filterStatus !== 'Cancelled' && order.status === 'Approved' && (
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                                                                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
                                                                         {assigningOrder === order.id ? (
                                                                             <>
                                                                                 <select
-                                                                                    className="bg-white border text-sm rounded-lg p-1.5 focus:ring-blue-500 focus:border-blue-500 min-w-[150px]"
+                                                                                    className="bg-white dark:bg-slate-900 border dark:border-slate-700 text-sm rounded-lg p-1.5 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] dark:text-slate-200"
                                                                                     onChange={(e) => handleAssignDriver(order.id, e.target.value)}
                                                                                     defaultValue=""
                                                                                 >
@@ -1057,14 +1073,14 @@ const Orders = () => {
                                                                                         <option key={d.id} value={d.id}>{d.name}</option>
                                                                                     ))}
                                                                                 </select>
-                                                                                <button onClick={() => setAssigningOrder(null)} className="p-1 hover:bg-slate-200 rounded">
+                                                                                <button onClick={() => setAssigningOrder(null)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors">
                                                                                     <XCircle size={18} className="text-slate-500" />
                                                                                 </button>
                                                                             </>
                                                                         ) : (
                                                                             <button
                                                                                 onClick={(e) => { e.stopPropagation(); setAssigningOrder(order.id); }}
-                                                                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md shadow-blue-200 transition-all"
+                                                                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md shadow-blue-200 dark:shadow-none transition-all"
                                                                             >
                                                                                 <Truck size={16} /> Assign Driver
                                                                             </button>
@@ -1072,7 +1088,7 @@ const Orders = () => {
                                                                     </div>
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleDeleteOrder(order.id); }}
-                                                                        className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
+                                                                        className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-sm"
                                                                         title="Permanently Delete"
                                                                     >
                                                                         <Trash2 size={16} /> Cancel
@@ -1085,28 +1101,28 @@ const Orders = () => {
                                                     {/* Items Grid */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                                                         {order.items?.map((item, idx) => (
-                                                            <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors">
+                                                            <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900 transition-colors">
                                                                 <div>
-                                                                    <p className="font-semibold text-slate-700">{item.productName || item.Product?.name || 'Unknown Product'}</p>
-                                                                    <p className="text-xs text-slate-400 mt-1">
+                                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">{item.productName || item.product?.name || 'Unknown Product'}</p>
+                                                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                                                                         ₹{item.pricePerUnit} × {item.quantity} units
                                                                     </p>
                                                                 </div>
-                                                                <p className="font-bold text-slate-800">₹{item.totalPrice}</p>
+                                                                <p className="font-bold text-slate-800 dark:text-slate-100">₹{item.totalPrice}</p>
                                                             </div>
                                                         ))}
                                                     </div>
 
                                                     {/* Footer Metadata */}
-                                                    <div className="flex flex-wrap gap-6 text-sm text-slate-500 pt-4 border-t border-slate-100">
+                                                    <div className="flex flex-wrap gap-6 text-sm text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-800">
                                                         {order.driverId && (
                                                             <div className="flex items-center gap-2">
-                                                                <div className="p-2 bg-violet-100 text-violet-600 rounded-lg">
+                                                                <div className="p-2 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-lg">
                                                                     <Truck size={16} />
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Driver</p>
-                                                                    <p className="font-semibold text-slate-800">
+                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Driver</p>
+                                                                    <p className="font-semibold text-slate-800 dark:text-slate-200">
                                                                         {drivers.find(d => d.id === order.driverId)?.name || 'Unknown'}
                                                                     </p>
                                                                 </div>
@@ -1114,16 +1130,16 @@ const Orders = () => {
                                                         )}
                                                         {order.gpsLatitude && (
                                                             <div className="flex items-center gap-2">
-                                                                <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                                                                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg">
                                                                     <MapPin size={16} />
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Location</p>
+                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Location</p>
                                                                     <a
                                                                         href={`https://www.google.com/maps?q=${order.gpsLatitude},${order.gpsLongitude}`}
                                                                         target="_blank"
                                                                         rel="noreferrer"
-                                                                        className="font-semibold text-blue-600 hover:underline"
+                                                                        className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                                                                     >
                                                                         View Map
                                                                     </a>
@@ -1132,12 +1148,12 @@ const Orders = () => {
                                                         )}
                                                         {filterStatus === 'Cancelled' && (
                                                             <div className="flex items-center gap-2">
-                                                                <div className="p-2 bg-rose-100 text-rose-600 rounded-lg">
+                                                                <div className="p-2 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg">
                                                                     <XCircle size={16} />
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Cancelled On</p>
-                                                                    <p className="font-semibold text-slate-800">
+                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Cancelled On</p>
+                                                                    <p className="font-semibold text-slate-800 dark:text-slate-200">
                                                                         {new Date(order.cancelledAt).toLocaleString('en-GB')}
                                                                     </p>
                                                                 </div>
@@ -1145,12 +1161,12 @@ const Orders = () => {
                                                         )}
                                                         {filterStatus === 'Cancelled' && order.remarks && (
                                                             <div className="flex items-center gap-2">
-                                                                <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
+                                                                <div className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg">
                                                                     <Clock size={16} />
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400">Remarks</p>
-                                                                    <p className="font-semibold text-slate-800 italic">
+                                                                    <p className="text-xs uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Remarks</p>
+                                                                    <p className="font-semibold text-slate-800 dark:text-slate-200 italic">
                                                                         "{order.remarks}"
                                                                     </p>
                                                                 </div>
@@ -1165,8 +1181,8 @@ const Orders = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="7" className="p-12 text-center">
-                                    <div className="flex flex-col items-center justify-center text-slate-400">
+                                <td colSpan="8" className="p-12 text-center">
+                                    <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
                                         <Package size={48} className="mb-4 opacity-50" />
                                         <p className="text-lg font-medium">No orders found</p>
                                         <p className="text-sm">Try adjusting your search or filters</p>
@@ -1178,18 +1194,18 @@ const Orders = () => {
                 </table>
 
                 {/* Pagination Controls */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 bg-slate-50 border-t border-slate-100">
-                    <div className="text-sm text-slate-500 font-medium">
-                        Showing <span className="text-slate-900 font-bold">{Math.min(totalResults, (page - 1) * limit + 1)}</span> to{' '}
-                        <span className="text-slate-900 font-bold">{Math.min(totalResults, page * limit)}</span> of{' '}
-                        <span className="text-black font-black">{totalResults}</span> orders
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                        Showing <span className="text-slate-900 dark:text-slate-200 font-bold">{Math.min(totalResults, (page - 1) * limit + 1)}</span> to{' '}
+                        <span className="text-slate-900 dark:text-slate-200 font-bold">{Math.min(totalResults, page * limit)}</span> of{' '}
+                        <span className="text-black dark:text-white font-black">{totalResults}</span> orders
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setPage(prev => Math.max(1, prev - 1))}
                             disabled={page === 1}
-                            className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                            className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white dark:bg-slate-900 shadow-sm"
                         >
                             <RotateCcw size={16} className="rotate-180" />
                         </button>
@@ -1206,7 +1222,7 @@ const Orders = () => {
                                     <button
                                         key={pageNum}
                                         onClick={() => setPage(pageNum)}
-                                        className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${page === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'hover:bg-white bg-transparent text-slate-600 border border-transparent hover:border-slate-200'}`}
+                                        className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${page === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'hover:bg-white dark:hover:bg-slate-800 bg-transparent text-slate-600 dark:text-slate-400 border border-transparent hover:border-slate-200 dark:hover:border-slate-700'}`}
                                     >
                                         {pageNum}
                                     </button>
@@ -1217,7 +1233,7 @@ const Orders = () => {
                         <button
                             onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={page === totalPages}
-                            className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                            className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors bg-white dark:bg-slate-900 shadow-sm"
                         >
                             <RotateCcw size={16} />
                         </button>
@@ -1233,21 +1249,21 @@ const Orders = () => {
                             {/* Overlay ghost element to center content vertically */}
                             <span className="inline-block h-screen align-middle" aria-hidden="true">&#8203;</span>
 
-                            <div className="inline-block w-full max-w-6xl my-8 text-left align-middle transition-all transform bg-white shadow-2xl rounded-3xl overflow-hidden relative">
+                            <div className="inline-block w-full max-w-6xl my-8 text-left align-middle transition-all transform bg-white dark:bg-slate-900 shadow-2xl rounded-3xl overflow-hidden relative border border-transparent dark:border-slate-800">
                                 {/* Modal Header */}
-                                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white flex-shrink-0">
+                                <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 flex-shrink-0">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-200">
+                                        <div className="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-200 dark:shadow-blue-900/40">
                                             <ShoppingCart size={24} />
                                         </div>
                                         <div>
-                                            <h2 className="text-xl font-bold text-slate-800">{showEditModal ? 'Edit Order Station' : 'Sales Station'}</h2>
-                                            <p className="text-xs font-medium text-slate-400 uppercase tracking-tighter">{showEditModal ? `Modifying Order #${editingOrder?.id}` : 'Create & Place New Order'}</p>
+                                            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{showEditModal ? 'Edit Order Station' : 'Sales Station'}</h2>
+                                            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-tighter">{showEditModal ? `Modifying Order #${editingOrder?.id}` : 'Create & Place New Order'}</p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => { setShowCreateModal(false); setShowEditModal(false); setEditingOrder(null); setCart({}); setSelectedRetailer(null); setSelectedSalesRep(null); setFetchError(null); }}
-                                        className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
+                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-full transition-all"
                                     >
                                         <XCircle size={28} strokeWidth={1.5} />
                                     </button>
@@ -1256,65 +1272,65 @@ const Orders = () => {
 
                                 <div className="flex flex-col lg:flex-row">
                                     {/* Left Pane: Catalog */}
-                                    <div className="w-full lg:w-2/3 flex flex-col bg-slate-50/50 border-r border-slate-100">
-                                        <div className="p-6 border-b border-slate-100 space-y-4 flex-shrink-0">
+                                    <div className="w-full lg:w-2/3 flex flex-col bg-slate-50/50 dark:bg-slate-900/50 border-r border-slate-100 dark:border-slate-800">
+                                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 space-y-4 flex-shrink-0">
                                             {/* Retailer Selector */}
                                             <div className="relative">
                                                 {selectedRetailer ? (
-                                                    <div className="flex justify-between items-center bg-white p-3 rounded-2xl border border-blue-100 shadow-sm animate-in slide-in-from-top-2">
+                                                    <div className="flex justify-between items-center bg-white dark:bg-slate-800 dark:border-slate-700 p-3 rounded-2xl border border-blue-100 shadow-sm animate-in slide-in-from-top-2">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md">
+                                                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md dark:shadow-blue-900/40">
                                                                 {selectedRetailer.shopName?.charAt(0) || '?'}
                                                             </div>
                                                             <div>
-                                                                <p className="font-bold text-slate-800 leading-tight">{selectedRetailer.shopName}</p>
-                                                                <p className="text-xs text-slate-500">{selectedRetailer.ownerName || 'No owner'} • {selectedRetailer.phone || 'No phone'}</p>
+                                                                <p className="font-bold text-slate-800 dark:text-slate-100 leading-tight">{selectedRetailer.shopName}</p>
+                                                                <p className="text-xs text-slate-500 dark:text-slate-400">{selectedRetailer.ownerName || 'No owner'} • {selectedRetailer.phone || 'No phone'}</p>
                                                             </div>
                                                         </div>
-                                                        <button onClick={() => setSelectedRetailer(null)} className="px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">Change</button>
+                                                        <button onClick={() => setSelectedRetailer(null)} className="px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all">Change</button>
                                                     </div>
                                                 ) : (
                                                     <div className="space-y-3">
                                                         <div className="flex gap-2">
                                                             <div className="relative flex-1 group">
-                                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-600 transition-colors" size={20} />
                                                                 <input
                                                                     type="text"
                                                                     placeholder="Search retailer by shop or owner..."
-                                                                    className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 shadow-sm"
+                                                                    className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 dark:text-slate-200 shadow-sm"
                                                                     value={retailerSearchTerm}
                                                                     onChange={(e) => { setRetailerSearchTerm(e.target.value); setShowNewRetailerForm(false); }}
                                                                 />
                                                             </div>
                                                             <button
                                                                 onClick={() => setShowNewRetailerForm(!showNewRetailerForm)}
-                                                                className={`px-6 rounded-2xl font-bold transition-all border ${showNewRetailerForm ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                                                className={`px-6 rounded-2xl font-bold transition-all border ${showNewRetailerForm ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 border-slate-800 dark:border-slate-200' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                                                             >
                                                                 {showNewRetailerForm ? 'Cancel' : 'New +'}
                                                             </button>
                                                         </div>
 
                                                         {showNewRetailerForm && (
-                                                            <div className="mt-4 p-6 bg-white rounded-3xl border-2 border-slate-200 animate-in fade-in slide-in-from-top-4 shadow-xl shadow-slate-200/50">
+                                                            <div className="mt-4 p-6 bg-white dark:bg-slate-800 rounded-3xl border-2 border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-4 shadow-xl shadow-slate-200/50 dark:shadow-none">
                                                                 <div className="flex justify-between items-center mb-6">
-                                                                    <h4 className="font-black text-slate-800 flex items-center gap-2 group">
-                                                                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                    <h4 className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 group">
+                                                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 dark:group-hover:bg-blue-500 group-hover:text-white transition-all">
                                                                             <User size={18} />
                                                                         </div>
                                                                         Register New Retailer
                                                                     </h4>
                                                                     <button
                                                                         onClick={() => setShowNewRetailerForm(false)}
-                                                                        className="p-1 px-3 text-xs font-black text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                                        className="p-1 px-3 text-xs font-black text-slate-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-all"
                                                                     >
                                                                         DISCARD
                                                                     </button>
                                                                 </div>
                                                                 <form onSubmit={handleCreateRetailer} className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                                     <div className="space-y-1.5">
-                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Shop Name</label>
+                                                                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Shop Name</label>
                                                                         <input
-                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200"
                                                                             placeholder="e.g. SRM TRADERS"
                                                                             value={newRetailer.shopName}
                                                                             onChange={(e) => setNewRetailer({ ...newRetailer, shopName: e.target.value.toUpperCase() })}
@@ -1322,9 +1338,9 @@ const Orders = () => {
                                                                         />
                                                                     </div>
                                                                     <div className="space-y-1.5">
-                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Owner Name</label>
+                                                                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Owner Name</label>
                                                                         <input
-                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200"
                                                                             placeholder="e.g. RAJESH"
                                                                             value={newRetailer.ownerName}
                                                                             onChange={(e) => setNewRetailer({ ...newRetailer, ownerName: e.target.value.toUpperCase() })}
@@ -1332,9 +1348,9 @@ const Orders = () => {
                                                                         />
                                                                     </div>
                                                                     <div className="space-y-1.5">
-                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Contact Number</label>
+                                                                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Contact Number</label>
                                                                         <input
-                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200"
                                                                             placeholder="10-digit number"
                                                                             value={newRetailer.phone}
                                                                             onChange={(e) => setNewRetailer({ ...newRetailer, phone: e.target.value })}
@@ -1342,9 +1358,9 @@ const Orders = () => {
                                                                         />
                                                                     </div>
                                                                     <div className="space-y-1.5">
-                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Address / Route</label>
+                                                                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Address / Route</label>
                                                                         <input
-                                                                            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                                                                            className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 dark:text-slate-200"
                                                                             placeholder="Area or full address"
                                                                             value={newRetailer.address}
                                                                             onChange={(e) => setNewRetailer({ ...newRetailer, address: e.target.value.toUpperCase() })}
@@ -1354,14 +1370,14 @@ const Orders = () => {
                                                                     <div className="md:col-span-2 pt-2 flex gap-3">
                                                                         <button
                                                                             type="submit"
-                                                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl font-black shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl font-black shadow-lg shadow-blue-200 dark:shadow-none active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                                                         >
                                                                             Add Retailer <Plus size={20} />
                                                                         </button>
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => setShowNewRetailerForm(false)}
-                                                                            className="px-8 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-bold transition-all"
+                                                                            className="px-8 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 rounded-2xl font-bold transition-all"
                                                                         >
                                                                             Cancel
                                                                         </button>
@@ -1371,23 +1387,23 @@ const Orders = () => {
                                                         )}
 
                                                         {retailerSearchTerm && !showNewRetailerForm && (
-                                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white shadow-2xl rounded-2xl border border-slate-100 z-10 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl border border-slate-100 dark:border-slate-700 z-10 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                                                                 {(filteredRetailers || []).map(r => (
                                                                     <div
                                                                         key={r.id}
                                                                         onClick={() => { setSelectedRetailer(r); setRetailerSearchTerm(''); }}
-                                                                        className="p-4 hover:bg-blue-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors flex items-center justify-between"
+                                                                        className="p-4 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer border-b border-slate-50 dark:border-slate-700 last:border-0 transition-colors flex items-center justify-between group"
                                                                     >
                                                                         <div>
-                                                                            <p className="font-bold text-slate-800">{r.shopName || 'Unknown Shop'}</p>
-                                                                            <p className="text-xs text-slate-500">{r.ownerName || ''} • {r.address || ''}</p>
+                                                                            <p className="font-bold text-slate-800 dark:text-slate-100">{r.shopName || 'Unknown Shop'}</p>
+                                                                            <p className="text-xs text-slate-500 dark:text-slate-400">{r.ownerName || ''} • {r.address || ''}</p>
                                                                         </div>
-                                                                        <div className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                        <div className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:bg-blue-600 dark:group-hover:bg-blue-500 group-hover:text-white group-hover:border-blue-600 transition-all">
                                                                             <Plus size={16} />
                                                                         </div>
                                                                     </div>
                                                                 ))}
-                                                                {filteredRetailers.length === 0 && <div className="p-8 text-center text-slate-400 text-sm">No retailers found</div>}
+                                                                {filteredRetailers.length === 0 && <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">No retailers found</div>}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1395,23 +1411,23 @@ const Orders = () => {
                                             </div>
 
                                             {/* Employee Selection */}
-                                            <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">Sales Representative</label>
+                                            <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 mb-1 block">Sales Representative</label>
                                                 <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
                                                         <User size={18} />
                                                     </div>
                                                     <select
-                                                        className="flex-1 bg-transparent border-none focus:ring-0 font-bold text-slate-700 outline-none cursor-pointer"
+                                                        className="flex-1 bg-transparent border-none focus:ring-0 font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
                                                         value={selectedSalesRep?.id || ''}
                                                         onChange={(e) => {
                                                             const rep = salesReps.find(u => u.id === parseInt(e.target.value));
                                                             setSelectedSalesRep(rep || null);
                                                         }}
                                                     >
-                                                        <option value="">Select Employee (Leave for self)</option>
+                                                        <option value="" className="dark:bg-slate-800">Select Employee (Leave for self)</option>
                                                         {salesReps.map(rep => (
-                                                            <option key={rep.id} value={rep.id}>{rep.name}</option>
+                                                            <option key={rep.id} value={rep.id} className="dark:bg-slate-800">{rep.name}</option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -1419,11 +1435,11 @@ const Orders = () => {
 
                                             {/* Search Product */}
                                             <div className="relative group">
-                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-600 transition-colors" size={20} />
                                                 <input
                                                     type="text"
                                                     placeholder="Search products in catalog..."
-                                                    className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 shadow-sm"
+                                                    className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 dark:text-slate-200 shadow-sm"
                                                     value={productSearchTerm}
                                                     onChange={(e) => setProductSearchTerm(e.target.value)}
                                                 />
@@ -1434,21 +1450,21 @@ const Orders = () => {
                                         <div className="p-6">
                                             {modalLoading ? (
                                                 <div className="flex flex-col items-center justify-center h-full space-y-4">
-                                                    <RefreshCw className="w-10 h-10 text-blue-600 animate-spin" />
-                                                    <p className="text-slate-500 font-bold tracking-tight">Syncing Inventory...</p>
+                                                    <RefreshCw className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin" />
+                                                    <p className="text-slate-500 dark:text-slate-400 font-bold tracking-tight">Syncing Inventory...</p>
                                                 </div>
                                             ) : fetchError ? (
                                                 <div className="flex flex-col items-center justify-center h-full space-y-4 text-center">
-                                                    <div className="p-4 bg-rose-50 rounded-full text-rose-500">
+                                                    <div className="p-4 bg-rose-50 dark:bg-rose-900/20 rounded-full text-rose-500 dark:text-rose-400">
                                                         <AlertCircle size={48} strokeWidth={1.5} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-slate-800 font-bold text-lg">Load Failed</p>
-                                                        <p className="text-slate-500 text-sm max-w-xs">{fetchError}</p>
+                                                        <p className="text-slate-800 dark:text-slate-100 font-bold text-lg">Load Failed</p>
+                                                        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs">{fetchError}</p>
                                                     </div>
                                                     <button
                                                         onClick={fetchCreateOrderData}
-                                                        className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all"
+                                                        className="bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 px-6 py-2 rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all"
                                                     >
                                                         Try Again
                                                     </button>
@@ -1473,36 +1489,36 @@ const Orders = () => {
                                                             const grossTotal = taxInclusivePricePerBottle * totalQty;
 
                                                             return (
-                                                                <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 border-blue-400 ring-2 ring-blue-400/20 shadow-md' : 'bg-white border-slate-200 hover:border-blue-300 shadow-sm'}`}>
+                                                                <div key={product.id} className={`p-4 rounded-3xl border transition-all duration-300 ${totalQty > 0 ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-400 dark:border-blue-700 ring-2 ring-blue-400/20 dark:ring-blue-900/30 shadow-md' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 shadow-sm'}`}>
                                                                     <div className="flex justify-between items-start mb-4">
                                                                         <div className="space-y-1">
-                                                                            <h4 className="font-black text-slate-800 leading-tight">{product.name}</h4>
+                                                                            <h4 className="font-black text-slate-800 dark:text-slate-100 leading-tight">{product.name}</h4>
                                                                             <div className="flex items-center gap-2">
-                                                                                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">₹{product.sellingPrice ?? product.price} (Sell) • 1 CR = {bottlesPerCrate}</ p>
-                                                                                <span className="text-[10x] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-black">GST: {gstRate}%</span>
+                                                                                <p className="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">₹{product.sellingPrice ?? product.price} (Sell) • 1 CR = {bottlesPerCrate}</ p>
+                                                                                <span className="text-[10x] px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full font-black">GST: {gstRate}%</span>
                                                                             </div>
                                                                         </div>
                                                                         {totalQty > 0 && (
                                                                             <div className="text-right">
-                                                                                <p className="text-[10px] font-black text-slate-400 uppercase">Gross Total</p>
-                                                                                <p className="font-black text-blue-600">₹{grossTotal.toFixed(2)}</p>
+                                                                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">Gross Total</p>
+                                                                                <p className="font-black text-blue-600 dark:text-blue-400">₹{grossTotal.toFixed(2)}</p>
                                                                             </div>
                                                                         )}
                                                                     </div>
                                                                     <div className="grid grid-cols-1 gap-3">
                                                                         <div className="space-y-1">
-                                                                            <label className="text-[10px] text-slate-400 uppercase font-black px-1 text-center block">Price (Tax Incl.)</label>
-                                                                            <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                                                                                <div className="pl-3 py-2 text-slate-400"><IndianRupee size={12} /></div>
+                                                                            <label className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black px-1 text-center block">Price (Tax Incl.)</label>
+                                                                            <div className="flex items-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                                <div className="pl-3 py-2 text-slate-400 dark:text-slate-500"><IndianRupee size={12} /></div>
                                                                                 <input
                                                                                     type="number"
                                                                                     step="0.01"
-                                                                                    className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                    className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent dark:text-slate-100"
                                                                                     value={priceInput}
                                                                                     onChange={(e) => handlePriceChange(product.id, e.target.value, priceInputType)}
                                                                                 />
                                                                                 <select
-                                                                                    className="bg-slate-100 border-l border-slate-200 text-xs font-bold text-slate-600 px-2 py-2 outline-none cursor-pointer"
+                                                                                    className="bg-slate-100 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 px-2 py-2 outline-none cursor-pointer"
                                                                                     value={priceInputType}
                                                                                     onChange={(e) => {
                                                                                         const newType = e.target.value;
@@ -1526,48 +1542,48 @@ const Orders = () => {
                                                                         </div>
                                                                         <div className="grid grid-cols-2 gap-3">
                                                                             <div className="space-y-1">
-                                                                                <label className="text-[10px] text-slate-400 uppercase font-black px-1">Crates</label>
-                                                                                <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                                <label className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black px-1">Crates</label>
+                                                                                <div className="flex items-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
                                                                                     <button
                                                                                         onClick={() => handleQuantityChange(product.id, 'crates', Math.max(0, crates - 1))}
-                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                        className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors"
                                                                                     >
                                                                                         <Minus size={14} />
                                                                                     </button>
                                                                                     <input
                                                                                         type="number"
-                                                                                        className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                        className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent dark:text-slate-100"
                                                                                         value={crates || ''}
                                                                                         placeholder="0"
                                                                                         onChange={(e) => handleQuantityChange(product.id, 'crates', e.target.value)}
                                                                                     />
                                                                                     <button
                                                                                         onClick={() => handleQuantityChange(product.id, 'crates', crates + 1)}
-                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                        className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors"
                                                                                     >
                                                                                         <Plus size={14} />
                                                                                     </button>
                                                                                 </div>
                                                                             </div>
                                                                             <div className="space-y-1">
-                                                                                <label className="text-[10px] text-slate-400 uppercase font-black px-1">Pieces</label>
-                                                                                <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                                                                <label className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black px-1">Pieces</label>
+                                                                                <div className="flex items-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
                                                                                     <button
                                                                                         onClick={() => handleQuantityChange(product.id, 'pieces', Math.max(0, pieces - 1))}
-                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                        className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors"
                                                                                     >
                                                                                         <Minus size={14} />
                                                                                     </button>
                                                                                     <input
                                                                                         type="number"
-                                                                                        className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent"
+                                                                                        className="w-full text-center py-2 text-sm font-bold focus:outline-none bg-transparent dark:text-slate-100"
                                                                                         value={pieces || ''}
                                                                                         placeholder="0"
                                                                                         onChange={(e) => handleQuantityChange(product.id, 'pieces', e.target.value)}
                                                                                     />
                                                                                     <button
                                                                                         onClick={() => handleQuantityChange(product.id, 'pieces', pieces + 1)}
-                                                                                        className="p-2 hover:bg-slate-50 text-slate-400"
+                                                                                        className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors"
                                                                                     >
                                                                                         <Plus size={14} />
                                                                                     </button>
@@ -1585,16 +1601,16 @@ const Orders = () => {
                                     </div>
 
                                     {/* Right Pane: Cart Summary */}
-                                    <div className="hidden lg:flex w-1/3 flex-col bg-white">
+                                    <div className="hidden lg:flex w-1/3 flex-col bg-white dark:bg-slate-900">
                                         <div className="p-8 flex flex-col h-full">
-                                            <div className="space-y-1 mb-8 sticky top-0 bg-white z-10 py-2">
-                                                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Cart Summary</h3>
-                                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Review items & payment</p>
+                                            <div className="space-y-1 mb-8 sticky top-0 bg-white dark:bg-slate-900 z-10 py-2">
+                                                <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Cart Summary</h3>
+                                                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">Review items & payment</p>
                                             </div>
 
                                             <div className="space-y-4 pr-1">
                                                 {Object.entries(cart).length === 0 ? (
-                                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-4 border-2 border-dashed border-slate-100 rounded-3xl p-8">
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-600 space-y-4 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl p-8">
                                                         <ShoppingCart size={64} strokeWidth={1} />
                                                         <p className="font-bold text-center">Your station is empty. Add products to start.</p>
                                                     </div>
@@ -1612,21 +1628,21 @@ const Orders = () => {
                                                         const itemGrossTotal = totalQty * taxInclusivePricePerBottle;
 
                                                         return (
-                                                            <div key={pId} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 animate-in slide-in-from-right-4 transition-all hover:border-slate-300">
+                                                            <div key={pId} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-right-4 transition-all hover:border-slate-300 dark:hover:border-slate-600">
                                                                 <div>
-                                                                    <p className="font-bold text-slate-800">{product.name}</p>
-                                                                    <p className="text-xs font-bold text-blue-600 uppercase tracking-tighter">
+                                                                    <p className="font-bold text-slate-800 dark:text-slate-100">{product.name}</p>
+                                                                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
                                                                         {crates > 0 && `${crates} Crates `}{pieces > 0 && `${pieces} Pieces`}
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <p className="font-black text-slate-800">₹{itemGrossTotal.toFixed(2)}</p>
+                                                                    <p className="font-black text-slate-800 dark:text-slate-100">₹{itemGrossTotal.toFixed(2)}</p>
                                                                     <button
                                                                         onClick={() => {
                                                                             const { [pId]: _, ...rest } = cart;
                                                                             setCart(rest);
                                                                         }}
-                                                                        className="text-xs text-rose-500 font-bold hover:underline"
+                                                                        className="text-xs text-rose-500 dark:text-rose-400 font-bold hover:underline"
                                                                     >
                                                                         Remove
                                                                     </button>
@@ -1638,15 +1654,15 @@ const Orders = () => {
                                             </div>
 
                                             {/* Payment & Action Area */}
-                                            <div className="mt-8 pt-8 border-t-4 border-double border-slate-100 space-y-6">
+                                            <div className="mt-8 pt-8 border-t-4 border-double border-slate-100 dark:border-slate-800 space-y-6">
                                                 <div className="space-y-3">
-                                                    <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Payment Strategy</label>
-                                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
+                                                    <label className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest">Payment Strategy</label>
+                                                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl gap-2">
                                                         {['Credit', 'Cash'].map(mode => (
                                                             <button
                                                                 key={mode}
                                                                 onClick={() => setPaymentMode(mode)}
-                                                                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${paymentMode === mode ? 'bg-white shadow-lg text-blue-600 border border-blue-100 scale-105' : 'text-slate-500 hover:text-slate-800'}`}
+                                                                className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${paymentMode === mode ? 'bg-white dark:bg-slate-700 shadow-lg text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 scale-105' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
                                                             >
                                                                 {mode}
                                                             </button>
@@ -1656,9 +1672,9 @@ const Orders = () => {
 
                                                 {/* Remarks */}
                                                 <div className="space-y-3">
-                                                    <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Order Remarks</label>
+                                                    <label className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-widest">Order Remarks</label>
                                                     <textarea
-                                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 text-sm shadow-sm"
+                                                        className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 dark:text-slate-200 text-sm shadow-sm"
                                                         rows="2"
                                                         placeholder="Add any special instructions or billing notes..."
                                                         value={remarks}
@@ -1668,16 +1684,16 @@ const Orders = () => {
 
                                                 {/* Round Off Toggle */}
                                                 <div className="space-y-3">
-                                                    <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                                                         <div className="flex items-center gap-2">
-                                                            <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                                                            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
                                                                 <RefreshCw size={14} />
                                                             </div>
-                                                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Round Off Total</span>
+                                                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Round Off Total</span>
                                                         </div>
                                                         <button
                                                             onClick={() => setIsRounded(!isRounded)}
-                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isRounded ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isRounded ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}
                                                         >
                                                             <span
                                                                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRounded ? 'translate-x-6' : 'translate-x-1'}`}
@@ -1754,25 +1770,25 @@ const Orders = () => {
                                     </div>
                                 </div>
 
-                                {/* Mobile Action Bar (If on mobile) */}
-                                <div className="lg:hidden p-6 bg-white border-t border-slate-100 flex justify-between items-center shadow-2xl sticky bottom-0 z-20">
-                                    <div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Order Total</p>
-                                        <p className="text-2xl font-black text-slate-900">
-                                            ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
-                                        disabled={Object.keys(cart).length === 0 || !selectedRetailer}
-                                        className={`px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${Object.keys(cart).length === 0 || !selectedRetailer
-                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                            : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                                    >
-                                        {!selectedRetailer ? 'Select Retailer' : Object.keys(cart).length === 0 ? 'Add Items' : (showEditModal ? 'Update Order' : 'Place Order')}
-                                        {!selectedRetailer || Object.keys(cart).length === 0 ? <AlertCircle size={18} /> : <Truck size={18} />}
-                                    </button>
-                                </div>
+                                 {/* Mobile Action Bar (If on mobile) */}
+                                 <div className="lg:hidden p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center shadow-2xl sticky bottom-0 z-20">
+                                     <div>
+                                         <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-wider">Order Total</p>
+                                         <p className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                                             ₹{isRounded ? Math.round(calculateTotal()).toLocaleString() : calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                         </p>
+                                     </div>
+                                     <button
+                                         onClick={showEditModal ? handleEditOrderSubmit : handleCreateOrderSubmit}
+                                         disabled={Object.keys(cart).length === 0 || !selectedRetailer}
+                                         className={`px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${Object.keys(cart).length === 0 || !selectedRetailer
+                                             ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                                             : 'bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100'}`}
+                                     >
+                                         {!selectedRetailer ? 'Select Retailer' : Object.keys(cart).length === 0 ? 'Add Items' : (showEditModal ? 'Update Order' : 'Place Order')}
+                                         {!selectedRetailer || Object.keys(cart).length === 0 ? <AlertCircle size={18} /> : <Truck size={18} />}
+                                     </button>
+                                 </div>
                             </div>
                         </div>
                     </div>,

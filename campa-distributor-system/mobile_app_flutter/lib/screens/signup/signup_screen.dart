@@ -61,7 +61,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // slate-900
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Background Decoration (Blurred Circles)
@@ -103,9 +103,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Theme.of(context).cardTheme.color?.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(32),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -113,13 +113,13 @@ class _SignupScreenState extends State<SignupScreen> {
                           const Text(
                             'Create Account',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 8),
                           const Text(
                             'Join the team today',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                            style: TextStyle(fontSize: 14),
                           ),
                           const SizedBox(height: 32),
                           
@@ -135,17 +135,17 @@ class _SignupScreenState extends State<SignupScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B).withOpacity(0.5),
+                              color: Theme.of(context).scaffoldBackgroundColor,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFF334155)),
+                              border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _selectedRole,
-                                dropdownColor: const Color(0xFF0F172A),
-                                icon: const Icon(LucideIcons.chevronDown, color: Colors.white, size: 16),
+                                dropdownColor: Theme.of(context).cardTheme.color,
+                                icon: Icon(LucideIcons.chevronDown, color: Theme.of(context).textTheme.bodyMedium?.color, size: 16),
                                 isExpanded: true,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.w600),
                                 items: _roles.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                                 onChanged: (val) => setState(() => _selectedRole = val!),
                               ),
@@ -211,7 +211,7 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget _buildFieldLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(label, style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, fontWeight: FontWeight.bold)),
+      child: Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -219,16 +219,16 @@ class _SignupScreenState extends State<SignupScreen> {
     return TextField(
       controller: controller,
       obscureText: obscure,
-      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      style: const TextStyle(fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: const Color(0xFF64748B).withOpacity(0.5)),
-        prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
-        suffixIcon: isPassword ? IconButton(icon: Icon(obscure ? LucideIcons.eye : LucideIcons.eyeOff, color: const Color(0xFF64748B), size: 20), onPressed: toggleObscure) : null,
+        hintStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: Icon(icon, color: Theme.of(context).hintColor, size: 20),
+        suffixIcon: isPassword ? IconButton(icon: Icon(obscure ? LucideIcons.eye : LucideIcons.eyeOff, color: Theme.of(context).hintColor, size: 20), onPressed: toggleObscure) : null,
         filled: true,
-        fillColor: const Color(0xFF1E293B).withOpacity(0.5),
+        fillColor: Theme.of(context).scaffoldBackgroundColor,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5)),
       ),
     );
   }

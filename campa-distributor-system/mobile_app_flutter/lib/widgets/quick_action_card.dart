@@ -21,14 +21,16 @@ class QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E293B).withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.black.withOpacity(0.4) 
+                : const Color(0xFF1E293B).withOpacity(0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -61,7 +63,6 @@ class QuickActionCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E293B),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -69,9 +70,9 @@ class QuickActionCard extends StatelessWidget {
                         desc,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF64748B),
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                           height: 1.4,
                         ),
                       ),
@@ -81,10 +82,16 @@ class QuickActionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.white.withOpacity(0.05) 
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(LucideIcons.chevronRight, color: Color(0xFFCBD5E1), size: 18),
+                  child: Icon(
+                    LucideIcons.chevronRight, 
+                    color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5), 
+                    size: 18
+                  ),
                 ),
               ],
             ),

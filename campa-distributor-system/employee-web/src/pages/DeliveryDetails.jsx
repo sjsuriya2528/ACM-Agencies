@@ -27,7 +27,7 @@ const DeliveryDetails = () => {
             const orderData = response.data.data || response.data;
             setOrder(orderData);
             if (orderData.Invoice) {
-                setPaymentAmount(orderData.Invoice.balanceAmount);
+                setPaymentAmount(orderData.invoice.balanceAmount);
             }
         } catch (error) {
             console.error("Failed to fetch order details", error);
@@ -51,7 +51,7 @@ const DeliveryDetails = () => {
         setCollectingPayment(true);
         try {
             await api.post('/payments', {
-                invoiceId: order.Invoice.id,
+                invoiceId: order.invoice.id,
                 amount: paymentAmount,
                 paymentMode,
                 transactionId: paymentMode !== 'Cash' ? transactionId : ''
@@ -95,133 +95,134 @@ const DeliveryDetails = () => {
     const isDelivered = order.status === 'Delivered';
     const isApproved = order.status === 'Approved';
     const isDispatched = order.status === 'Dispatched';
-    const pendingAmount = order.Invoice?.balanceAmount || order.totalAmount;
+    const pendingAmount = order.invoice?.balanceAmount || order.totalAmount;
 
     const isAssignedToOther = order.driverId && order.driverId !== user.id;
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pb-32">
+        <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-500 pb-32">
             {/* Header */}
-            <div className="sticky top-0 bg-white/80 backdrop-blur-md shadow-sm z-30 px-5 pt-8 pb-6 border-b border-slate-100 rounded-b-[2.5rem]">
+            <div className="sticky top-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl z-30 px-6 py-8 border-b border-slate-200 dark:border-white/5 rounded-b-[3rem] shadow-2xl transition-all">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => navigate(-1)} className="p-3 bg-slate-50 rounded-2xl text-slate-600 hover:bg-white hover:shadow-md transition-all border border-slate-100">
-                            <ArrowLeft size={20} />
+                    <div className="flex items-center gap-5">
+                        <button onClick={() => navigate(-1)} className="p-3 bg-white/5 rounded-2xl text-slate-400 hover:bg-white/10 transition-all border border-white/5">
+                            <ArrowLeft size={20} strokeWidth={3} />
                         </button>
                         <div>
-                            <div className="flex items-center gap-2 mb-0.5">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Order</span>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">#{order.id}</span>
+                            <div className="flex items-center gap-3 mb-1">
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Order Info</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)]">#{order.id}</span>
                             </div>
-                            <h1 className="text-lg font-black text-slate-800 tracking-tight">Delivery Details</h1>
+                            <h1 className="text-2xl font-black text-white tracking-tighter uppercase italic">Delivery Details</h1>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="px-5 py-8 max-w-7xl mx-auto space-y-6">
-                {/* Status Alert */}
+            <div className="px-6 py-8 max-w-2xl mx-auto space-y-6">
+                {/* Protocol Conflict Alert */}
                 {isAssignedToOther && (
-                    <div className="bg-rose-50 p-4 rounded-3xl border border-rose-100 flex items-center gap-4 animate-pulse">
-                        <div className="bg-rose-100 p-2 rounded-xl text-rose-600">
+                    <div className="bg-rose-500/10 p-5 rounded-[2rem] border border-rose-500/20 flex items-center gap-4 animate-pulse">
+                        <div className="bg-rose-500/20 p-3 rounded-xl text-rose-500">
                             <AlertCircle size={20} />
                         </div>
-                        <p className="text-sm font-bold text-rose-800">This order is assigned to another delivery partner.</p>
+                        <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest leading-relaxed">This order is assigned to another driver.</p>
                     </div>
                 )}
 
-                {/* Retailer Card */}
-                <div className="bg-white p-6 rounded-[2.5rem] shadow-lg border border-slate-100 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500 to-indigo-600 opacity-[0.03] rounded-bl-full -mr-10 -mt-10"></div>
+                {/* Target Node (Retailer) */}
+                <div className="bg-white/5 backdrop-blur-3xl p-8 rounded-[3rem] border border-white/10 relative overflow-hidden shadow-2xl group">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-blue-500/10 transition-all duration-700"></div>
 
-                    <div className="flex justify-between items-start mb-6 relative z-10">
+                    <div className="flex justify-between items-start mb-8 relative z-10">
                         <div className="flex-1">
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-2 leading-tight">{order.retailer?.shopName}</h2>
-                            <div className="flex items-center gap-2 text-slate-500 font-bold">
-                                <User size={16} className="text-blue-500" />
-                                <span className="text-sm">{order.retailer?.ownerName}</span>
+                            <h2 className="text-3xl font-black text-white tracking-tighter mb-2 italic leading-tight uppercase">{order.retailer?.shopName}</h2>
+                            <div className="flex items-center gap-2 text-slate-500 font-black uppercase tracking-widest text-[10px]">
+                                <User size={14} className="text-blue-500" />
+                                <span>{order.retailer?.ownerName || 'Unknown Entity'}</span>
                             </div>
                         </div>
-                        <span className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm ring-1 ${isDelivered ? 'bg-emerald-50 text-emerald-700 ring-emerald-100' : 'bg-blue-50 text-blue-700 ring-blue-100'}`}>
-                            {isApproved ? 'Awaiting Dispatch' : order.status}
+                        <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] border shadow-2xl transition-all ${isDelivered ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
+                            {isApproved ? 'PENDING' : (isDelivered ? 'DELIVERED' : order.status)}
                         </span>
                     </div>
 
-                    <div className="flex items-start gap-3 bg-slate-50 p-4 rounded-3xl mb-8 border border-slate-100">
-                        <MapPin size={20} className="text-slate-400 mt-0.5" />
-                        <p className="text-sm text-slate-600 font-bold leading-relaxed">{order.retailer?.address}</p>
+                    <div className="flex items-start gap-4 bg-black/40 p-5 rounded-[2rem] mb-8 border border-white/5 group-hover:border-blue-500/20 transition-all">
+                        <MapPin size={22} className="text-slate-600 mt-1" />
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-tight leading-relaxed">{order.retailer?.address}</p>
                     </div>
 
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-4 gap-4">
                         <button
                             onClick={handleOpenMap}
-                            className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-slate-200 active:scale-95 transition-all text-sm group"
+                            className="col-span-3 bg-white text-slate-950 py-5 rounded-[1.5rem] font-black flex items-center justify-center gap-3 shadow-2xl shadow-white/5 active:scale-95 transition-all text-xs uppercase tracking-[0.2em] border border-white"
                         >
-                            <Navigation size={18} className="group-hover:translate-x-0.5 transition-transform" />
-                            Directions
+                            <Navigation size={20} strokeWidth={3} className="group-hover:translate-x-0.5 transition-transform" />
+                            Get Directions
                         </button>
                         <a
                             href={`tel:${order.retailer?.phone}`}
-                            className="bg-blue-50 text-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-blue-100 active:scale-95 transition-all"
+                            className="bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-[1.5rem] flex items-center justify-center hover:bg-blue-500/20 active:scale-95 transition-all"
                         >
-                            <Phone size={24} />
+                            <Phone size={24} strokeWidth={2.5} />
                         </a>
                     </div>
                 </div>
 
-                {/* Main Actions */}
+                {/* Command Deck (Actions) */}
                 {!isAssignedToOther && (
                     <div className="space-y-6">
-                        {/* Pickup Action */}
+                        {/* Pickup Protocol */}
                         {isApproved && (
                             <button
                                 onClick={() => handleUpdateStatus('Dispatched')}
-                                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black py-5 rounded-[2rem] shadow-xl shadow-amber-100 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black py-6 rounded-[2.5rem] shadow-2xl shadow-amber-900/20 active:scale-95 transition-all flex items-center justify-center gap-4 border border-amber-400/30"
                             >
-                                <Truck size={24} />
-                                Confirm Item Pickup
+                                <Truck size={28} strokeWidth={3} />
+                                <span className="uppercase tracking-[0.2em]">Pick Up Order</span>
                             </button>
                         )}
 
-                        {/* Completion Action */}
+                        {/* Termination Protocol (Complete Delivery) */}
                         {!isDelivered && (
                             <button
                                 onClick={() => handleUpdateStatus('Delivered')}
-                                className="w-full bg-slate-900 text-white font-black py-5 rounded-[2rem] shadow-2xl shadow-slate-200 active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                                className="w-full bg-white text-slate-950 font-black py-6 rounded-[2.5rem] shadow-[0_20px_50px_rgba(255,255,255,0.05)] active:scale-[0.98] transition-all flex items-center justify-center gap-4 group border-2 border-white"
                             >
-                                <CheckCircle size={24} className="group-hover:rotate-12 transition-transform" />
-                                Complete Delivery
+                                <CheckCircle size={28} strokeWidth={3} className="group-hover:rotate-12 transition-transform" />
+                                <span className="uppercase tracking-[0.2em] italic text-lg">Mark as Delivered</span>
                             </button>
                         )}
 
-                        {/* Payment Collection - ONLY SHOW WHEN DELIVERED */}
+                        {/* Revenue Recovery (Payment Collection) */}
                         {isDelivered && (
-                            <div className="bg-white p-6 rounded-[2.5rem] shadow-lg border border-slate-100">
-                                <h3 className="font-extrabold text-slate-800 mb-6 flex items-center gap-3">
-                                    <div className="p-2 bg-emerald-100 rounded-xl text-emerald-600">
-                                        <IndianRupee size={20} />
+                            <div className="bg-white/5 backdrop-blur-3xl p-8 rounded-[3rem] border border-white/10 shadow-2xl">
+                                <h3 className="font-black text-white uppercase italic tracking-tighter text-xl mb-8 flex items-center gap-3">
+                                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400">
+                                        <IndianRupee size={22} strokeWidth={3} />
                                     </div>
-                                    Collection
+                                    Collect Payment
                                 </h3>
 
-                                <div className="bg-emerald-50/50 p-5 rounded-3xl mb-8 flex justify-between items-center border border-emerald-100">
-                                    <span className="text-emerald-700 font-black text-sm uppercase tracking-widest">Pending Bill</span>
-                                    <span className="text-2xl font-black text-emerald-800 tracking-tight">₹{parseFloat(pendingAmount).toLocaleString()}</span>
+                                <div className="bg-emerald-500/5 p-6 rounded-[2rem] mb-10 flex justify-between items-center border border-emerald-500/10 relative overflow-hidden group/bill">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover/bill:bg-emerald-500/10 transition-all"></div>
+                                    <span className="text-emerald-500/60 font-black text-[10px] uppercase tracking-[0.3em] relative z-10">Balance Due</span>
+                                    <span className="text-3xl font-black text-white tracking-tighter italic relative z-10">₹{parseFloat(pendingAmount).toLocaleString()}</span>
                                 </div>
 
                                 {Number(pendingAmount) > 0 ? (
-                                    <form onSubmit={handleCollectPayment} className="space-y-5">
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Payment Mode</label>
-                                            <div className="grid grid-cols-3 gap-2">
+                                    <form onSubmit={handleCollectPayment} className="space-y-8 relative z-10">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] ml-2 block">Payment Mode</label>
+                                            <div className="grid grid-cols-3 gap-3">
                                                 {['Cash', 'UPI', 'Cheque'].map(mode => (
                                                     <button
                                                         key={mode}
                                                         type="button"
                                                         onClick={() => setPaymentMode(mode)}
-                                                        className={`py-3 rounded-2xl text-xs font-black border transition-all ${paymentMode === mode
-                                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-100'
-                                                            : 'bg-slate-50 text-slate-500 border-transparent hover:bg-slate-100'}`}
+                                                        className={`py-4 rounded-2xl text-[10px] font-black border uppercase tracking-[0.2em] transition-all ${paymentMode === mode
+                                                            ? 'bg-white text-slate-950 border-white shadow-2xl shadow-white/5'
+                                                            : 'bg-black/40 text-slate-500 border-white/5 hover:border-white/20'}`}
                                                     >
                                                         {mode}
                                                     </button>
@@ -229,12 +230,12 @@ const DeliveryDetails = () => {
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Received Amount</label>
-                                            <div className="relative group">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] ml-2 block">Amount to Collect (₹)</label>
+                                            <div className="relative group/input">
                                                 <input
                                                     type="number"
-                                                    className="w-full px-5 py-4 bg-slate-50 border border-transparent rounded-[1.5rem] outline-none focus:bg-white focus:border-emerald-100 focus:ring-4 focus:ring-emerald-500/5 font-black text-slate-800 transition-all"
+                                                    className="w-full px-6 py-5 bg-black/40 border border-white/5 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/30 font-black text-2xl text-white italic tracking-tighter transition-all"
                                                     value={paymentAmount}
                                                     max={pendingAmount}
                                                     onChange={(e) => setPaymentAmount(e.target.value)}
@@ -243,12 +244,12 @@ const DeliveryDetails = () => {
                                         </div>
 
                                         {paymentMode !== 'Cash' && (
-                                            <div className="animate-fade-in-up mt-4">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Reference / Trans ID</label>
+                                            <div className="animate-in slide-in-from-top-4 duration-300 space-y-3">
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] ml-2 block">Reference Number</label>
                                                 <input
                                                     type="text"
-                                                    className="w-full px-5 py-4 bg-slate-50 border border-transparent rounded-[1.5rem] outline-none focus:bg-white focus:border-emerald-100 focus:ring-4 focus:ring-emerald-500/5 font-bold text-slate-800 transition-all"
-                                                    placeholder={`Enter ${paymentMode} Ref #`}
+                                                    className="w-full px-6 py-5 bg-black/40 border border-white/5 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/30 font-black text-white placeholder:text-slate-800 transition-all tracking-widest uppercase"
+                                                    placeholder={`ENTER ${paymentMode} REF`}
                                                     value={transactionId}
                                                     onChange={(e) => setTransactionId(e.target.value)}
                                                     required
@@ -259,22 +260,25 @@ const DeliveryDetails = () => {
                                         <button
                                             type="submit"
                                             disabled={collectingPayment}
-                                            className="w-full bg-emerald-600 text-white font-black py-4 rounded-[1.5rem] shadow-xl shadow-emerald-100/50 active:scale-95 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+                                            className="w-full bg-emerald-500 text-slate-950 font-black py-5 rounded-[1.5rem] shadow-2xl shadow-emerald-500/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 uppercase tracking-[0.2em] text-xs border border-emerald-400"
                                         >
-                                            {collectingPayment ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (
+                                            {collectingPayment ? <div className="w-6 h-6 border-[3px] border-slate-950/30 border-t-slate-950 rounded-full animate-spin"></div> : (
                                                 <>
-                                                    <ShieldCheck size={20} className="group-hover:scale-110 transition-transform" />
-                                                    Submit Payment
+                                                    <ShieldCheck size={22} strokeWidth={3} className="group-hover:scale-110 transition-transform" />
+                                                    Save Payment
                                                 </>
                                             )}
                                         </button>
                                     </form>
                                 ) : (
-                                    <div className="bg-emerald-50 p-5 rounded-3xl flex items-center gap-4 border border-emerald-100">
-                                        <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
-                                            <CheckCircle size={20} />
+                                    <div className="bg-emerald-500/10 p-6 rounded-[2rem] flex items-center gap-5 border border-emerald-500/20 shadow-2xl">
+                                        <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl shadow-inner">
+                                            <CheckCircle size={24} strokeWidth={3} />
                                         </div>
-                                        <p className="text-emerald-800 font-bold text-sm tracking-tight">Payment has been cleared for this order.</p>
+                                        <div>
+                                            <p className="text-emerald-400 font-black uppercase italic tracking-tighter text-lg">Fully Paid</p>
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mt-1">No outstanding balance.</p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -282,22 +286,22 @@ const DeliveryDetails = () => {
                     </div>
                 )}
 
-                {/* Order Overview Items */}
-                <div className="bg-white p-6 rounded-[2.5rem] shadow-lg border border-slate-100 mt-6">
-                    <h3 className="font-extrabold text-slate-800 mb-6 flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
-                            <ShieldCheck size={20} />
+                {/* Logistics Manifest Summary */}
+                <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[3rem] border border-white/10 shadow-2xl">
+                    <h3 className="font-black text-white uppercase italic tracking-tighter text-xl mb-6 flex items-center gap-3">
+                        <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400">
+                            <Calendar size={20} strokeWidth={3} />
                         </div>
-                        Summary
+                        Order Summary
                     </h3>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center py-2">
-                            <span className="text-sm font-bold text-slate-500">Order Method</span>
-                            <span className="text-sm font-black text-slate-800">{order.paymentMode || 'Credit'}</span>
+                    <div className="space-y-6 relative z-10">
+                        <div className="flex justify-between items-center group/meta">
+                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] group-hover:text-slate-400 transition-colors">Payment Method</span>
+                            <span className="text-xs font-black text-white uppercase tracking-widest italic">{order.paymentMode || 'CREDIT'}</span>
                         </div>
-                        <div className="flex justify-between items-center py-2 border-t border-slate-50 border-dashed">
-                            <span className="text-sm font-bold text-slate-500">Scheduled Date</span>
-                            <span className="text-sm font-black text-slate-800">{new Date(order.createdAt).toLocaleDateString()}</span>
+                        <div className="flex justify-between items-center group/meta pt-6 border-t border-white/5">
+                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] group-hover:text-slate-400 transition-colors">Order Date</span>
+                            <span className="text-xs font-black text-white uppercase tracking-widest italic">{new Date(order.createdAt).toLocaleDateString()}</span>
                         </div>
                     </div>
                 </div>

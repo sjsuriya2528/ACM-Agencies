@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
-import '../../theme/app_theme.dart';
 import '../../models/user.dart';
+import 'delivery_details_screen.dart';
 import 'delivery_details_screen.dart';
 
 class MyDeliveriesScreen extends StatefulWidget {
@@ -138,13 +138,13 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
     final filteredDeliveries = _getFilteredDeliveries(user);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Daily Routes'),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardTheme.color,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF1E293B)),
+          icon: Icon(LucideIcons.arrowLeft, color: Theme.of(context).textTheme.bodySmall?.color),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -167,7 +167,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).cardTheme.color,
       padding: const EdgeInsets.all(16),
       child: TextField(
         onChanged: (value) => setState(() => _searchTerm = value),
@@ -175,7 +175,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
           hintText: 'Find shop or order ID...',
           prefixIcon: const Icon(LucideIcons.search, size: 20),
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: Theme.of(context).scaffoldBackgroundColor,
           filled: true,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
         ),
@@ -196,12 +196,14 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
+            border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF1E293B).withOpacity(0.05),
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? Colors.black.withOpacity(0.2) 
+                    : const Color(0xFF1E293B).withOpacity(0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -247,13 +249,13 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                               Wrap(
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  Text('#${delivery['id']}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                  Text('#${delivery['id']}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                                   if (isMyDelivery) ...[
                                     const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(4)),
-                                      child: const Text('ASSIGNED TO YOU', style: TextStyle(color: Color(0xFF2563EB), fontSize: 8, fontWeight: FontWeight.w900)),
+                                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                      child: Text('ASSIGNED TO YOU', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 8, fontWeight: FontWeight.w900)),
                                     ),
                                   ],
                                 ],
@@ -261,7 +263,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 delivery['retailer']?['shopName'] ?? 'Unknown',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+                                style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
@@ -290,19 +292,19 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                            child: const Icon(LucideIcons.mapPin, size: 16, color: Color(0xFF94A3B8)),
+                            decoration: BoxDecoration(color: Theme.of(context).dividerColor.withOpacity(0.05), borderRadius: BorderRadius.circular(10)),
+                            child: Icon(LucideIcons.mapPin, size: 16, color: Theme.of(context).hintColor),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               delivery['retailer']?['address'] ?? 'No address provided',
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w600),
+                              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
                       ),
-                      const Divider(height: 32, color: Color(0xFFF1F5F9)),
+                      Divider(height: 32, color: Theme.of(context).dividerColor.withOpacity(0.05)),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -325,7 +327,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                                         alignment: Alignment.centerLeft,
                                         child: Text(
                                           '₹${delivery['Invoice']?['balanceAmount'] ?? delivery['totalAmount']}',
-                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                                         ),
                                       ),
                                     ],
@@ -386,8 +388,8 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40)),
-            child: Icon(LucideIcons.package, size: 60, color: const Color(0xFFF1F5F9)),
+            decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(40)),
+            child: Icon(LucideIcons.package, size: 60, color: Theme.of(context).dividerColor.withOpacity(0.05)),
           ),
           const SizedBox(height: 16),
           const Text('No Active Routes', style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w900, fontSize: 20)),

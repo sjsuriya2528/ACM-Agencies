@@ -135,6 +135,7 @@ const getOrders = async (req, res) => {
         const offset = (page - 1) * limit;
         // 1. Base conditions based on user role
         const conditions = [];
+        const istOffset = 5.5 * 60 * 60 * 1000;
 
         if (req.user.role === 'sales_rep') {
             conditions.push({ salesRepId: req.user.id });
@@ -167,17 +168,31 @@ const getOrders = async (req, res) => {
 
         // 4. Search Filter
         if (search) {
-            conditions.push({
-                [Op.or]: [
-                    { billNumber: { [Op.iLike]: `%${search}%` } },
-                    { '$retailer.shopName$': { [Op.iLike]: `%${search}%` } },
-                    { '$salesRep.name$': { [Op.iLike]: `%${search}%` } }
-                ]
-            });
+            const searchConditions = [
+                { billNumber: { [Op.iLike]: `%${search}%` } },
+                { '$retailer.shopName$': { [Op.iLike]: `%${search}%` } },
+                { '$salesRep.name$': { [Op.iLike]: `%${search}%` } }
+            ];
+
+            // If search is a number, also search by ID
+            if (!isNaN(search) && !isNaN(parseFloat(search))) {
+                searchConditions.push({ id: parseInt(search) });
+            }
+
+            // If search looks like a date (YYYY-MM-DD), also search by created date
+            if (/^\d{4}-\d{2}-\d{2}$/.test(search)) {
+                const searchDate = new Date(search);
+                if (!isNaN(searchDate.getTime())) {
+                    const startDay = new Date(new Date(search + 'T00:00:00.000Z').getTime() - istOffset);
+                    const endDay = new Date(new Date(search + 'T23:59:59.999Z').getTime() - istOffset);
+                    searchConditions.push({ createdAt: { [Op.between]: [startDay, endDay] } });
+                }
+            }
+
+            conditions.push({ [Op.or]: searchConditions });
         }
 
         // 5. Date Range Filter (IST Aware)
-        const istOffset = 5.5 * 60 * 60 * 1000;
         if (startDate && endDate) {
             const startStr = `${startDate}T00:00:00.000Z`;
             const endStr = `${endDate}T23:59:59.999Z`;
@@ -206,8 +221,8 @@ const getOrders = async (req, res) => {
             matchingIdsQuery = await Order.findAll({
                 where: whereClause,
                 include: search ? [
-                    { model: Retailer, as: 'retailer', attributes: [], required: true },
-                    { model: User, as: 'salesRep', attributes: [], required: true }
+                    { model: Retailer, as: 'retailer', attributes: [], required: false },
+                    { model: User, as: 'salesRep', attributes: [], required: false }
                 ] : [],
                 attributes: ['id', 'totalAmount', 'createdAt'],
                 order: [['createdAt', 'DESC'], ['id', 'DESC']]
@@ -246,9 +261,9 @@ const getOrders = async (req, res) => {
                         model: OrderItem,
                         as: 'items',
                         separate: true,
-                        include: [{ model: Product, attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }]
+                        include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }]
                     },
-                    { model: Invoice },
+                    { model: Invoice, as: 'invoice' },
                 ],
                 order: [['createdAt', 'DESC'], ['id', 'DESC']]
             });
@@ -279,8 +294,8 @@ const getOrderById = async (req, res) => {
             include: [
                 { model: Retailer, as: 'retailer' },
                 { model: User, as: 'salesRep', attributes: ['id', 'name'] },
-                { model: OrderItem, as: 'items', include: [{ model: Product }] },
-                { model: Invoice },
+                { model: OrderItem, as: 'items', include: [{ model: Product, as: 'product' }] },
+                { model: Invoice, as: 'invoice' },
             ],
         });
 
@@ -314,7 +329,7 @@ const updateOrderStatus = async (req, res) => {
             if (status === 'Dispatched') {
                 if (order.paymentMode === 'Cash') {
                     // Check if Invoice is Paid
-                    if (!order.Invoice || order.Invoice.paymentStatus !== 'Paid') {
+                    if (!order.invoice || order.invoice.paymentStatus !== 'Paid') {
                         return res.status(400).json({ message: 'Cash orders must be PAID before Dispatch.' });
                     }
                 }
@@ -332,7 +347,7 @@ const updateOrderStatus = async (req, res) => {
                 // to allow for more granular control if needed, but both execute on 'Approved' status change.
                 // The original code had this structure, so preserving it.
                 for (const item of order.items) {
-                    const product = item.Product || await Product.findByPk(item.productId);
+                    const product = item.product || await Product.findByPk(item.productId);
                     if (product) {
                         if (product.stockQuantity < item.quantity) {
                             return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
@@ -378,7 +393,7 @@ const updateOrderStatus = async (req, res) => {
             // Restore stock if cancelled from a post-approval state (stock was already deducted)
             if (status === 'Cancelled' && ['Approved', 'Dispatched', 'Delivered'].includes(order.status)) {
                 for (const item of order.items) {
-                    const product = item.Product || await Product.findByPk(item.productId);
+                    const product = item.product || await Product.findByPk(item.productId);
                     if (product) {
                         await product.increment('stockQuantity', { by: item.quantity });
                     }
@@ -533,7 +548,7 @@ const deleteOrder = async (req, res) => {
         // 2. Restore Stock if Approved/Dispatched/Delivered (Items were deducted)
         if (['Approved', 'Dispatched', 'Delivered'].includes(order.status)) {
             for (const item of order.items) {
-                const product = item.Product || await Product.findByPk(item.productId, { transaction });
+                const product = item.product || await Product.findByPk(item.productId, { transaction });
                 if (product) {
                     await product.increment('stockQuantity', { by: item.quantity, transaction });
                 }
@@ -541,8 +556,8 @@ const deleteOrder = async (req, res) => {
         }
 
         // 3. Delete Dependencies
-        if (order.Invoice) {
-            await Invoice.destroy({ where: { id: order.Invoice.id }, transaction });
+        if (order.invoice) {
+            await Invoice.destroy({ where: { id: order.invoice.id }, transaction });
         }
         await OrderItem.destroy({ where: { orderId: order.id }, transaction });
 
@@ -697,11 +712,29 @@ const getCancelledOrders = async (req, res) => {
 
         // 3. Search Filter
         if (search) {
-            whereClause[Op.or] = [
+            const searchConditions = [
                 { billNumber: { [Op.iLike]: `%${search}%` } },
                 { '$retailer.shopName$': { [Op.iLike]: `%${search}%` } },
                 { '$salesRep.name$': { [Op.iLike]: `%${search}%` } }
             ];
+
+            // If search is a number, also search by ID
+            if (!isNaN(search) && !isNaN(parseFloat(search))) {
+                searchConditions.push({ id: parseInt(search) });
+            }
+
+            // If search looks like a date (YYYY-MM-DD), also search by created date
+            if (/^\d{4}-\d{2}-\d{2}$/.test(search)) {
+                const istOffset = 5.5 * 60 * 60 * 1000;
+                const searchDate = new Date(search);
+                if (!isNaN(searchDate.getTime())) {
+                    const startDay = new Date(new Date(search + 'T00:00:00.000Z').getTime() - istOffset);
+                    const endDay = new Date(new Date(search + 'T23:59:59.999Z').getTime() - istOffset);
+                    searchConditions.push({ cancelledAt: { [Op.between]: [startDay, endDay] } });
+                }
+            }
+
+            whereClause[Op.or] = searchConditions;
         }
 
         // Apply Date Range Filter Based on Cancellation Date (IST Aware)
@@ -731,8 +764,8 @@ const getCancelledOrders = async (req, res) => {
         const { count, rows: orders } = await CancelledOrder.findAndCountAll({
             where: whereClause,
             include: [
-                { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'phone'] },
-                { model: User, as: 'salesRep', attributes: ['id', 'name'] },
+                { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'phone'], required: false },
+                { model: User, as: 'salesRep', attributes: ['id', 'name'], required: false },
                 { model: CancelledOrderItem, as: 'items', include: [{ model: Product, attributes: ['id', 'name', 'gstPercentage', 'hsnCode'] }] }
             ],
             order: [['cancelledAt', 'DESC'], ['id', 'DESC']],

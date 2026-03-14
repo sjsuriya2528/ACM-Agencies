@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import {
     Package, Plus, Eye, Trash2, Search, X, Printer,
@@ -130,24 +130,24 @@ const SearchableProductSelect = ({ value, products, onChange, placeholder = "Sel
                     setIsOpen(!isOpen);
                     if (!isOpen) setTimeout(() => inputRef.current?.focus(), 10);
                 }}
-                className={`w-full px-3 py-2.5 bg-white border rounded-lg text-sm cursor-pointer flex justify-between items-center transition-all ${isOpen ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'}`}
+                className={`w-full px-3 py-2.5 bg-white dark:bg-slate-800 border rounded-lg text-sm cursor-pointer flex justify-between items-center transition-all ${isOpen ? 'border-indigo-400 ring-2 ring-indigo-100 dark:ring-indigo-900/30' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
             >
-                <span className={selectedProduct ? 'text-slate-900 font-bold' : 'text-slate-400'}>
+                <span className={selectedProduct ? 'text-slate-900 dark:text-slate-100 font-bold' : 'text-slate-400 dark:text-slate-500'}>
                     {selectedProduct ? selectedProduct.name : placeholder}
                 </span>
-                <Search size={14} className="text-slate-400" />
+                <Search size={14} className="text-slate-400 dark:text-slate-500" />
             </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-80 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                    <div className="p-3 border-b border-slate-50 bg-slate-50/50">
+                <div className="absolute z-50 w-80 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-3 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                         <input
                             ref={inputRef}
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Type to search..."
-                            className="w-full px-4 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 transition-all font-medium"
+                            className="w-full px-4 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900/50 transition-all font-medium dark:text-slate-100"
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>
@@ -161,17 +161,17 @@ const SearchableProductSelect = ({ value, products, onChange, placeholder = "Sel
                                         setIsOpen(false);
                                         setSearch('');
                                     }}
-                                    className={`px-4 py-3 text-sm cursor-pointer hover:bg-indigo-50 border-b border-slate-50 last:border-0 flex flex-col gap-0.5 ${String(p.id) === String(value) ? 'bg-indigo-50/50' : ''}`}
+                                    className={`px-4 py-3 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-50 dark:border-slate-800 last:border-0 flex flex-col gap-0.5 ${String(p.id) === String(value) ? 'bg-indigo-50/50 dark:bg-indigo-900/30' : ''}`}
                                 >
-                                    <div className="font-bold text-slate-800">{p.name}</div>
+                                    <div className="font-bold text-slate-800 dark:text-slate-100">{p.name}</div>
                                     <div className="flex items-center gap-3">
-                                        {p.sku && <span className="text-[11px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-bold uppercase">{p.sku}</span>}
-                                        <span className="text-[11px] text-indigo-500 font-bold">₹{p.price}/btl</span>
+                                        {p.sku && <span className="text-[11px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold uppercase">{p.sku}</span>}
+                                        <span className="text-[11px] text-indigo-500 dark:text-indigo-400 font-bold">₹{p.price}/btl</span>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="px-3 py-4 text-center text-xs text-slate-400">No products found</div>
+                            <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">No products found</div>
                         )}
                     </div>
                 </div>
@@ -580,31 +580,31 @@ const Purchases = () => {
     // ════════════════════════════════════════════════════════════════════════════
     if (showCreate) {
         return (
-            <div className="animate-fade-in-up -mx-6 -mt-6 min-h-screen bg-slate-50 flex flex-col">
+            <div className="animate-fade-in-up -mx-6 -mt-6 min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors">
                 {/* Sticky Top Bar */}
-                <div className="sticky top-0 z-20 bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-sm">
+                <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setShowCreate(false)}
-                            className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 font-semibold text-sm transition-colors"
+                            className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold text-sm transition-colors"
                         >
                             <ArrowLeft size={16} /> Back to Bills
                         </button>
-                        <div className="w-px h-5 bg-slate-200" />
+                        <div className="w-px h-5 bg-slate-200 dark:bg-slate-800" />
                         <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-indigo-100 rounded-lg">
-                                <FileText size={14} className="text-indigo-600" />
+                            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                                <FileText size={14} className="text-indigo-600 dark:text-indigo-400" />
                             </div>
-                            <span className="font-bold text-slate-800 text-sm">New Purchase Bill</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">New Purchase Bill</span>
                             {form.supplierName && (
-                                <span className="text-slate-400 text-sm">— {form.supplierName}</span>
+                                <span className="text-slate-400 dark:text-slate-500 text-sm">— {form.supplierName}</span>
                             )}
                         </div>
                     </div>
                     <button
                         onClick={handleSubmit}
                         disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 disabled:opacity-60"
                     >
                         {saving ? <LoadingSpinner size="sm" /> : <Plus size={16} />}
                         Save Purchase Bill
@@ -616,43 +616,44 @@ const Purchases = () => {
                     <div className="flex-1 px-8 py-8 space-y-8 overflow-auto">
 
                         {/* Bill Header */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-5 flex items-center gap-2">
-                                <Building2 size={12} className="text-indigo-400" /> Supplier &amp; Invoice Details
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 overflow-hidden relative transition-colors">
+                            <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-600" />
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-5 flex items-center gap-2">
+                                <Building2 size={12} className="text-indigo-400 dark:text-indigo-500" /> Supplier &amp; Invoice Details
                             </p>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-1.5">
-                                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                        <Calendar size={11} className="text-indigo-400" /> Bill Date
+                                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                        <Calendar size={11} className="text-indigo-400 dark:text-indigo-500" /> Bill Date
                                     </label>
                                     <input type="date" value={form.billDate}
                                         onChange={e => setForm(f => ({ ...f, billDate: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 outline-none hover:border-slate-300 transition-colors" />
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-950 outline-none hover:border-slate-300 dark:hover:border-slate-600 transition-all dark:text-slate-100" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                        <Hash size={11} className="text-indigo-400" /> Supplier Invoice No
+                                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                        <Hash size={11} className="text-indigo-400 dark:text-indigo-500" /> Supplier Invoice No
                                     </label>
                                     <input type="text" placeholder="e.g. 000185" value={form.invoiceNo}
                                         onChange={e => setForm(f => ({ ...f, invoiceNo: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 outline-none hover:border-slate-300 transition-colors" />
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-950 outline-none hover:border-slate-300 dark:hover:border-slate-600 transition-all dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                        <Building2 size={11} className="text-indigo-400" /> Supplier Name
+                                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                        <Building2 size={11} className="text-indigo-400 dark:text-indigo-500" /> Supplier Name
                                     </label>
                                     <input type="text" placeholder="e.g. SHARANG TRADERS" value={form.supplierName}
                                         onChange={e => setForm(f => ({ ...f, supplierName: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 outline-none hover:border-slate-300 transition-colors" />
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-950 outline-none hover:border-slate-300 dark:hover:border-slate-600 transition-all dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500" />
                                 </div>
                             </div>
                         </div>
 
                         {/* Items Table */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                                <p className="text-sm font-black uppercase tracking-widest text-slate-800 flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-100">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-x-auto transition-colors">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                <p className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-100 flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-600 dark:bg-indigo-700 rounded-lg text-white shadow-lg shadow-indigo-100 dark:shadow-none">
                                         <Layers size={18} />
                                     </div>
                                     Purchase Entry Details
@@ -660,19 +661,19 @@ const Purchases = () => {
                                 <div className="flex items-center gap-3">
                                     <button
                                         onClick={() => setShowCatalog(!showCatalog)}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showCatalog ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showCatalog ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50'}`}
                                     >
                                         <Package size={14} />
                                         {showCatalog ? 'Close Catalog' : 'Quick Catalog'}
                                     </button>
-                                    <span className="text-xs font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">
+                                    <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
                                         {items.filter(i => i.description).length} item(s)
                                     </span>
                                 </div>
                             </div>
 
                             {/* Column headers */}
-                            <div className="grid text-xs font-bold uppercase tracking-wider text-slate-500 px-5 py-4 bg-slate-50 border-b border-slate-200"
+                            <div className="grid text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 py-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700"
                                 style={{ gridTemplateColumns: '44px 1fr 240px 100px 140px 130px 48px' }}>
                                 <div className="text-center">#</div>
                                 <div>Item Description</div>
@@ -684,20 +685,20 @@ const Purchases = () => {
                             </div>
 
                             {/* Rows */}
-                            <div className="divide-y divide-slate-50">
+                            <div className="divide-y divide-slate-50 dark:divide-slate-800">
                                 {items.map((item, idx) => {
                                     const bpc = item._bpc || 1;
                                     const bottles = (Number(item.quantity) || 0) * bpc;
                                     return (
                                         <div key={idx}
-                                            className={`grid items-center gap-4 px-4 py-5 hover:bg-indigo-50/30 transition-colors border-b border-slate-50 last:border-0 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                                            className={`grid items-center gap-4 px-4 py-5 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/30 dark:bg-slate-800/20'}`}
                                             style={{ gridTemplateColumns: '44px 1fr 240px 100px 140px 130px 48px' }}>
-                                            <div className="text-center text-sm text-slate-400 font-black">{idx + 1}</div>
+                                            <div className="text-center text-sm text-slate-400 dark:text-slate-500 font-black">{idx + 1}</div>
                                             <div>
                                                 <input type="text" value={item.description}
                                                     onChange={e => updateItem(idx, 'description', e.target.value)}
                                                     placeholder="Enter product description..."
-                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none transition-all" />
+                                                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900/50 outline-none transition-all placeholder-slate-400 dark:placeholder-slate-600" />
                                             </div>
                                             <div>
                                                 <SearchableProductSelect
@@ -710,27 +711,27 @@ const Purchases = () => {
                                                 <input type="number" min="1" value={item.quantity}
                                                     onChange={e => updateItem(idx, 'quantity', e.target.value)}
                                                     placeholder="0"
-                                                    className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl text-base font-black text-center focus:ring-2 focus:ring-indigo-400 outline-none transition-all" />
+                                                    className="w-full px-3 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-center focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900/50 outline-none transition-all dark:text-slate-100" />
                                                 {bottles > 0 && (
-                                                    <div className="text-center text-[11px] text-indigo-600 font-black mt-1.5 bg-indigo-50 py-0.5 rounded-lg uppercase tracking-tighter">{bottles} Bottles</div>
+                                                    <div className="text-center text-[11px] text-indigo-600 dark:text-indigo-400 font-black mt-1.5 bg-indigo-50 dark:bg-indigo-900/30 py-0.5 rounded-lg uppercase tracking-tighter">{bottles} Bottles</div>
                                                 )}
                                             </div>
                                             <div className="relative">
-                                                <span className="absolute left-3.5 top-3.5 text-slate-400 text-sm font-black">₹</span>
+                                                <span className="absolute left-3.5 top-3.5 text-slate-400 dark:text-slate-500 text-sm font-black">₹</span>
                                                 <input type="number" min="0" step="0.01" value={item.rate}
                                                     onChange={e => updateItem(idx, 'rate', e.target.value)}
                                                     placeholder="0.00"
-                                                    className="w-full pl-8 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-base font-black text-right focus:ring-2 focus:ring-indigo-400 outline-none transition-all" />
+                                                    className="w-full pl-8 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-right focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900/50 outline-none transition-all dark:text-slate-100 placeholder-slate-400" />
                                             </div>
                                             <div className="text-right pr-4">
                                                 {item.amount > 0
-                                                    ? <span className="font-black text-slate-900 text-base">₹{fmt(item.amount)}</span>
-                                                    : <span className="text-slate-200 text-xl font-black">—</span>}
+                                                    ? <span className="font-black text-slate-900 dark:text-slate-100 text-base">₹{fmt(item.amount)}</span>
+                                                    : <span className="text-slate-200 dark:text-slate-800 text-xl font-black">—</span>}
                                             </div>
                                             <div className="flex justify-center">
                                                 {items.length > 1 && (
                                                     <button onClick={() => removeItem(idx)}
-                                                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors">
+                                                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-400 transition-colors">
                                                         <X size={13} />
                                                     </button>
                                                 )}
@@ -741,67 +742,67 @@ const Purchases = () => {
                             </div>
 
                             {/* Add Row */}
-                            <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+                            <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
                                 <button onClick={addItem}
-                                    className="flex items-center gap-2 text-indigo-500 hover:text-indigo-700 font-semibold text-sm transition-colors px-3 py-2 rounded-xl hover:bg-indigo-50">
+                                    className="flex items-center gap-2 text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold text-sm transition-colors px-3 py-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
                                     <Plus size={15} /> Add another item
                                 </button>
                             </div>
                         </div>
 
                         {/* Notes */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
-                                Notes <span className="text-slate-300 font-normal normal-case tracking-normal">(optional)</span>
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 transition-colors">
+                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
+                                Notes <span className="text-slate-300 dark:text-slate-700 font-normal normal-case tracking-normal">(optional)</span>
                             </label>
                             <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                                 rows={3} placeholder="Any remarks about this purchase bill..."
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 outline-none resize-none" />
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-950 outline-none resize-none dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 transition-all" />
                         </div>
                     </div>
 
                     {/* ── Right: Sticky Summary Panel ── */}
-                    <div className={`${showCatalog ? 'w-[480px]' : 'w-72'} shrink-0 border-l border-slate-200 bg-white space-y-0 sticky top-14 self-start transition-all duration-300 flex flex-col h-[calc(100vh-56px)] overflow-hidden`}>
+                    <div className={`${showCatalog ? 'w-[480px]' : 'w-72'} shrink-0 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-0 sticky top-14 self-start transition-all duration-300 flex flex-col h-[calc(100vh-56px)] overflow-hidden`}>
 
                         {showCatalog && (
-                            <div className="flex-1 flex flex-col min-h-0 border-b border-slate-100">
-                                <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <div className="flex-1 flex flex-col min-h-0 border-b border-slate-100 dark:border-slate-800">
+                                <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <Package size={16} className="text-indigo-600" />
-                                        <span className="font-bold text-slate-800 text-sm italic uppercase tracking-wider">Product Catalog</span>
+                                        <Package size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                        <span className="font-bold text-slate-800 dark:text-slate-100 text-sm italic uppercase tracking-wider">Product Catalog</span>
                                     </div>
-                                    <button onClick={() => setShowCatalog(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                                    <button onClick={() => setShowCatalog(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-1">
                                         <X size={16} />
                                     </button>
                                 </div>
-                                <div className="p-4 border-b border-slate-100 bg-white">
+                                <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
                                     <div className="relative">
-                                        <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                                        <Search size={14} className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
                                         <input
                                             type="text"
                                             placeholder="Search items to add..."
-                                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
+                                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900 outline-none dark:text-slate-200"
                                             value={catalogSearch}
                                             onChange={e => setCatalogSearch(e.target.value)}
                                         />
                                     </div>
                                 </div>
-                                <div className="flex-1 overflow-auto p-2 bg-slate-50/30 font-sans">
+                                <div className="flex-1 overflow-auto p-2 bg-slate-50/30 dark:bg-slate-800/10 font-sans">
                                     <div className="grid grid-cols-1 gap-2">
                                         {products.filter(p => !catalogSearch || p.name.toLowerCase().includes(catalogSearch.toLowerCase())).map(p => (
                                             <div
                                                 key={p.id}
                                                 onClick={() => addProductToItems(p)}
-                                                className="group bg-white p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+                                                className="group bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
                                             >
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-slate-800 text-[13px] truncate">{p.name}</p>
+                                                    <p className="font-bold text-slate-800 dark:text-slate-100 text-[13px] truncate">{p.name}</p>
                                                     <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">{p.sku || 'No SKU'}</span>
-                                                        <span className="text-[10px] text-slate-400">₹{p.price}/btl</span>
+                                                        <span className="text-[10px] bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded font-bold uppercase">{p.sku || 'No SKU'}</span>
+                                                        <span className="text-[10px] text-slate-400 dark:text-slate-500">₹{p.price}/btl</span>
                                                     </div>
                                                 </div>
-                                                <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all">
+                                                <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-700 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500 group-hover:text-white flex items-center justify-center transition-all">
                                                     <Plus size={16} />
                                                 </div>
                                             </div>
@@ -830,23 +831,23 @@ const Purchases = () => {
                             </div>
 
                             <div className="space-y-3">
-                                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Tax &amp; Adjustments</p>
+                                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Tax &amp; Adjustments</p>
                                 {[
                                     { key: 'cgstAmount', label: 'CGST' },
                                     { key: 'sgstAmount', label: 'SGST' },
                                     { key: 'roundOff', label: 'Round Off' },
                                 ].map(({ key, label }) => (
                                     <div key={key} className="flex items-center gap-3">
-                                        <label className="text-xs font-semibold text-slate-500 w-20 shrink-0">{label} ₹</label>
+                                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 w-20 shrink-0">{label} ₹</label>
                                         <input type="number" step="0.01" value={form[key]}
                                             onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                                             placeholder="0.00"
-                                            className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none text-right bg-slate-50" />
+                                            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900 outline-none text-right bg-slate-50 dark:bg-slate-800 dark:text-slate-100 transition-all" />
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-5 text-white">
+                            <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-5 text-white shadow-lg shadow-indigo-100 dark:shadow-none">
                                 <p className="text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Net Total</p>
                                 <p className="text-4xl font-black tracking-tight">₹{fmt(netTotal)}</p>
                                 <div className="mt-3 pt-3 border-t border-white/20 space-y-1 text-xs opacity-75">
@@ -857,12 +858,12 @@ const Purchases = () => {
                             </div>
 
                             <button onClick={handleSubmit} disabled={saving}
-                                className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60">
+                                className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 disabled:opacity-60">
                                 {saving ? <LoadingSpinner size="sm" /> : <Plus size={17} />}
                                 Save Purchase Bill
                             </button>
                             <button onClick={() => setShowCreate(false)}
-                                className="w-full py-2.5 text-slate-500 hover:text-slate-700 font-semibold text-sm transition-colors">
+                                className="w-full py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-semibold text-sm transition-colors">
                                 Cancel
                             </button>
                         </div>
@@ -879,7 +880,7 @@ const Purchases = () => {
         <div className="animate-fade-in-up space-y-6">
 
             {/* ── Hero Header ── */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-7 text-white shadow-2xl shadow-indigo-200">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-7 text-white shadow-2xl shadow-indigo-200 dark:shadow-none transition-colors">
                 <div className="absolute inset-0 opacity-10" style={{
                     backgroundImage: 'radial-gradient(circle at 80% 50%, white 1px, transparent 1px)',
                     backgroundSize: '28px 28px',
@@ -896,7 +897,7 @@ const Purchases = () => {
                     </div>
                     <button
                         onClick={() => { setShowCreate(true); resetForm(); }}
-                        className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-700 rounded-2xl font-bold shadow-lg hover:bg-indigo-50 transition-all active:scale-95 text-sm whitespace-nowrap"
+                        className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 rounded-2xl font-bold shadow-lg hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all active:scale-95 text-sm whitespace-nowrap"
                     >
                         <Plus size={18} /> New Purchase Bill
                     </button>
@@ -904,18 +905,18 @@ const Purchases = () => {
             </div>
 
             {/* ── Tabs ── */}
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit">
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-fit transition-colors">
                 {[
                     { key: 'bills', label: 'Purchase Bills', icon: ClipboardList },
                     { key: 'stock', label: 'Current Stock', icon: BarChart2 },
                 ].map(({ key, label, icon: Icon }) => (
                     <button key={key} onClick={() => setActiveTab(key)}
                         className={`flex items-center gap-2 px-6 py-2.5 font-semibold text-sm rounded-xl transition-all ${activeTab === key
-                            ? 'bg-white text-indigo-700 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'}`}>
+                            ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-400 shadow-sm'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
                         <Icon size={16} />{label}
                         {key === 'bills' && total > 0 && (
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === key ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === key ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                                 {total}
                             </span>
                         )}
@@ -927,36 +928,36 @@ const Purchases = () => {
             {activeTab === 'bills' && (
                 <div className="space-y-4">
                     {/* Search + Report Row */}
-                    <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3 justify-between">
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3 justify-between transition-colors">
                         <div className="relative w-full max-w-sm">
-                            <Search size={15} className="absolute left-4 top-3.5 text-slate-400" />
+                            <Search size={15} className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500" />
                             <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
                                 placeholder="Search bill no, supplier, invoice..."
-                                className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none text-sm bg-white shadow-sm" />
+                                className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900 outline-none text-sm bg-white dark:bg-slate-900 dark:text-slate-100 shadow-sm transition-all" />
                         </div>
 
                         {/* InvoiceWise Report Generator */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white border border-indigo-100 rounded-2xl px-4 py-3 shadow-sm w-full lg:w-auto">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm w-full lg:w-auto transition-colors">
                             <div className="flex items-center gap-1.5">
-                                <FileText size={14} className="text-indigo-500 shrink-0" />
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Invoice Report</span>
+                                <FileText size={14} className="text-indigo-500 dark:text-indigo-400 shrink-0" />
+                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">Invoice Report</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-                                    <Calendar size={12} className="text-slate-400" />
+                                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 transition-colors">
+                                    <Calendar size={12} className="text-slate-400 dark:text-slate-500" />
                                     <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)}
-                                        className="bg-transparent border-none text-xs font-medium text-slate-700 focus:ring-0 outline-none w-28" />
+                                        className="bg-transparent border-none text-xs font-medium text-slate-700 dark:text-slate-200 focus:ring-0 outline-none w-28" />
                                 </div>
-                                <span className="text-slate-400 font-bold text-xs">→</span>
-                                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-                                    <Calendar size={12} className="text-slate-400" />
+                                <span className="text-slate-400 dark:text-slate-600 font-bold text-xs">→</span>
+                                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 transition-colors">
+                                    <Calendar size={12} className="text-slate-400 dark:text-slate-500" />
                                     <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)}
-                                        className="bg-transparent border-none text-xs font-medium text-slate-700 focus:ring-0 outline-none w-28" />
+                                        className="bg-transparent border-none text-xs font-medium text-slate-700 dark:text-slate-200 focus:ring-0 outline-none w-28" />
                                 </div>
                                 <button
                                     onClick={generateReport}
                                     disabled={reportLoading}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 dark:shadow-none transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap"
                                 >
                                     {reportLoading ? <span className="animate-spin">⟳</span> : <Printer size={13} />}
                                     Print Report
@@ -968,16 +969,16 @@ const Purchases = () => {
                     {loading ? (
                         <div className="py-20 flex justify-center"><LoadingSpinner /></div>
                     ) : bills.length === 0 ? (
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm py-24 flex flex-col items-center gap-4 text-center">
-                            <div className="p-5 bg-indigo-50 rounded-full">
-                                <ShoppingBag size={40} className="text-indigo-300" />
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm py-24 flex flex-col items-center gap-4 text-center transition-colors">
+                            <div className="p-5 bg-indigo-50 dark:bg-indigo-900/30 rounded-full">
+                                <ShoppingBag size={40} className="text-indigo-300 dark:text-indigo-500" />
                             </div>
                             <div>
-                                <p className="font-bold text-slate-700 text-lg">No purchase bills yet</p>
-                                <p className="text-slate-400 text-sm mt-1">Create your first bill to start tracking supplier invoices</p>
+                                <p className="font-bold text-slate-700 dark:text-slate-200 text-lg">No purchase bills yet</p>
+                                <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">Create your first bill to start tracking supplier invoices</p>
                             </div>
                             <button onClick={() => { setShowCreate(true); resetForm(); }}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all">
+                                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all">
                                 <Plus size={16} /> Create First Bill
                             </button>
                         </div>
@@ -987,28 +988,28 @@ const Purchases = () => {
                             <div className="space-y-3">
                                 {bills.map((bill) => (
                                     <div key={bill.id}
-                                        className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all p-5 flex items-center gap-5 group">
+                                        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500 transition-all p-5 flex items-center gap-5 group">
                                         {/* Bill No Badge */}
-                                        <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 flex flex-col items-center justify-center">
-                                            <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">Bill</span>
-                                            <span className="text-sm font-black text-indigo-700 leading-none">{bill.billNo?.split('-').pop() || bill.billNo}</span>
+                                        <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950 dark:to-violet-950 border border-indigo-100 dark:border-indigo-900/50 flex flex-col items-center justify-center">
+                                            <span className="text-[9px] font-bold text-indigo-400 dark:text-indigo-500 uppercase tracking-wider">Bill</span>
+                                            <span className="text-sm font-black text-indigo-700 dark:text-indigo-300 leading-none">{bill.billNo?.split('-').pop() || bill.billNo}</span>
                                         </div>
 
                                         {/* Main Info */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-bold text-slate-800 text-base truncate">{bill.supplierName}</span>
+                                                <span className="font-bold text-slate-800 dark:text-slate-100 text-base truncate">{bill.supplierName}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 text-xs text-slate-400">
+                                            <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
                                                 <span className="flex items-center gap-1">
                                                     <Calendar size={11} /> {toDate(bill.billDate)}
                                                 </span>
-                                                <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                                <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-800" />
                                                 <span className="flex items-center gap-1 font-mono">
                                                     <Hash size={11} /> {bill.invoiceNo}
                                                 </span>
-                                                <span className="w-1 h-1 rounded-full bg-slate-200" />
-                                                <span className="font-semibold text-indigo-500">{bill.billNo}</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+                                                <span className="font-semibold text-indigo-500 dark:text-indigo-400">{bill.billNo}</span>
                                             </div>
                                         </div>
 
@@ -1021,11 +1022,11 @@ const Purchases = () => {
                                         {/* Actions */}
                                         <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => openView(bill.id)}
-                                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors">
+                                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 text-xs font-bold transition-colors">
                                                 <Eye size={13} /> View
                                             </button>
                                             <button onClick={() => deleteBill(bill.id, bill.billNo)}
-                                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors">
+                                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-bold transition-colors">
                                                 <Trash2 size={13} /> Delete
                                             </button>
                                         </div>
@@ -1035,18 +1036,18 @@ const Purchases = () => {
 
                             {/* Pagination */}
                             {total > 25 && (
-                                <div className="flex justify-between items-center text-sm bg-white rounded-2xl border border-slate-100 px-5 py-3 shadow-sm">
-                                    <span className="text-slate-400 font-medium">{total} total bills</span>
+                                <div className="flex justify-between items-center text-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 px-5 py-3 shadow-sm transition-colors">
+                                    <span className="text-slate-400 dark:text-slate-500 font-medium">{total} total bills</span>
                                     <div className="flex items-center gap-2">
                                         <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-                                            className="p-2 rounded-xl border disabled:opacity-30 hover:bg-slate-50 transition-colors">
+                                            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors dark:text-slate-400">
                                             <ChevronLeft size={16} />
                                         </button>
-                                        <span className="px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm">
+                                        <span className="px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold text-sm">
                                             {page} / {Math.ceil(total / 25)}
                                         </span>
                                         <button disabled={page * 25 >= total} onClick={() => setPage(p => p + 1)}
-                                            className="p-2 rounded-xl border disabled:opacity-30 hover:bg-slate-50 transition-colors">
+                                            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors dark:text-slate-400">
                                             <ChevRight size={16} />
                                         </button>
                                     </div>
@@ -1084,28 +1085,28 @@ const Purchases = () => {
                                 sub: `qty = 0`,
                             },
                         ].map(({ label, value, icon: Icon, bg, text, sub }) => (
-                            <div key={label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-start gap-4">
-                                <div className={`p-2.5 rounded-xl ${bg}`}>
-                                    <Icon size={20} className={text} />
+                            <div key={label} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 flex items-start gap-4 transition-colors">
+                                <div className={`p-2.5 rounded-xl ${bg} dark:bg-slate-800`}>
+                                    <Icon size={20} className={`${text} dark:text-indigo-400`} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">{label}</p>
-                                    <p className="text-2xl font-extrabold text-slate-800 mt-0.5">{value}</p>
-                                    <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wide">{label}</p>
+                                    <p className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-0.5">{value}</p>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
                     {/* Search + Filter row */}
-                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center transition-colors">
                         <div className="relative w-full max-w-sm">
-                            <Search size={15} className="absolute left-4 top-3.5 text-slate-400" />
+                            <Search size={15} className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500" />
                             <input value={stockSearch} onChange={e => setStockSearch(e.target.value)}
                                 placeholder="Search product or SKU..."
-                                className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none text-sm bg-white shadow-sm" />
+                                className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-900 outline-none text-sm bg-white dark:bg-slate-900 dark:text-slate-100 shadow-sm transition-all" />
                         </div>
-                        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl transition-colors">
                             {[
                                 { key: 'all', label: 'All' },
                                 { key: 'in', label: 'In Stock' },
@@ -1113,7 +1114,7 @@ const Purchases = () => {
                                 { key: 'out', label: 'Out' },
                             ].map(({ key, label }) => (
                                 <button key={key} onClick={() => setStockFilter(key)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${stockFilter === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${stockFilter === key ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
                                     {label}
                                 </button>
                             ))}
@@ -1121,11 +1122,11 @@ const Purchases = () => {
                     </div>
 
                     {/* Stock table */}
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
                         <div className="overflow-x-auto">
                             <table className="min-w-full">
                                 <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
+                                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500">
                                         <th className="px-6 py-4 text-left font-semibold">Product</th>
                                         <th className="px-6 py-4 text-left font-semibold">SKU</th>
                                         <th className="px-6 py-4 text-left font-semibold">Group</th>
@@ -1135,7 +1136,7 @@ const Purchases = () => {
                                         <th className="px-6 py-4 text-center font-semibold">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50 text-sm">
+                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800 text-sm">
                                     {filteredStock.length === 0 && (
                                         <tr><td colSpan={7} className="py-16 text-center text-slate-400">No products found</td></tr>
                                     )}
@@ -1145,29 +1146,29 @@ const Purchases = () => {
                                         const stockStatus = p.stockQuantity <= 0 ? 'out'
                                             : p.stockQuantity <= 50 ? 'low' : 'in';
                                         return (
-                                            <tr key={p.id} className="hover:bg-indigo-50/20 transition-colors">
+                                            <tr key={p.id} className="hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors">
                                                 <td className="px-6 py-4">
-                                                    <span className="font-semibold text-slate-800">{p.name}</span>
+                                                    <span className="font-semibold text-slate-800 dark:text-slate-100">{p.name}</span>
                                                 </td>
-                                                <td className="px-6 py-4 text-slate-400 font-mono text-xs">{p.sku || '—'}</td>
-                                                <td className="px-6 py-4 text-slate-500 text-xs">{p.groupName || '—'}</td>
-                                                <td className="px-6 py-4 text-center text-slate-600 font-mono">{bpc}</td>
+                                                <td className="px-6 py-4 text-slate-400 dark:text-slate-500 font-mono text-xs">{p.sku || '—'}</td>
+                                                <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">{p.groupName || '—'}</td>
+                                                <td className="px-6 py-4 text-center text-slate-600 dark:text-slate-300 font-mono">{bpc}</td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <span className={`font-extrabold text-lg ${stockStatus === 'in' ? 'text-emerald-600' : stockStatus === 'low' ? 'text-amber-600' : 'text-red-500'}`}>
+                                                    <span className={`font-extrabold text-lg ${stockStatus === 'in' ? 'text-emerald-600 dark:text-emerald-400' : stockStatus === 'low' ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400'}`}>
                                                         {p.stockQuantity}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-center text-slate-500 text-sm">≈ {crates}</td>
+                                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 text-sm">≈ {crates}</td>
                                                 <td className="px-6 py-4 text-center">
                                                     {stockStatus === 'out'
-                                                        ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 rounded-full text-[11px] font-bold">
+                                                        ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-[11px] font-bold">
                                                             <X size={10} /> Out of Stock
                                                         </span>
                                                         : stockStatus === 'low'
-                                                            ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-[11px] font-bold">
+                                                            ? <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-[11px] font-bold">
                                                                 <AlertTriangle size={10} /> Low Stock
                                                             </span>
-                                                            : <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-bold">
+                                                            : <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-[11px] font-bold">
                                                                 <CheckCircle size={10} /> In Stock
                                                             </span>
                                                     }
@@ -1185,26 +1186,26 @@ const Purchases = () => {
             {/* ════ VIEW/PRINT MODAL ════ */}
             {(viewBill || viewLoading) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-6 px-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl my-auto overflow-hidden">
-                        <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100">
-                            <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                                <div className="p-1.5 bg-indigo-100 rounded-lg"><FileText size={16} className="text-indigo-600" /></div>
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl my-auto overflow-hidden transition-colors border border-slate-200 dark:border-slate-800">
+                        <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 dark:border-slate-800 transition-colors">
+                            <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg flex items-center gap-2">
+                                <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg"><FileText size={16} className="text-indigo-600 dark:text-indigo-400" /></div>
                                 {viewBill?.billNo} — {viewBill?.supplierName}
                             </h2>
                             <div className="flex gap-2">
                                 {viewBill && (
                                     <button onClick={handlePrint}
-                                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-semibold text-sm transition-all">
+                                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white rounded-xl font-semibold text-sm transition-all">
                                         <Printer size={15} /> Print
                                     </button>
                                 )}
                                 <button onClick={() => setViewBill(null)}
-                                    className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors">
+                                    className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors">
                                     <X size={20} />
                                 </button>
                             </div>
                         </div>
-                        <div className="p-8">
+                        <div className="p-8 dark:bg-slate-900 transition-colors">
                             {viewLoading ? <div className="py-20 flex justify-center"><LoadingSpinner /></div>
                                 : <PrintTemplate bill={viewBill} />}
                         </div>

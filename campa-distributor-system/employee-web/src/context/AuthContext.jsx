@@ -24,14 +24,14 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', { email, password }, {
                 headers: { 'x-loading-term': 'Authenticating' }
             });
-            const userData = response.data; // Assuming API returns user object with role and token
-            // Store token if applicable, for now assuming simple user object
+            const userData = response.data;
+            
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
             return { success: true };
         } catch (error) {
             console.error("Login failed", error);
-            return { success: false, message: error.response?.data?.error || "Login failed" };
+            return { success: false, message: error.response?.data?.message || "Login failed" };
         }
     };
 

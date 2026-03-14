@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/retailer.dart';
 import 'order/create_order_screen.dart';
 import '../services/api_service.dart';
-import '../theme/app_theme.dart';
 
 class RetailersScreen extends StatefulWidget {
   const RetailersScreen({super.key});
@@ -60,21 +59,20 @@ class _RetailersScreenState extends State<RetailersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).cardTheme.color,
             elevation: 0,
             pinned: true,
             leading: IconButton(
-              icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF1E293B)),
+              icon: Icon(LucideIcons.arrowLeft, color: Theme.of(context).textTheme.bodySmall?.color),
               onPressed: () => Navigator.pop(context),
             ),
             title: const Text(
               'Retailers',
               style: TextStyle(
-                color: Color(0xFF1E293B),
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.5,
@@ -84,20 +82,20 @@ class _RetailersScreenState extends State<RetailersScreen> {
               preferredSize: const Size.fromHeight(80),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color,
+                  border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.05))),
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
                   ),
                   child: TextField(
                     controller: _searchController,
                     onChanged: (value) => setState(() => _searchQuery = value),
-                    style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color),
                     decoration: InputDecoration(
                       hintText: 'Search by shop, owner, or phone...',
                       hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
@@ -132,12 +130,12 @@ class _RetailersScreenState extends State<RetailersScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFF1F5F9),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(LucideIcons.store, size: 48, color: Color(0xFFCBD5E1)),
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).dividerColor.withOpacity(0.05),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(LucideIcons.store, size: 48, color: Color(0xFFCBD5E1)),
                             ),
                             const SizedBox(height: 24),
                             const Text(
@@ -200,12 +198,14 @@ class _RetailerCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E293B).withOpacity(0.03),
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.black.withOpacity(0.2) 
+                : const Color(0xFF1E293B).withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -286,7 +286,6 @@ class _RetailerCard extends StatelessWidget {
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF1E293B),
                                       height: 1.2,
                                     ),
                                   ),

@@ -13,8 +13,10 @@ import {
     FileText,
     BarChart2,
     ClipboardList,
-    BookOpen
+    BookOpen,
+    User
 } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 const Sidebar = () => {
     const { logout } = useContext(AuthContext);
@@ -32,15 +34,19 @@ const Sidebar = () => {
         { path: '/ledger-report', label: 'Ledger Report', icon: <BookOpen size={20} /> },
         { path: '/purchases', label: 'Purchases & Stock', icon: <ClipboardList size={20} /> },
         { path: '/rep-performance', label: 'Rep Performance', icon: <BarChart2 size={20} /> },
+        { path: '/profile', label: 'My Profile', icon: <User size={20} /> },
     ];
 
     return (
-        <div className="w-72 h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-2xl">
-            <div className="p-6 border-b border-slate-700/50">
-                <div className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
-                    ACM Agencies
+        <div className="w-72 h-screen bg-[#0f172a] border-r border-white/5 text-slate-300 flex flex-col shadow-2xl transition-all duration-500">
+            <div className="p-6 border-b border-white/5 flex justify-between items-start">
+                <div>
+                    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                        ACM Agencies
+                    </div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-bold mt-1">Distributor Management System</p>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Distributor Management System</p>
+                <ThemeToggle />
             </div>
 
             <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -50,9 +56,9 @@ const Sidebar = () => {
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 group ${isActive
-                                ? 'bg-blue-600/90 shadow-lg shadow-blue-900/50 text-white font-medium'
-                                : 'text-slate-300 hover:bg-slate-800/50 hover:text-white hover:pl-5'
+                            className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-300 group ${isActive
+                                ? 'bg-blue-600 shadow-xl shadow-blue-600/20 text-white font-bold'
+                                : 'text-slate-400 hover:bg-white/5 hover:text-white hover:pl-5'
                                 }`}
                         >
                             <span className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'}`}>
@@ -64,16 +70,16 @@ const Sidebar = () => {
                 })}
             </nav>
 
-            <div className="p-4 border-t border-slate-700/50">
+            <div className="p-4 border-t border-white/5">
                 <button
                     onClick={() => {
                         logout();
                         window.location.href = '/login';
                     }}
-                    className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-600 hover:text-white text-red-200 border border-red-500/20 font-semibold py-3 px-4 rounded-xl transition-all duration-300"
+                    className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-black py-3.5 px-4 rounded-2xl transition-all duration-300 active:scale-95 group"
                 >
-                    <LogOut size={18} />
-                    Logout
+                    <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+                    <span className="uppercase tracking-widest text-[11px]">Logout</span>
                 </button>
             </div>
         </div>

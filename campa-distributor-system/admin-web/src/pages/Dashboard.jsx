@@ -13,10 +13,11 @@ import LedgerReport from './LedgerReport';
 import Deliveries from './Deliveries';
 import RepPerformance from './RepPerformance';
 import Purchases from './Purchases';
+import Profile from './Profile';
 
 const Dashboard = () => {
     return (
-        <div className="flex h-screen bg-gray-50 font-sans">
+        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans transition-colors duration-500">
             <Sidebar />
             <div className="flex-1 p-8 overflow-y-auto">
                 <Routes>
@@ -32,6 +33,7 @@ const Dashboard = () => {
                     <Route path="/ledger-report" element={<LedgerReport />} />
                     <Route path="/rep-performance" element={<RepPerformance />} />
                     <Route path="/purchases" element={<Purchases />} />
+                    <Route path="/profile" element={<Profile />} />
                 </Routes>
             </div>
         </div>

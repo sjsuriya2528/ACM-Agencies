@@ -75,7 +75,7 @@ const RetailerDetail = () => {
             const qty = item.quantity;
             totalQty += qty;
             const total = parseFloat(item.totalPrice);
-            const gstRate = parseFloat(item.Product?.gstPercentage || 18);
+            const gstRate = parseFloat(item.product?.gstPercentage || 18);
 
             const taxableValue = total / (1 + (gstRate / 100));
             const gstAmount = total - taxableValue;
@@ -91,7 +91,7 @@ const RetailerDetail = () => {
 
             return {
                 ...item,
-                hsn: item.Product?.hsnCode || '',
+                hsn: item.product?.hsnCode || '',
                 gstRate,
                 taxableRate,
                 taxableValue,
@@ -103,7 +103,7 @@ const RetailerDetail = () => {
         const invoiceContent = `
             <html>
             <head>
-                <title>Invoice #${order.Invoice?.invoiceNumber || order.id}</title>
+                <title>Invoice #${order.invoice?.invoiceNumber || order.id}</title>
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
                     body { font-family: 'Inter', sans-serif; color: black; margin: 0; padding: 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 12px; }
@@ -163,7 +163,7 @@ const RetailerDetail = () => {
                             </div>
                             <div class="col-right">
                                 <div class="col-right-top">
-                                    <div class="row"><span class="label">Invoice No</span><span class="value">: ${order.Invoice?.invoiceNumber || order.id}</span></div>
+                                    <div class="row"><span class="label">Invoice No</span><span class="value">: ${order.invoice?.invoiceNumber || order.id}</span></div>
                                     <div class="row"><span class="label">Date</span><span class="value">: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div>
                                     <div class="row"><span class="label">Vehicle</span><span class="value">: </span></div>
                                 </div>
@@ -186,7 +186,7 @@ const RetailerDetail = () => {
                                 ${enrichedItems.map((item, idx) => `
                                     <tr>
                                         <td class="text-center">${idx + 1}</td>
-                                        <td>${item.Product?.name || item.productName || 'Unknown'}</td>
+                                        <td>${item.product?.name || item.productName || 'Unknown'}</td>
                                         <td class="text-center">${item.hsn}</td>
                                         <td class="text-center">${item.quantity}</td>
                                         <td class="text-right">${item.taxableRate.toFixed(2)}</td>
@@ -322,7 +322,7 @@ const RetailerDetail = () => {
         }
         return (Array.isArray(retailer.orders) ? retailer.orders : [])
             .filter(o => o.Invoice)
-            .flatMap(o => o.Invoice.Payments?.map(p => ({ ...p, orderId: o.id, invoiceNumber: o.Invoice.invoiceNumber })) || [])
+            .flatMap(o => o.invoice.payments?.map(p => ({ ...p, orderId: o.id, invoiceNumber: o.invoice.invoiceNumber })) || [])
             .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
     })();
 
@@ -333,21 +333,21 @@ const RetailerDetail = () => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/retailers')}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                        className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-full transition-all text-gray-600 dark:text-slate-400 shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-slate-700"
                     >
                         <ArrowLeft size={24} />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">{retailer.shopName}</h1>
-                        <p className="text-gray-500 flex items-center gap-1.5 mt-0.5">
-                            <MapPin size={14} /> {retailer.address || 'No address provided'}
+                        <h1 className="text-3xl font-extrabold text-gray-800 dark:text-white tracking-tight">{retailer.shopName}</h1>
+                        <p className="text-gray-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium">
+                            <MapPin size={14} className="text-purple-500" /> {retailer.address || 'No address provided'}
                         </p>
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-end">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Credit Balance</span>
-                        <span className="text-xl font-black text-rose-600">₹{parseFloat(retailer.creditBalance || 0).toLocaleString()}</span>
+                    <div className="bg-white dark:bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col items-end transition-colors">
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em]">Credit Balance</span>
+                        <span className="text-2xl font-black text-rose-600 dark:text-rose-400">₹{parseFloat(retailer.creditBalance || 0).toLocaleString()}</span>
                     </div>
                 </div>
             </div>
@@ -355,60 +355,63 @@ const RetailerDetail = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Sidebar Info */}
                 <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-6 border-b border-gray-50 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
+                        <div className="p-6 border-b border-gray-50 dark:border-slate-800 flex items-center gap-3 bg-gray-50/50 dark:bg-slate-800/50">
+                            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 transition-colors">
                                 <User size={20} />
                             </div>
-                            <h2 className="font-bold text-gray-800">Contact Details</h2>
+                            <h2 className="font-bold text-gray-800 dark:text-slate-200 uppercase tracking-tight text-sm">Contact Details</h2>
                         </div>
                         <div className="p-6 space-y-4">
                             <div className="flex items-start gap-3">
-                                <div className="mt-1 text-gray-400"><User size={16} /></div>
+                                <div className="mt-1 text-gray-400 dark:text-slate-500"><User size={16} /></div>
                                 <div>
-                                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Owner Name</p>
-                                    <p className="text-gray-700 font-semibold">{retailer.ownerName || 'Not specified'}</p>
+                                    <p className="text-xs text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wider">Owner Name</p>
+                                    <p className="text-gray-700 dark:text-slate-300 font-semibold">{retailer.ownerName || 'Not specified'}</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
-                                <div className="mt-1 text-gray-400"><Phone size={16} /></div>
+                                <div className="mt-1 text-gray-400 dark:text-slate-500"><Phone size={16} /></div>
                                 <div>
-                                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Phone Number</p>
-                                    <p className="text-gray-700 font-semibold">{retailer.phone || 'Not specified'}</p>
+                                    <p className="text-xs text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wider">Phone Number</p>
+                                    <p className="text-gray-700 dark:text-slate-300 font-semibold">{retailer.phone || 'Not specified'}</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3">
-                                <div className="mt-1 text-gray-400"><FileText size={16} /></div>
+                                <div className="mt-1 text-gray-400 dark:text-slate-500"><FileText size={16} /></div>
                                 <div>
-                                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">GSTIN</p>
-                                    <p className="text-gray-700 font-semibold uppercase">{retailer.gstin || 'Not provided'}</p>
+                                    <p className="text-xs text-gray-400 dark:text-slate-500 font-medium uppercase tracking-wider">GSTIN</p>
+                                    <p className="text-gray-700 dark:text-slate-300 font-semibold uppercase">{retailer.gstin || 'Not provided'}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-purple-100">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                                <Package size={20} />
+                    <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 rounded-2xl p-6 text-white shadow-lg shadow-purple-100 dark:shadow-purple-900/10 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm border border-white/10">
+                                    <Package size={20} />
+                                </div>
+                                <h3 className="font-bold uppercase tracking-wider text-sm">Quick Stats</h3>
                             </div>
-                            <h3 className="font-bold">Quick Stats</h3>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-purple-100 text-sm">Total Orders</span>
-                                <span className="font-bold text-lg">{retailer.orders?.length || 0}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-purple-100 text-sm">Active Invoices</span>
-                                <span className="font-bold text-lg">
-                                    {(() => {
-                                        if (!Array.isArray(retailer.orders)) {
-                                            console.warn("Filter warning: 'retailer.orders' map is not an array in RetailerDetail.jsx. Type:", typeof retailer.orders, "Value:", retailer.orders);
-                                        }
-                                        return (Array.isArray(retailer.orders) ? retailer.orders : []).filter(o => o.Invoice && o.Invoice.paymentStatus !== 'Paid').length || 0;
-                                    })()}
-                                </span>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center bg-white/10 p-3 rounded-xl border border-white/5 transition-transform hover:scale-[1.02]">
+                                    <span className="text-purple-100 text-sm font-medium">Total Orders</span>
+                                    <span className="font-black text-xl tabular-nums">{retailer.orders?.length || 0}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-white/10 p-3 rounded-xl border border-white/5 transition-transform hover:scale-[1.02]">
+                                    <span className="text-purple-100 text-sm font-medium">Active Invoices</span>
+                                    <span className="font-black text-xl tabular-nums">
+                                        {(() => {
+                                            if (!Array.isArray(retailer.orders)) {
+                                                console.warn("Filter warning: 'retailer.orders' map is not an array in RetailerDetail.jsx. Type:", typeof retailer.orders, "Value:", retailer.orders);
+                                            }
+                                            return (Array.isArray(retailer.orders) ? retailer.orders : []).filter(o => o.Invoice && o.Invoice.paymentStatus !== 'Paid').length || 0;
+                                        })()}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -417,16 +420,16 @@ const RetailerDetail = () => {
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Tabs */}
-                    <div className="flex p-1 bg-gray-100 rounded-xl w-fit">
+                    <div className="flex p-1.5 bg-gray-200/50 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl w-fit border border-gray-200 dark:border-slate-700/50 transition-colors shadow-inner">
                         <button
                             onClick={() => setActiveTab('orders')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'orders' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'orders' ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-md ring-1 ring-black/5 dark:ring-white/5' : 'text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'}`}
                         >
                             Order History
                         </button>
                         <button
                             onClick={() => setActiveTab('payments')}
-                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'payments' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'payments' ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-md ring-1 ring-black/5 dark:ring-white/5' : 'text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'}`}
                         >
                             Payment History
                         </button>
@@ -435,49 +438,53 @@ const RetailerDetail = () => {
                     {activeTab === 'orders' ? (
                         <div className="space-y-4">
                             {retailer.orders?.length > 0 ? (
-                                retailer.orders.map(order => (
-                                    <div key={order.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
-                                        <div className="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                                retailer.orders.map(order => (                                    <div key={order.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-purple-500/5 transition-all overflow-hidden group">
+                                        <div className="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 dark:border-slate-800/50 bg-white dark:bg-slate-900 group-hover:bg-gray-50/30 dark:group-hover:bg-slate-800/30 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-gray-500 dark:text-slate-400 font-black text-xs border border-gray-200 dark:border-slate-700">
                                                     #{order.id}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold">₹{parseFloat(order.totalAmount).toLocaleString()}</p>
-                                                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                                                        <Calendar size={12} /> {new Date(order.createdAt).toLocaleDateString()}
+                                                    <p className="text-lg font-black text-gray-900 dark:text-slate-100 tracking-tight">₹{parseFloat(order.totalAmount).toLocaleString()}</p>
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-500 flex items-center gap-1.5 tracking-widest">
+                                                        <Calendar size={12} className="text-purple-500" /> {new Date(order.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3 w-full sm:w-auto">
-                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider flex items-center gap-1.5 ${getStatusStyle(order.status)}`}>
+                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-[0.1em] flex items-center gap-2 ${getStatusStyle(order.status)} bg-opacity-10 dark:bg-opacity-20 backdrop-blur-sm transition-all shadow-sm`}>
                                                     {getStatusIcon(order.status)} {order.status}
                                                 </span>
                                                 <button
                                                     onClick={() => handleViewBill(order)}
-                                                    className="ml-auto sm:ml-0 flex items-center gap-1.5 text-purple-600 hover:text-purple-700 font-bold text-xs"
+                                                    className="ml-auto sm:ml-0 flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-black text-[11px] uppercase tracking-wider bg-purple-50 dark:bg-purple-900/20 px-4 py-2 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-sm border border-purple-100 dark:border-purple-800/30"
                                                 >
                                                     <FileText size={14} /> View Bill
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="bg-gray-50/50 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                <User size={14} className="text-gray-400" />
-                                                Sales Rep: <span className="font-semibold text-gray-700">{order.salesRep?.name}</span>
+                                        <div className="bg-gray-50/50 dark:bg-slate-800/50 p-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400 font-medium">
+                                                <div className="p-1.5 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 shadow-sm">
+                                                    <User size={14} className="text-gray-400 dark:text-slate-500" />
+                                                </div>
+                                                <span>Sales Rep: <span className="font-black text-gray-800 dark:text-slate-200 uppercase">{order.salesRep?.name}</span></span>
                                             </div>
                                             {order.Invoice && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                    <CreditCard size={14} className="text-gray-400" />
-                                                    Payment: <span className={`font-semibold ${order.Invoice.paymentStatus === 'Paid' ? 'text-emerald-600' : 'text-amber-600'}`}>{order.Invoice.paymentStatus}</span>
+                                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400 font-medium">
+                                                    <div className="p-1.5 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 shadow-sm">
+                                                        <CreditCard size={14} className="text-gray-400 dark:text-slate-500" />
+                                                    </div>
+                                                    <span>Payment: <span className={`font-black uppercase ${order.Invoice.paymentStatus === 'Paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{order.Invoice.paymentStatus}</span></span>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="bg-white rounded-2xl p-12 text-center text-gray-400 border border-dashed border-gray-200">
-                                    No orders found for this retailer.
+                                <div className="bg-white dark:bg-slate-900 rounded-3xl p-16 text-center text-gray-400 dark:text-slate-500 border-2 border-dashed border-gray-100 dark:border-slate-800 flex flex-col items-center gap-3">
+                                    <Package size={48} className="opacity-20" />
+                                    <p className="font-bold uppercase tracking-widest text-xs">No orders found for this retailer</p>
                                 </div>
                             )}
                         </div>
@@ -485,40 +492,40 @@ const RetailerDetail = () => {
                         <div className="space-y-4">
                             {allPayments.length > 0 ? (
                                 allPayments.map(payment => (
-                                    <div key={payment.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 font-bold">
+                                    <div key={payment.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-lg hover:shadow-emerald-500/5 transition-all group ring-1 ring-black/5 dark:ring-white/5">
+                                        <div className="flex items-center gap-5">
+                                            <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black text-xl border border-emerald-100 dark:border-emerald-800/30 transition-all group-hover:scale-110 shadow-sm">
                                                 ₹
                                             </div>
                                             <div>
-                                                <p className="text-sm font-black text-gray-800">₹{parseFloat(payment.amount).toLocaleString()}</p>
-                                                <p className="text-xs text-gray-400 uppercase font-bold tracking-tighter">
+                                                <p className="text-xl font-black text-gray-900 dark:text-slate-100 tracking-tight">₹{parseFloat(payment.amount).toLocaleString()}</p>
+                                                <p className="text-[10px] text-gray-400 dark:text-slate-500 uppercase font-black tracking-[0.2em] mt-0.5">
                                                     Invoice: {payment.invoiceNumber}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col sm:items-end gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5">
-                                                    <Calendar size={12} /> {new Date(payment.paymentDate || payment.createdAt).toLocaleString()}
+                                        <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto">
+                                            <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                                                <p className="text-[10px] text-gray-400 dark:text-slate-500 uppercase font-bold flex items-center gap-2 tracking-wider">
+                                                    <Calendar size={12} className="text-emerald-500" /> {new Date(payment.paymentDate || payment.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                                 </p>
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider flex items-center gap-1 ${getPaymentStatusStyle(payment.approvalStatus || 'Approved')}`}>
+                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-[0.1em] flex items-center gap-2 ${getPaymentStatusStyle(payment.approvalStatus || 'Approved')} bg-opacity-10 dark:bg-opacity-20 backdrop-blur-sm shadow-sm`}>
                                                     {getStatusIcon(payment.approvalStatus || 'Approved')} {payment.approvalStatus || 'Approved'}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-                                                <p className="text-xs text-gray-400">
-                                                    Mode: <span className="font-bold text-gray-600">{payment.paymentMode}</span>
-                                                    <span className="mx-2">|</span>
-                                                    By: <span className="font-bold text-gray-600">{payment.collectedBy?.name || 'System'}</span>
+                                            <div className="flex items-center justify-between w-full sm:w-auto gap-6 bg-gray-50/50 dark:bg-slate-800/50 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-slate-800 transition-colors">
+                                                <p className="text-[11px] text-gray-500 dark:text-slate-400 font-medium">
+                                                    Mode: <span className="font-black text-gray-900 dark:text-slate-200 uppercase ml-1">{payment.paymentMode}</span>
+                                                    <span className="mx-3 text-gray-300 dark:text-slate-700">|</span>
+                                                    By: <span className="font-black text-gray-900 dark:text-slate-200 uppercase ml-1">{payment.collectedBy?.name || 'System'}</span>
                                                 </p>
                                                 {(payment.approvalStatus || 'Approved') === 'Approved' && (
                                                     <button
                                                         onClick={() => handlePrintReceipt(payment.id)}
                                                         disabled={isPrinting}
-                                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-bold text-xs p-1.5 bg-blue-50 rounded-lg transition-colors"
+                                                        className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 font-black text-[10px] uppercase tracking-wider p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-all shadow-sm border border-transparent hover:border-blue-100 dark:hover:border-blue-900/50"
                                                     >
-                                                        <Printer size={14} /> Print
+                                                        <Printer size={16} /> Print
                                                     </button>
                                                 )}
                                             </div>
@@ -526,8 +533,9 @@ const RetailerDetail = () => {
                                     </div>
                                 ))
                             ) : (
-                                <div className="bg-white rounded-2xl p-12 text-center text-gray-400 border border-dashed border-gray-200">
-                                    No payment history found.
+                                <div className="bg-white dark:bg-slate-900 rounded-3xl p-16 text-center text-gray-400 dark:text-slate-500 border-2 border-dashed border-gray-100 dark:border-slate-800 flex flex-col items-center gap-3">
+                                    <CreditCard size={48} className="opacity-20" />
+                                    <p className="font-bold uppercase tracking-widest text-xs">No payment history found</p>
                                 </div>
                             )}
                         </div>

@@ -125,21 +125,25 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Collect Payment'),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardTheme.color,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF1E293B)),
+          icon: Icon(LucideIcons.arrowLeft, color: Theme.of(context).textTheme.bodySmall?.color),
           onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Collect Payments',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
         ),
       ),
       body: Column(
         children: [
           _buildSearchBar(),
           Expanded(
-            child: _isLoading 
+            child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _filteredInvoices.isEmpty
                 ? _buildEmptyState()
@@ -152,7 +156,7 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).cardTheme.color,
       padding: const EdgeInsets.all(16),
       child: TextField(
         onChanged: (value) => setState(() => _searchTerm = value),
@@ -160,7 +164,7 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
           hintText: 'Search by retailer or bill #',
           prefixIcon: const Icon(LucideIcons.search, size: 20),
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: Theme.of(context).scaffoldBackgroundColor,
           filled: true,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
         ),
@@ -184,14 +188,14 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
           duration: const Duration(milliseconds: 300),
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: isExpanded ? const Color(0xFF10B981) : const Color(0xFFF1F5F9), width: isExpanded ? 2 : 1),
+            border: Border.all(color: isExpanded ? Theme.of(context).colorScheme.secondary : Theme.of(context).dividerColor.withOpacity(0.1), width: isExpanded ? 2 : 1),
             boxShadow: [
               if (isExpanded)
-                BoxShadow(color: const Color(0xFF10B981).withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
+                BoxShadow(color: Theme.of(context).colorScheme.secondary.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
               else
-                BoxShadow(color: const Color(0xFF1E293B).withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                BoxShadow(color: Theme.of(context).brightness == Brightness.dark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
             ],
           ),
           clipBehavior: Clip.antiAlias,
@@ -220,15 +224,15 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
                             Wrap(
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Text('BILL #$id', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                Text('BILL #$id', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                                 const SizedBox(width: 8),
-                                const Icon(LucideIcons.calendar, size: 10, color: Color(0xFF94A3B8)),
+                                Icon(LucideIcons.calendar, size: 10, color: Theme.of(context).textTheme.bodySmall?.color),
                                 const SizedBox(width: 4),
-                                Text(DateFormat('dd/MM/yy').format(DateTime.parse(inv['createdAt'])), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold)),
+                                Text(DateFormat('dd/MM/yy').format(DateTime.parse(inv['createdAt'])), style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10, fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+                            Text(name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.titleLarge?.color)),
                             const SizedBox(height: 8),
                             InkWell(
                               onTap: () {
@@ -238,13 +242,13 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(6)),
-                                child: const Wrap(
+                                decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                child: Wrap(
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
-                                    Icon(LucideIcons.fileText, size: 10, color: Color(0xFF2563EB)),
-                                    SizedBox(width: 4),
-                                    Text('EXPLORE FULL INVOICE', style: TextStyle(color: Color(0xFF2563EB), fontSize: 8, fontWeight: FontWeight.w900)),
+                                    Icon(LucideIcons.fileText, size: 10, color: Theme.of(context).colorScheme.primary),
+                                    const SizedBox(width: 4),
+                                    Text('EXPLORE FULL INVOICE', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 8, fontWeight: FontWeight.w900)),
                                   ],
                                 ),
                               ),
@@ -257,7 +261,7 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const Text('DUE', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w800)),
+                            Text('DUE', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 9, fontWeight: FontWeight.w800)),
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerRight,
@@ -281,11 +285,11 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
   Widget _buildExpandedForm(int id, double balance) {
     return Container(
       padding: const EdgeInsets.all(24),
-      color: const Color(0xFFF8FAFC),
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('PAYMENT MODE', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
+          Text('PAYMENT MODE', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 12),
           Row(
             children: ['Cash', 'UPI', 'Cheque'].map((mode) {
@@ -298,15 +302,15 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF1E293B) : Colors.white,
+                        color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).cardTheme.color,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isSelected ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                        border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor.withOpacity(0.1)),
                       ),
                       child: Column(
                         children: [
                           Icon(
                             mode == 'Cash' ? LucideIcons.banknote : mode == 'UPI' ? LucideIcons.wallet : LucideIcons.creditCard,
-                            color: isSelected ? Colors.white : const Color(0xFF64748B),
+                            color: isSelected ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
                             size: 20,
                           ),
                           const SizedBox(height: 8),
@@ -320,28 +324,30 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
             }).toList(),
           ),
           const SizedBox(height: 24),
-          const Text('COLLECTION AMOUNT', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
+          Text('COLLECTION AMOUNT', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 12),
           TextField(
             controller: _amountControllers[id],
             keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyLarge?.color),
             decoration: InputDecoration(
-              prefixIcon: const Icon(LucideIcons.indianRupee, size: 20),
-              fillColor: Colors.white,
+              prefixIcon: Icon(LucideIcons.indianRupee, size: 20, color: Theme.of(context).textTheme.bodySmall?.color),
+              fillColor: Theme.of(context).cardTheme.color,
               filled: true,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
             ),
           ),
           if (_paymentModes[id] != 'Cash') ...[
             const SizedBox(height: 24),
-            const Text('REFERENCE / TRANS ID', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
+            Text('REFERENCE / TRANS ID', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
             const SizedBox(height: 12),
             TextField(
               controller: _refControllers[id],
+              style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color),
               decoration: InputDecoration(
                 hintText: 'Enter ${_paymentModes[id]} Ref #',
-                fillColor: Colors.white,
+                hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5)),
+                fillColor: Theme.of(context).cardTheme.color,
                 filled: true,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
               ),

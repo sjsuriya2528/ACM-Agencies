@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
-import '../../theme/app_theme.dart';
 import '../collection/invoice_view_screen.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
@@ -48,13 +47,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     final createdAt = DateTime.parse(_order['createdAt']);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Order #${widget.orderId}'),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardTheme.color,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF1E293B)),
+          icon: Icon(LucideIcons.arrowLeft, color: Theme.of(context).textTheme.bodySmall?.color),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -100,7 +99,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFF1F5F9))),
+      decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(24), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05))),
       child: Wrap(
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -129,9 +128,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('DATE', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
-              const SizedBox(height: 8),
-              Text(DateFormat('dd MMM yyyy').format(date), style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w900, fontSize: 14)),
+              const Text('ORDER STATUS', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              const SizedBox(height: 4),
+              Text(
+                _order['status'].toUpperCase(),
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+              ),
               Text(DateFormat('hh:mm a').format(date), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
             ],
           ),
@@ -145,7 +147,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFF1F5F9))),
+      decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(24), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -157,9 +159,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(r?['shopName'] ?? 'Unknown', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B))),
+          Text(r?['shopName'] ?? 'Unknown', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
-          Text(r?['ownerName'] ?? '', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(r?['ownerName'] ?? '', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 12),
           Text(r?['address'] ?? '', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4)),
           const SizedBox(height: 4),
@@ -174,7 +176,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFF1F5F9))),
+      decoration: BoxDecoration(color: Theme.of(context).cardTheme.color, borderRadius: BorderRadius.circular(24), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -190,7 +192,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: items.length,
-            separatorBuilder: (context, index) => const Divider(height: 24, color: Color(0xFFF8FAFC)),
+            separatorBuilder: (context, index) => Divider(height: 24, color: Theme.of(context).dividerColor.withOpacity(0.05)),
             itemBuilder: (context, index) {
               final item = items[index];
               final product = item['Product'];
@@ -206,7 +208,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(product?['name'] ?? 'Unknown Product', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1E293B), fontSize: 14)),
+                        Text(product?['name'] ?? 'Unknown Product', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
                         const SizedBox(height: 4),
                         Text(
                           '${crates > 0 ? '$crates Crates ' : ''}${pieces > 0 ? '$pieces Pieces' : (crates == 0 ? '0 Pieces' : '')} • ₹${item['pricePerUnit']} / unit',
@@ -215,12 +217,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       ],
                     ),
                   ),
-                  Text('₹${item['totalPrice']}', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1E293B), fontSize: 16)),
+                  Text('₹${item['totalPrice']}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                 ],
               );
             },
           ),
-          const Divider(height: 40, color: Color(0xFFF1F5F9), thickness: 2),
+          Divider(height: 40, color: Theme.of(context).dividerColor.withOpacity(0.1), thickness: 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,

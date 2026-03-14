@@ -3,7 +3,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/quick_action_card.dart';
 import '../delivery/my_deliveries_screen.dart';
@@ -11,6 +10,7 @@ import '../collection/collect_payment_screen.dart';
 import '../retailers_screen.dart';
 import '../order/create_order_screen.dart';
 import 'collection_dashboard.dart';
+import '../profile_screen.dart';
 
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -99,13 +99,13 @@ class _DriverDashboardState extends State<DriverDashboard> {
       expandedHeight: 180,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardTheme.color,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color,
+            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
           ),
           padding: const EdgeInsets.fromLTRB(24, 60, 24, 0),
           child: Row(
@@ -127,13 +127,13 @@ class _DriverDashboardState extends State<DriverDashboard> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Fleet Logistics', style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text('Fleet Logistics', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.bold, fontSize: 12)),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Hi, ${name.split(' ')[0]}!',
-                        style: const TextStyle(color: Color(0xFF1E293B), fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5, color: Theme.of(context).textTheme.titleLarge?.color),
                       ),
                     ),
                   ],
@@ -141,8 +141,14 @@ class _DriverDashboardState extends State<DriverDashboard> {
               ),
               const Spacer(),
               IconButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                ),
+                icon: Icon(LucideIcons.user, color: Theme.of(context).textTheme.bodySmall?.color),
+              ),
+              IconButton(
                 onPressed: () => Provider.of<AuthProvider>(context, listen: false).logout(),
-                icon: const Icon(LucideIcons.logOut, color: Color(0xFFCBD5E1)),
+                icon: Icon(LucideIcons.logOut, color: Theme.of(context).textTheme.bodySmall?.color),
               ),
             ],
           ),
@@ -158,7 +164,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 16,
       crossAxisSpacing: 16,
-      childAspectRatio: 0.85,
+      childAspectRatio: 0.9,
       children: [
         StatCard(
           title: 'Pickups',
@@ -199,7 +205,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
           title: 'My Deliveries',
           desc: 'View current tasks and manage route',
           icon: LucideIcons.package,
-          gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
+          gradient: [Theme.of(context).primaryColor, Theme.of(context).primaryColor.withOpacity(0.8)],
           onTap: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const MyDeliveriesScreen()),

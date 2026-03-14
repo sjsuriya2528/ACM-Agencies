@@ -20,14 +20,16 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E293B).withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Theme.of(context).brightness == Brightness.dark 
+                ? Colors.black.withOpacity(0.4) 
+                : const Color(0xFF1E293B).withOpacity(0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -72,7 +74,6 @@ class StatCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF1E293B),
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -81,10 +82,10 @@ class StatCard extends StatelessWidget {
                   title.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF94A3B8),
+                    color: Theme.of(context).textTheme.bodySmall?.color,
                     letterSpacing: 1.2,
                   ),
                 ),
@@ -94,9 +95,9 @@ class StatCard extends StatelessWidget {
                     subtext!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9,
-                      color: Color(0xFF94A3B8),
+                      color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
                       fontWeight: FontWeight.w600,
                     ),
                   ),

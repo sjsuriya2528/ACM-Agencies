@@ -38,6 +38,7 @@ const getBillReportData = async (req, res) => {
                 include: [
                     {
                         model: Order,
+                        as: 'order',
                         where: Object.keys(orderWhere).length > 0 ? orderWhere : undefined,
                         required: Object.keys(orderWhere).length > 0 ? true : false,
                         include: [{ model: Retailer, as: 'retailer', attributes: ['shopName'] }]
@@ -111,9 +112,11 @@ const getCollectionReportData = async (req, res) => {
                 { model: User, as: 'collectedBy', attributes: ['name'] },
                 {
                     model: Invoice,
+                    as: 'invoice',
                     required: (startId || endId || startBillNo || endBillNo) ? true : false,
                     include: [{
                         model: Order,
+                        as: 'order',
                         where: Object.keys(orderWhere).length > 0 ? orderWhere : undefined,
                         required: Object.keys(orderWhere).length > 0 ? true : false,
                         attributes: ['id', 'billNumber']
