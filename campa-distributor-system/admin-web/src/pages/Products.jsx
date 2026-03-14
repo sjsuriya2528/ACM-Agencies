@@ -433,24 +433,25 @@ const Products = () => {
                                                         )}
                                                     </td>
                                                     <td className="px-2 py-2 whitespace-nowrap">
-                                                        <div className="flex flex-col border border-gray-100 bg-gray-50 px-1.5 py-1 rounded-lg w-fit">
-                                                            <span className={`text-[11px] font-bold ${bottles > 100 ? 'text-green-700' :
-                                                                bottles > 0 ? 'text-yellow-700' :
-                                                                    'text-red-700'
+                                                        <div className="flex flex-col border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-1.5 py-1 rounded-lg w-fit">
+                                                            <span className={`text-[11px] font-bold ${bottles > 100 ? 'text-green-700 dark:text-emerald-400' :
+                                                                bottles > 0 ? 'text-yellow-700 dark:text-yellow-400' :
+                                                                    'text-red-700 dark:text-rose-400'
                                                                 }`}>{bottles} btls</span>
-                                                            <span className="text-[9px] text-slate-400 font-semibold uppercase">{isSingle ? '—' : `${crates} crt`}</span>
+                                                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold uppercase">{isSingle ? '—' : `${crates} crt`}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-2 py-2">
-                                                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-600 rounded border border-blue-100 block break-words leading-tight shadow-sm max-w-[80px]">
+                                                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded border border-blue-100 dark:border-blue-800/50 block break-words leading-tight shadow-sm max-w-[80px] text-center">
                                                             {product.category || 'Uncat.'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-2 py-2 whitespace-nowrap">
-                                                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-50 text-orange-600 rounded border border-orange-100 shadow-sm">
+                                                    <td className="px-2 py-2 whitespace-nowrap text-center">
+                                                        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded border border-orange-100 dark:border-orange-800/50 shadow-sm inline-block">
                                                             {product.gstPercentage}%
                                                         </span>
-                                                                                    <td className="px-2 py-2 text-right">
+                                                    </td>
+                                                    <td className="px-2 py-2 text-right">
                                                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 w-14 lg:w-[5.5rem] ml-auto">
                                                             <button onClick={() => handleStockAdjClick(product, 'Addition')} className="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-md transition-colors flex justify-center items-center shadow-sm" title="Add"><Plus size={14} strokeWidth={2.5} /></button>
                                                             <button onClick={() => handleStockAdjClick(product, 'Reduction')} className="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 bg-orange-50 dark:bg-orange-900/30 p-1.5 hover:bg-orange-100 dark:hover:bg-orange-900/50 rounded-md transition-colors flex justify-center items-center shadow-sm" title="Reduce"><Minus size={14} strokeWidth={2.5} /></button>
@@ -458,7 +459,7 @@ const Products = () => {
                                                             <button onClick={() => startEdit(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 p-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md transition-colors flex justify-center items-center shadow-sm" title="Edit"><Edit size={14} strokeWidth={2.5} /></button>
                                                             <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/30 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-md transition-colors flex justify-center items-center shadow-sm col-span-2 lg:col-span-1" title="Delete"><Trash2 size={14} strokeWidth={2.5} /></button>
                                                         </div>
-                                                    </td>                       </td>
+                                                    </td>
                                                 </tr>
                                             );
                                         });
