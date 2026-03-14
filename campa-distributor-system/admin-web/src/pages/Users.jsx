@@ -61,9 +61,10 @@ const Users = () => {
                     search: activeSearch
                 }
             });
-            setUsers(response.data.data);
-            setTotalPages(response.data.totalPages);
-            setTotalResults(response.data.total);
+            const responseData = response.data.data || (Array.isArray(response.data) ? response.data : []);
+            setUsers(responseData);
+            setTotalPages(response.data.totalPages || 1);
+            setTotalResults(response.data.total !== undefined ? response.data.total : responseData.length);
         } catch (error) {
             console.error(error);
         } finally {
@@ -199,9 +200,9 @@ const Users = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 transition-colors bg-white dark:bg-slate-900">
-                                {loading ? (
-                                    <tr><td colSpan="4" className="p-8 text-center text-slate-400 dark:text-slate-500">Loading users...</td></tr>
-                                ) : users.map(user => (
+                                {(users || []).length === 0 ? (
+                                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 dark:text-slate-500 font-medium">No users found match your search.</td></tr>
+                                ) : (users || []).map(user => (
                                     <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">{user.name}</td>
                                         <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{user.email}</td>
@@ -271,7 +272,7 @@ const Users = () => {
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Top Performer Card */}
-                        {performanceData.length > 0 && (
+                        {Array.isArray(performanceData) && performanceData.length > 0 && (
                             <div className="bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl shadow-indigo-200 dark:shadow-indigo-900/20 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div className="relative z-10">
@@ -303,7 +304,7 @@ const Users = () => {
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800 transition-colors bg-white dark:bg-slate-900">
                                 {loading ? (
                                     <tr><td colSpan="5" className="p-8 text-center text-slate-400">Loading performance data...</td></tr>
-                                ) : performanceData.map((rep, idx) => (
+                                ) : (performanceData || []).map((rep, idx) => (
                                     <tr key={rep.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">

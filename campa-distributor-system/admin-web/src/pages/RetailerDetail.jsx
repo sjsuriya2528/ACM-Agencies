@@ -322,7 +322,7 @@ const RetailerDetail = () => {
         }
         return (Array.isArray(retailer.orders) ? retailer.orders : [])
             .filter(o => o.Invoice)
-            .flatMap(o => o.invoice.payments?.map(p => ({ ...p, orderId: o.id, invoiceNumber: o.invoice.invoiceNumber })) || [])
+            .flatMap(o => o.Invoice.payments?.map(p => ({ ...p, orderId: o.id, invoiceNumber: o.Invoice.invoiceNumber })) || [])
             .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
     })();
 

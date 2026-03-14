@@ -115,13 +115,17 @@ const createOrder = async (req, res) => {
             message: error.message,
             stack: error.stack,
             body: req.body,
-            userId: req.user?.id
+            userId: req.user?.id,
+            errorName: error.name,
+            validationErrors: error.errors
         });
-        res.status(500).json({
-            message: error.name === 'SequelizeUniqueConstraintError'
-                ? 'Constraint Error: ' + error.errors.map(e => e.message).join(', ')
-                : error.message
-        });
+        
+        let message = error.message;
+        if (error.name === 'SequelizeUniqueConstraintError' && error.errors) {
+            message = 'Constraint Error: ' + error.errors.map(e => `${e.path}: ${e.message}`).join(', ');
+        }
+
+        res.status(500).json({ message });
     }
 };
 
