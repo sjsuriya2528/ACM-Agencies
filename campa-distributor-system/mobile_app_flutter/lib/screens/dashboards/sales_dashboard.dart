@@ -37,7 +37,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
 
   Future<void> _fetchStats() async {
     try {
-      final response = await _apiService.get('/orders');
+      final response = await _apiService.get('/orders', queryParameters: {'myOrders': 'true'});
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = response.data;
         final List<dynamic> orders = responseData['data'] ?? [];
@@ -230,7 +230,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
           gradient: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
           onTap: () async {
             await Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const ViewOrdersScreen()),
+              MaterialPageRoute(builder: (context) => const ViewOrdersScreen(myOrdersOnly: true)),
             );
             _fetchStats();
           },

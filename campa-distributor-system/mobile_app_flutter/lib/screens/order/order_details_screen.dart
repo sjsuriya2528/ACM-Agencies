@@ -66,9 +66,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             _buildRetailerCard(),
             const SizedBox(height: 16),
             _buildItemsCard(),
-            if (_order['Invoice'] != null) ...[
-              const SizedBox(height: 16),
-              _buildInvoiceAction(),
+            if (_order['invoice'] != null) ...[
+              _buildSectionTitle(LucideIcons.fileText, 'Invoice Details'),
+              _buildInvoiceCard(),
             ],
           ],
         ),
@@ -243,12 +243,82 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     );
   }
 
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 24, 0, 16),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 12),
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1, color: Color(0xFF94A3B8)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInvoiceCard() {
+    final inv = _order['invoice'];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('INVOICE #', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(inv['invoiceNumber'] ?? inv['id'].toString(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('PAYMENT STATUS', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (inv['paymentStatus'] == 'Paid' ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      inv['paymentStatus'].toString().toUpperCase(),
+                      style: TextStyle(
+                        color: inv['paymentStatus'] == 'Paid' ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildInvoiceAction(),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInvoiceAction() {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => InvoiceViewScreen(invoiceId: _order['Invoice']['id']),
+            builder: (context) => InvoiceViewScreen(invoiceId: _order['invoice']['id']),
           ),
         );
       },

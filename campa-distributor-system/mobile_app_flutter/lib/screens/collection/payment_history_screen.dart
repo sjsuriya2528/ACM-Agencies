@@ -75,7 +75,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         final payment = _payments[index];
         final mode = payment['paymentMode'];
         final IconData modeIcon = _getPaymentIcon(mode);
-        final shopName = payment['Invoice']?['Order']?['retailer']?['shopName'] ?? 'Market Collection';
+        final shopName = payment['invoice']?['order']?['retailer']?['shopName'] ?? 'Market Collection';
         final rawAmount = payment['amount'] ?? 0;
         final amount = rawAmount is String ? double.tryParse(rawAmount) ?? 0.0 : (rawAmount).toDouble();
 

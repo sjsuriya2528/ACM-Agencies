@@ -6,17 +6,19 @@ const PaymentReceipt = ({ data }) => {
     const {
         id,
         amount,
+        paymentStatus,
+        approvalStatus,
         paymentDate,
         createdAt,
-        Invoice,
+        invoice,
         collectedBy
     } = data;
 
-    const retailerName = Invoice?.Order?.retailer?.shopName || Invoice?.customerName;
-    const retailerAddress = Invoice?.Order?.retailer?.address || Invoice?.customerAddress;
-    const billNo = Invoice?.invoiceNumber;
-    const billDate = Invoice?.invoiceDate;
-    const billTotal = Invoice?.netTotal;
+    const retailerName = invoice?.order?.retailer?.shopName || invoice?.customerName;
+    const retailerAddress = invoice?.order?.retailer?.address || invoice?.customerAddress;
+    const billNo = invoice?.invoiceNumber;
+    const billDate = invoice?.invoiceDate;
+    const billTotal = invoice?.netTotal;
 
     // Format Date: 2026-02-24
     // Format Time: 22:41 PM

@@ -242,29 +242,73 @@ const run = async () => {
         }
         console.log(`Imported ${retailers.length} retailers.`);
 
-        // 3. Import Orders
-        console.log('Importing Orders...');
-        const allOrders = await importCsv(path.join(CSV_DIR, 'updated_Orders.csv'), processOrder);
-        const orders = allOrders.filter(o => {
+        // 3. Import Orders (Load into memory first)
+        console.log('Loading Orders from CSV...');
+        const allOrdersRaw = await importCsv(path.join(CSV_DIR, 'updated_Orders.csv'), processOrder);
+
+        // 7. Import Invoices (Load into memory first)
+        console.log('Loading Invoices from CSV...');
+        const allInvoicesRaw = await importCsv(path.join(CSV_DIR, 'Updated_Invoices.csv'), processInvoice);
+
+        // --- Robust Re-mapping Logic ---
+        const retailerNameMap = new Map();
+        retailers.forEach(r => {
+            retailerNameMap.set(r.shopName.trim().toLowerCase(), r.id);
+        });
+
+        console.log('Performing Robust Order-to-Retailer re-mapping...');
+        let orderReassignedCount = 0;
+        const ordersMap = new Map();
+        allOrdersRaw.forEach(o => ordersMap.set(o.id, o));
+
+        const invoices = [];
+        allInvoicesRaw.forEach(inv => {
+            const order = ordersMap.get(inv.orderId);
+            if (order) {
+                const invCustName = (inv.customerName || '').trim().toLowerCase();
+                const targetRetailerId = retailerNameMap.get(invCustName);
+
+                if (targetRetailerId && order.retailerId !== targetRetailerId) {
+                    // Mismatch found - reassigning order to correct retailer
+                    order.retailerId = targetRetailerId;
+                    orderReassignedCount++;
+                }
+                invoices.push(inv);
+            } else {
+                console.log(`Warning: Skipping Invoice ${inv.id} - Order ${inv.orderId} missing.`);
+            }
+        });
+        console.log(`Re-assigned ${orderReassignedCount} orders to the correct retailers based on Invoice names.`);
+
+        const orders = allOrdersRaw.filter(o => {
             if (!retailerIds.has(o.retailerId)) {
                 console.log(`Warning: Skipping Order ${o.id} - Retailer ${o.retailerId} missing.`);
                 return false;
             }
             if (o.salesRepId && !userIds.has(o.salesRepId)) {
-                console.log(`Warning: Order ${o.id} - SalesRep ${o.salesRepId} missing. Setting to null.`);
                 o.salesRepId = null;
             }
             if (o.driverId && !userIds.has(o.driverId)) {
-                console.log(`Warning: Order ${o.id} - Driver ${o.driverId} missing. Setting to null.`);
                 o.driverId = null;
             }
             return true;
         });
+
         const orderIds = new Set(orders.map(o => o.id));
+        const finalInvoices = invoices.filter(inv => orderIds.has(inv.orderId));
+        const invoiceIds = new Set(finalInvoices.map(inv => inv.id));
+
+        console.log('Bulk creating Orders...');
         for (let i = 0; i < orders.length; i += 100) {
             await db.Order.bulkCreate(orders.slice(i, i + 100));
         }
-        console.log(`Imported ${orders.length} orders. Skipped ${allOrders.length - orders.length}.`);
+        console.log(`Imported ${orders.length} orders.`);
+
+        console.log('Bulk creating Invoices...');
+        for (let i = 0; i < finalInvoices.length; i += 100) {
+            await db.Invoice.bulkCreate(finalInvoices.slice(i, i + 100));
+        }
+        console.log(`Imported ${finalInvoices.length} invoices.`);
 
         // 4. Import OrderItems
         console.log('Importing OrderItems...');
@@ -272,7 +316,6 @@ const run = async () => {
         const orderItems = allOrderItems.filter(oi => {
             if (!orderIds.has(oi.orderId)) return false;
             if (oi.productId && !productIds.has(oi.productId)) {
-                console.log(`Warning: OrderItem ${oi.id} - Product ${oi.productId} missing. Setting to null.`);
                 oi.productId = null;
             }
             return true;
@@ -280,7 +323,7 @@ const run = async () => {
         for (let i = 0; i < orderItems.length; i += 100) {
             await db.OrderItem.bulkCreate(orderItems.slice(i, i + 100));
         }
-        console.log(`Imported ${orderItems.length} order items. Skipped ${allOrderItems.length - orderItems.length}.`);
+        console.log(`Imported ${orderItems.length} order items.`);
 
         // 5. Import CancelledOrders
         console.log('Importing CancelledOrders...');
@@ -290,7 +333,7 @@ const run = async () => {
         for (let i = 0; i < cancelledOrders.length; i += 100) {
             await db.CancelledOrder.bulkCreate(cancelledOrders.slice(i, i + 100));
         }
-        console.log(`Imported ${cancelledOrders.length} cancelled orders. Skipped ${allCancelledOrders.length - cancelledOrders.length}.`);
+        console.log(`Imported ${cancelledOrders.length} cancelled orders.`);
 
         // 6. Import CancelledOrderItems
         console.log('Importing CancelledOrderItems...');
@@ -299,38 +342,81 @@ const run = async () => {
         for (let i = 0; i < filteredCancelledOrderItems.length; i += 100) {
             await db.CancelledOrderItem.bulkCreate(filteredCancelledOrderItems.slice(i, i + 100));
         }
-        console.log(`Imported ${filteredCancelledOrderItems.length} cancelled order items. Skipped ${allCancelledOrderItems.length - filteredCancelledOrderItems.length}.`);
-
-        // 7. Import Invoices
-        console.log('Importing Invoices...');
-        const allInvoices = await importCsv(path.join(CSV_DIR, 'Updated_Invoices.csv'), processInvoice);
-        const invoices = allInvoices.filter(inv => {
-            if (!orderIds.has(inv.orderId)) {
-                console.log(`Warning: Skipping Invoice ${inv.id} - Order ${inv.orderId} missing.`);
-                return false;
-            }
-            return true;
-        });
-        const invoiceIds = new Set(invoices.map(inv => inv.id));
-        for (let i = 0; i < invoices.length; i += 100) {
-            await db.Invoice.bulkCreate(invoices.slice(i, i + 100));
-        }
-        console.log(`Imported ${invoices.length} invoices. Skipped ${allInvoices.length - invoices.length}.`);
+        console.log(`Imported ${filteredCancelledOrderItems.length} cancelled order items.`);
 
         // 8. Import Payments
         console.log('Importing Payments...');
-        const allPayments = await importCsv(path.join(CSV_DIR, 'Updated_Payements.csv'), processPayment);
-        const payments = allPayments.map(p => {
-            if (p.invoiceId && !invoiceIds.has(p.invoiceId)) {
-                console.log(`Warning: Payment ${p.id} - Invoice ${p.invoiceId} missing. Setting to null.`);
-                p.invoiceId = null;
+        const allPaymentsRaw = await importCsv(path.join(CSV_DIR, 'Updated_Payements.csv'), (row) => row); // Load raw rows first
+
+        const retailerInvoicesMap = new Map();
+        finalInvoices.forEach(inv => {
+            const order = ordersMap.get(inv.orderId);
+            if (order && order.retailerId) {
+                if (!retailerInvoicesMap.has(order.retailerId)) {
+                    retailerInvoicesMap.set(order.retailerId, []);
+                }
+                retailerInvoicesMap.get(order.retailerId).push(inv.id);
             }
-            if (p.collectedById && !userIds.has(p.collectedById)) {
-                console.log(`Warning: Payment ${p.id} - User ${p.collectedById} missing. Setting to null.`);
-                p.collectedById = null;
-            }
-            return p;
         });
+
+        const invoiceIdToRetailerId = new Map();
+        finalInvoices.forEach(inv => {
+            const order = ordersMap.get(inv.orderId);
+            if (order && order.retailerId) {
+                invoiceIdToRetailerId.set(inv.id, order.retailerId);
+            }
+        });
+
+        const payments = [];
+        let pNameMatchedCount = 0;
+        let pIdMatchedCount = 0;
+        let pFallbackCount = 0;
+        let pUnmappedCount = 0;
+
+        for (const row of allPaymentsRaw) {
+            const csvInvoiceId = parseNullableInt(row.invoiceId);
+            const csvRetailerName = (row.retailerName || '').trim().toLowerCase();
+            let targetInvoiceId = null;
+
+            // 1. Check if ID match is consistent with Name
+            const retailerIdFromId = invoiceIdToRetailerId.get(csvInvoiceId);
+            const retailerIdFromName = retailerNameMap.get(csvRetailerName);
+
+            if (csvInvoiceId && retailerIdFromId && retailerIdFromId === retailerIdFromName) {
+                targetInvoiceId = csvInvoiceId;
+                pIdMatchedCount++;
+            } else if (retailerIdFromName) {
+                // 2. ID mismatch or missing, but name matches a retailer
+                const rInvoices = retailerInvoicesMap.get(retailerIdFromName);
+                if (rInvoices && rInvoices.length > 0) {
+                    targetInvoiceId = rInvoices[0]; // Use first invoice for this retailer
+                    pNameMatchedCount++;
+                } else {
+                    pFallbackCount++;
+                }
+            } else {
+                pUnmappedCount++;
+            }
+
+            payments.push({
+                amount: parseFloat(row.amount) || 0,
+                paymentMode: row.paymentMode || 'Cash',
+                transactionId: row.transactionId || '',
+                paymentReference: row.paymentReference || '',
+                paymentDate: parseDateOnly(row.paymentDate),
+                invoiceId: targetInvoiceId,
+                collectedById: userIds.has(parseNullableInt(row.collectedById)) ? parseNullableInt(row.collectedById) : null,
+                retailerName: row.retailerName,
+                approvalStatus: 'Approved'
+            });
+        }
+
+        console.log(`Payment Mapping Results:
+  - Consistently matched by ID: ${pIdMatchedCount}
+  - Re-mapped by Retailer Name: ${pNameMatchedCount}
+  - Unmapped (Retailer found but no Invoices): ${pFallbackCount}
+  - Unmapped (Retailer not found): ${pUnmappedCount}`);
+
         for (let i = 0; i < payments.length; i += 100) {
             await db.Payment.bulkCreate(payments.slice(i, i + 100));
         }

@@ -163,7 +163,7 @@ const RetailerDetail = () => {
                             </div>
                             <div class="col-right">
                                 <div class="col-right-top">
-                                    <div class="row"><span class="label">Invoice No</span><span class="value">: ${order.invoice?.invoiceNumber || order.id}</span></div>
+                                    <div className="row"><span className="label">Invoice No</span><span className="value">: ${order.invoice?.invoiceNumber || order.id}</span></div>
                                     <div class="row"><span class="label">Date</span><span class="value">: ${new Date(order.createdAt).toLocaleDateString('en-GB')}</span></div>
                                     <div class="row"><span class="label">Vehicle</span><span class="value">: </span></div>
                                 </div>
@@ -317,14 +317,27 @@ const RetailerDetail = () => {
 
     // Collect all payments from all invoices
     const allPayments = (() => {
-        if (!Array.isArray(retailer.orders)) {
-            console.warn("Filter warning: 'retailer.orders' is not an array in RetailerDetail.jsx. Type:", typeof retailer.orders, "Value:", retailer.orders);
+        if (!retailer || !Array.isArray(retailer.orders)) {
+            return [];
         }
-        return (Array.isArray(retailer.orders) ? retailer.orders : [])
-            .filter(o => o.Invoice)
-            .flatMap(o => o.Invoice.payments?.map(p => ({ ...p, orderId: o.id, invoiceNumber: o.Invoice.invoiceNumber })) || [])
-            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        
+        return retailer.orders
+            .map(o => {
+                // Handle different possible casings for 'invoice' and 'payments'
+                const invoice = o.invoice || o.Invoice;
+                if (!invoice) return [];
+                
+                const payments = invoice.payments || invoice.Payments || [];
+                return payments.map(p => ({ 
+                    ...p, 
+                    orderId: o.id, 
+                    invoiceNumber: invoice.invoiceNumber 
+                }));
+            })
+            .flat()
+            .sort((a, b) => new Date(b.paymentDate || b.createdAt) - new Date(a.paymentDate || a.createdAt));
     })();
+
 
     return (
         <div className="p-2 md:p-6 max-w-7xl mx-auto animate-fade-in-up">
@@ -405,12 +418,14 @@ const RetailerDetail = () => {
                                     <span className="text-purple-100 text-sm font-medium">Active Invoices</span>
                                     <span className="font-black text-xl tabular-nums">
                                         {(() => {
-                                            if (!Array.isArray(retailer.orders)) {
-                                                console.warn("Filter warning: 'retailer.orders' map is not an array in RetailerDetail.jsx. Type:", typeof retailer.orders, "Value:", retailer.orders);
-                                            }
-                                            return (Array.isArray(retailer.orders) ? retailer.orders : []).filter(o => o.Invoice && o.Invoice.paymentStatus !== 'Paid').length || 0;
+                                            if (!retailer || !Array.isArray(retailer.orders)) return 0;
+                                            return retailer.orders.filter(o => {
+                                                const inv = o.invoice || o.Invoice;
+                                                return inv && inv.paymentStatus !== 'Paid';
+                                            }).length;
                                         })()}
                                     </span>
+
                                 </div>
                             </div>
                         </div>
@@ -470,12 +485,12 @@ const RetailerDetail = () => {
                                                 </div>
                                                 <span>Sales Rep: <span className="font-black text-gray-800 dark:text-slate-200 uppercase">{order.salesRep?.name}</span></span>
                                             </div>
-                                            {order.Invoice && (
+                                            {order.invoice && (
                                                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400 font-medium">
                                                     <div className="p-1.5 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 shadow-sm">
                                                         <CreditCard size={14} className="text-gray-400 dark:text-slate-500" />
                                                     </div>
-                                                    <span>Payment: <span className={`font-black uppercase ${order.Invoice.paymentStatus === 'Paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{order.Invoice.paymentStatus}</span></span>
+                                                    <span>Payment: <span className={`font-black uppercase ${order.invoice.paymentStatus === 'Paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{order.invoice.paymentStatus}</span></span>
                                                 </div>
                                             )}
                                         </div>

@@ -16,10 +16,10 @@ const getStartOfToday = () => {
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istDate = new Date(now.getTime() + istOffset);
-    
+
     // Create a new date at 00:00:00 of that IST date
     const startOfIstToday = new Date(istDate.toISOString().split('T')[0] + 'T00:00:00.000Z');
-    
+
     // Shift back to UTC to get the actual UTC timestamp that corresponds to 00:00:00 IST
     return new Date(startOfIstToday.getTime() - istOffset);
 };
@@ -368,7 +368,12 @@ const getEmployeeStats = async (req, res) => {
             stats.pendingInvoices = await Invoice.count({
                 where: {
                     paymentStatus: { [Op.ne]: 'Paid' }
-                }
+                },
+                include: [{
+                    model: Order,
+                    as: 'order',
+                    where: { status: { [Op.in]: ['Dispatched', 'Delivered'] } }
+                }]
             });
         }
 
@@ -405,7 +410,7 @@ const getRepList = async (req, res) => {
 const getRepHistory = async (req, res) => {
     try {
         const { repId, startDate, endDate } = req.query;
-        
+
         console.log('\x1b[32m%s\x1b[0m', '------------------------------------------------');
         console.log('\x1b[32m%s\x1b[0m', `🚀 RECP PERFORMANCE FETCH: Rep=${repId} v=3`);
         console.log('\x1b[32m%s\x1b[0m', `📅 Range: ${startDate} to ${endDate}`);
@@ -484,18 +489,18 @@ const getRepHistory = async (req, res) => {
         invoices.forEach(invInstance => {
             const inv = invInstance.get({ plain: true });
             const d = formatDate(inv.invoiceDate);
-            
+
             if (!dayMap[d]) {
                 dayMap[d] = { date: d, sales: 0, collections: 0, orders: 0, ordersList: [] };
             }
-            
+
             const entry = dayMap[d];
             entry.sales += parseFloat(inv.netTotal) || 0;
             entry.orders += 1;
-            
+
             // Standardizing to lowercase 'order' as per the alias in index.js
-            const orderData = inv.order || inv.Order; 
-            
+            const orderData = inv.order || inv.Order;
+
             entry.ordersList.push({
                 invoiceNumber: String(inv.invoiceNumber),
                 customerName: String(inv.customerName || orderData?.retailer?.shopName || 'Unknown'),
@@ -525,7 +530,7 @@ const getRepHistory = async (req, res) => {
         const RESPONSE_VERSION = 3;
         const serverTime = new Date().toISOString();
         const debugId = Math.random().toString(36).substring(7).toUpperCase();
-        
+
         console.log(`\n\x1b[42m\x1b[30m 🚀 V3 IS ALIVE | Rep:${repId} | ID:${debugId} \x1b[0m\n`);
 
         // ---- Totals ----

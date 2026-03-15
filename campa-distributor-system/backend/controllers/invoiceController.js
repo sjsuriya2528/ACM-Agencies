@@ -29,7 +29,7 @@ const getInvoices = async (req, res) => {
                 {
                     model: Order,
                     as: 'order',
-                    where: status === 'Pending' ? { status: 'Delivered' } : {},
+                    where: status === 'Pending' ? { status: { [Op.in]: ['Dispatched', 'Delivered'] } } : {},
                     include: [
                         { model: Retailer, as: 'retailer', attributes: ['id', 'shopName', 'address'] },
                         { model: User, as: 'salesRep', attributes: ['name'] }

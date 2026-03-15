@@ -28,7 +28,9 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
       final response = await _apiService.get('/invoices/${widget.invoiceId}');
       if (response.statusCode == 200) {
         setState(() {
-          _invoice = response.data;
+          final data = response.data;
+          // Handle both direct object and { data: {...} } wrapper
+          _invoice = data is Map && data.containsKey('data') ? data['data'] : data;
           _isLoading = false;
         });
       }
@@ -77,7 +79,7 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_invoice == null) return Scaffold(appBar: AppBar(), body: const Center(child: Text('Invoice not found')));
 
-    final order = _invoice['Order'];
+    final order = _invoice['order'] ?? _invoice['Order'];
     final items = order?['items'] as List<dynamic>? ?? [];
     final netTotal = (double.tryParse(_invoice['netTotal']?.toString() ?? '0') ?? 0).round();
 
@@ -104,8 +106,12 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
           children: [
             _buildBillPaper(items, netTotal),
             const SizedBox(height: 24),
-            if (_invoice['Payments'] != null && (_invoice['Payments'] as List).isNotEmpty)
-              _buildSettlementLogs(),
+            if (_invoice['payments'] != null && (_invoice['payments'] as List).isNotEmpty)
+              ...[
+                _buildSectionTitle('Settlement Logs'),
+                const SizedBox(height: 8),
+                _buildSettlementLogs(),
+              ],
             const SizedBox(height: 40),
           ],
         ),
@@ -175,11 +181,11 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _infoRow('Buyer', _invoice['customerName'] ?? _invoice['Order']?['retailer']?['shopName'] ?? ''),
-                  _infoRow('Address', _invoice['customerAddress'] ?? _invoice['Order']?['retailer']?['address'] ?? ''),
+                  _infoRow('Buyer', _invoice['customerName'] ?? _invoice['order']?['retailer']?['shopName'] ?? ''),
+                  _infoRow('Address', _invoice['customerAddress'] ?? _invoice['order']?['retailer']?['address'] ?? ''),
                   const SizedBox(height: 12),
-                  _infoRow('Mobile', _invoice['customerPhone'] ?? _invoice['Order']?['retailer']?['phone'] ?? ''),
-                  _infoRow('GSTIN', _invoice['Order']?['retailer']?['gstin'] ?? ''),
+                  _infoRow('Mobile', _invoice['customerPhone'] ?? _invoice['order']?['retailer']?['phone'] ?? ''),
+                  _infoRow('GSTIN', _invoice['order']?['retailer']?['gstin'] ?? ''),
                 ],
               ),
             ),
@@ -385,6 +391,16 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                             ),
                           ],
                         ),
+                        if (_invoice['order'] != null) ...[
+                          _buildDetailRow(
+                            'Order ID',
+                            '#${_invoice['order']['id']}',
+                          ),
+                          _buildDetailRow(
+                            'Order Status',
+                            _invoice['order']['status'] ?? 'N/A',
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -421,8 +437,34 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
     );
   }
 
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          Icon(LucideIcons.history, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+          Text(value, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSettlementLogs() {
-    final payments = _invoice['Payments'] as List;
+    List<dynamic> logs = _invoice['payments'] ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -442,10 +484,10 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
           child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: payments.length,
+            itemCount: logs.length,
             separatorBuilder: (context, index) => Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.1)),
             itemBuilder: (context, index) {
-              final p = payments[index];
+              final p = logs[index];
               return Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(

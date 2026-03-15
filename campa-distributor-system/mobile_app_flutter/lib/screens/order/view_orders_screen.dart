@@ -5,7 +5,8 @@ import '../../services/api_service.dart';
 import 'order_details_screen.dart';
 
 class ViewOrdersScreen extends StatefulWidget {
-  const ViewOrdersScreen({super.key});
+  final bool myOrdersOnly;
+  const ViewOrdersScreen({super.key, this.myOrdersOnly = false});
 
   @override
   State<ViewOrdersScreen> createState() => _ViewOrdersScreenState();
@@ -27,10 +28,16 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
   }
 
   Future<void> _fetchOrders() async {
+    setState(() => _isLoading = true);
     try {
       final Map<String, dynamic> params = {};
+      
+      // Server-side filtering parameters
       if (_startDate != null) params['startDate'] = DateFormat('yyyy-MM-dd').format(_startDate!);
       if (_endDate != null) params['endDate'] = DateFormat('yyyy-MM-dd').format(_endDate!);
+      if (_searchTerm.isNotEmpty) params['search'] = _searchTerm;
+      if (_filterStatus != 'All') params['status'] = _filterStatus;
+      if (widget.myOrdersOnly) params['myOrders'] = 'true';
 
       final response = await _apiService.get('/orders', queryParameters: params);
       if (response.statusCode == 200) {
@@ -51,16 +58,10 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
   }
 
   List<dynamic> get _filteredOrders {
-    return _orders.where((order) {
-      final shopName = (order['retailer']?['shopName'] ?? '').toString().toLowerCase();
-      final orderId = order['id'].toString().toLowerCase();
-      final status = order['status'].toString();
-
-      final matchesSearch = shopName.contains(_searchTerm.toLowerCase()) || orderId.contains(_searchTerm.toLowerCase());
-      final matchesStatus = _filterStatus == 'All' || status == _filterStatus;
-
-      return matchesSearch && matchesStatus;
-    }).toList();
+    // We now rely on server-side filtering for search, status and date.
+    // This getter is kept for backward compatibility if needed, 
+    // but the main data is now fetched according to filters.
+    return _orders;
   }
 
   Color _getStatusColorText(String status) {
@@ -143,7 +144,13 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
                             border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
                           ),
                           child: TextField(
-                            onChanged: (value) => setState(() => _searchTerm = value),
+                            onChanged: (value) {
+                              setState(() => _searchTerm = value);
+                              // Fetch only if it looks like a complete word or cleared
+                              if (value.isEmpty || value.length > 2) {
+                                _fetchOrders();
+                              }
+                            },
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyMedium?.color),
                             decoration: InputDecoration(
                               hintText: 'Search retailer or ID...',
@@ -156,6 +163,7 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
                                         setState(() {
                                           _searchTerm = '';
                                         });
+                                        _fetchOrders();
                                       },
                                     )
                                   : null,
@@ -188,7 +196,10 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
                               value: s,
                               child: Text(s == 'Approved' ? 'Accepted' : (s == 'All' ? 'All Status' : s)),
                             )).toList(),
-                            onChanged: (val) => setState(() => _filterStatus = val!),
+                            onChanged: (val) {
+                              setState(() => _filterStatus = val!);
+                              _fetchOrders();
+                            },
                           ),
                         ),
                       ),
@@ -198,42 +209,44 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
                 const SizedBox(height: 8),
                 // Date Filter
                 Container(
-                  height: 44,
+                  height: 48,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
                   ),
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                  child: Row(
                     children: [
-                      _buildDatePickerRow(true),
+                      Expanded(child: _buildDatePickerRow(true)),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text('→', style: TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.bold)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(LucideIcons.arrowRight, size: 16, color: Theme.of(context).hintColor.withOpacity(0.3)),
                       ),
-                      _buildDatePickerRow(false),
+                      Expanded(child: _buildDatePickerRow(false)),
                       if (_startDate != null || _endDate != null) ...[
-                         const SizedBox(width: 4),
-                         InkWell(
-                           onTap: () {
-                             setState(() {
-                               _startDate = null;
-                               _endDate = null;
-                             });
-                             _fetchOrders();
-                           },
-                           child: Container(
-                             margin: const EdgeInsets.only(left: 4),
-                             padding: const EdgeInsets.all(6),
-                             decoration: BoxDecoration(
-                               color: Theme.of(context).colorScheme.error.withOpacity(0.1), // rose-50
-                               borderRadius: BorderRadius.circular(8),
-                             ),
-                             child: Icon(LucideIcons.xCircle, size: 16, color: Theme.of(context).colorScheme.error), // rose-500
-                           ),
-                         ),
+                        const SizedBox(width: 4),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              setState(() {
+                                _startDate = null;
+                                _endDate = null;
+                              });
+                              _fetchOrders();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(LucideIcons.xCircle, size: 18, color: Theme.of(context).colorScheme.error),
+                            ),
+                          ),
+                        ),
                       ]
                     ],
                   ),
@@ -279,8 +292,11 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen> {
         );
         if (selected != null) {
           setState(() {
-            if (isStart) _startDate = selected;
-            else _endDate = selected;
+            if (isStart) {
+              _startDate = selected;
+            } else {
+              _endDate = selected;
+            }
           });
           _fetchOrders();
         }

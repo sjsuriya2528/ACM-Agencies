@@ -119,7 +119,7 @@ const createOrder = async (req, res) => {
             errorName: error.name,
             validationErrors: error.errors
         });
-        
+
         let message = error.message;
         if (error.name === 'SequelizeUniqueConstraintError' && error.errors) {
             message = 'Constraint Error: ' + error.errors.map(e => `${e.path}: ${e.message}`).join(', ');
@@ -135,25 +135,38 @@ const createOrder = async (req, res) => {
 // @access  Private (Admin/Sales Rep)
 const getOrders = async (req, res) => {
     try {
-        const { startDate, endDate, page = 1, limit = 50, search, status, paymentMode } = req.query;
+        const { startDate, endDate, page = 1, limit = 50, search, status, paymentMode, myOrders } = req.query;
         const offset = (page - 1) * limit;
-        // 1. Base conditions based on user role
-        const conditions = [];
         const istOffset = 5.5 * 60 * 60 * 1000;
+        const conditions = [];
 
-        if (req.user.role === 'sales_rep') {
+        console.log(`[OrderDebug] Role: ${req.user.role}, ID: ${req.user.id}, myOrders: ${myOrders}`);
+
+        const userRole = (req.user.role || '').toLowerCase().trim();
+
+        // Base isolation logic
+        if (myOrders === 'true') {
+            // Explicitly requested "my orders" (created by me)
             conditions.push({ salesRepId: req.user.id });
-        } else if (req.user.role === 'driver') {
-            conditions.push({
-                [Op.or]: [
-                    { status: 'Approved' },
-                    { driverId: req.user.id }
-                ]
-            });
-        } else if (req.user.role === 'collection_agent') {
-            conditions.push({
-                status: { [Op.in]: ['Dispatched', 'Delivered'] }
-            });
+        } else {
+            // Standard role-based access
+            if (userRole === 'sales_rep') {
+                conditions.push({ salesRepId: req.user.id });
+            } else if (userRole === 'driver') {
+                conditions.push({
+                    [Op.or]: [
+                        { status: 'Approved' },
+                        { driverId: req.user.id }
+                    ]
+                });
+            } else if (userRole === 'collection_agent') {
+                conditions.push({
+                    status: { [Op.in]: ['Dispatched', 'Delivered'] }
+                });
+            } else if (userRole !== 'admin') {
+                console.warn(`[OrderDebug] Unrecognized role: ${userRole}. Enforcing strict isolation.`);
+                conditions.push({ salesRepId: req.user.id });
+            }
         }
 
         // 2. Status Filter
@@ -324,7 +337,8 @@ const updateOrderStatus = async (req, res) => {
             include: [
                 { model: OrderItem, as: 'items', include: [Product] },
                 { model: Retailer, as: 'retailer' },
-                { model: Invoice } // Include Invoice to check payment status
+                { model: Invoice, as: 'invoice' } // Include Invoice to check payment status
+
             ]
         });
 
@@ -508,7 +522,8 @@ const deleteOrder = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         const order = await Order.findByPk(req.params.id, {
-            include: [{ model: OrderItem, as: 'items', include: [Product] }, { model: Invoice }]
+            include: [{ model: OrderItem, as: 'items', include: [Product] }, { model: Invoice, as: 'invoice' }]
+
         });
 
         if (!order) {

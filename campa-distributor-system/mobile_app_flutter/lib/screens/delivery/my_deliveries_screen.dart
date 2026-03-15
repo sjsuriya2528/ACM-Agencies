@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
@@ -65,6 +66,35 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
         _errorMessage = message;
         _isLoading = false;
       });
+    }
+  }
+  
+  Future<void> _openMap(double? lat, double? lng) async {
+    if (lat != null && lng != null) {
+      final url = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
+      try {
+        if (await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not open map application')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error launching map')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('GPS location not available for this retailer')),
+        );
+      }
     }
   }
 
@@ -241,32 +271,37 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  Text('#${delivery['id']}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                                  if (isMyDelivery) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                                      child: Text('ASSIGNED TO YOU', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 8, fontWeight: FontWeight.w900)),
-                                    ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text('#${delivery['id']}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                    if (isMyDelivery) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                                        child: Text('ASSIGNED TO YOU', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 8, fontWeight: FontWeight.w900)),
+                                      ),
+                                    ],
                                   ],
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                delivery['retailer']?['shopName'] ?? 'Unknown',
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  delivery['retailer']?['shopName'] ?? 'Unknown',
+                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
@@ -275,6 +310,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Icon(statusIcon, size: 12, color: statusStyle['color']),
                                 const SizedBox(width: 6),
@@ -289,6 +325,7 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                       ),
                       const SizedBox(height: 16),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(8),
@@ -307,9 +344,11 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                       Divider(height: 32, color: Theme.of(context).dividerColor.withOpacity(0.05)),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Container(
                                   padding: const EdgeInsets.all(8),
@@ -320,13 +359,14 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Text('BILLING', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9, fontWeight: FontWeight.w800)),
                                       FittedBox(
                                         fit: BoxFit.scaleDown,
                                         alignment: Alignment.centerLeft,
                                         child: Text(
-                                          '₹${delivery['Invoice']?['balanceAmount'] ?? delivery['totalAmount']}',
+                                          '₹${delivery['invoice']?['balanceAmount'] ?? delivery['totalAmount']}',
                                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                                         ),
                                       ),
@@ -374,10 +414,14 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
   }
 
   Widget _buildActionButtons(dynamic delivery) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12)),
-      child: const Icon(LucideIcons.navigation, color: Color(0xFF2563EB), size: 20),
+    return InkWell(
+      onTap: () => _openMap(delivery['gpsLatitude'], delivery['gpsLongitude']),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12)),
+        child: const Icon(LucideIcons.navigation, color: Color(0xFF2563EB), size: 20),
+      ),
     );
   }
 

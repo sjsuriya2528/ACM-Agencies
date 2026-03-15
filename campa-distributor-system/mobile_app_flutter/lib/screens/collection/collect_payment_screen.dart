@@ -34,10 +34,15 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
       final response = await _apiService.get('/invoices?status=Pending');
       if (response.statusCode == 200) {
         setState(() {
-          // Filter invoices where Order status is Delivered (matching React logic)
-          _invoices = response.data.where((inv) {
-            final orderStatus = inv['Order']?['status'];
-            return orderStatus == 'Delivered';
+          final data = response.data;
+          // Handle both direct array and { data: [...] } wrapper
+          final List<dynamic> rawInvoices = data is Map ? (data['data'] ?? []) : (data is List ? data : []);
+
+          // Filter invoices where Order status is Delivered or Dispatched (matching broadened logic)
+          _invoices = rawInvoices.where((inv) {
+            final orderData = inv['order'] ?? inv['Order'];
+            final orderStatus = orderData?['status'];
+            return orderStatus == 'Delivered' || orderStatus == 'Dispatched';
           }).toList();
           _isLoading = false;
         });
@@ -111,7 +116,7 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
   }
 
   String _getRetailerName(dynamic inv) {
-    return inv['customerName'] ?? inv['Order']?['retailer']?['shopName'] ?? 'Unknown Retailer';
+    return inv['customerName'] ?? inv['order']?['retailer']?['shopName'] ?? 'Unknown Retailer';
   }
 
   List<dynamic> get _filteredInvoices {

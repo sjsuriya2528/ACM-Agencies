@@ -35,8 +35,8 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       if (response.statusCode == 200) {
         setState(() {
           _order = response.data;
-          if (_order['Invoice'] != null) {
-            _amountController.text = (_order['Invoice']?['balanceAmount'] ?? _order['totalAmount']).toStringAsFixed(0);
+          if (_order['invoice'] != null) {
+            _amountController.text = (_order['invoice']?['balanceAmount'] ?? _order['totalAmount']).toStringAsFixed(0);
           }
           _isLoading = false;
         });
@@ -72,7 +72,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
   }
 
   Future<void> _submitPayment() async {
-    if (_order['Invoice'] == null) return;
+    if (_order['invoice'] == null) return;
 
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
@@ -83,7 +83,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     setState(() => _isCollectingPayment = true);
     try {
       await _apiService.post('/payments', data: {
-        'invoiceId': _order['Invoice']['id'],
+        'invoiceId': _order['invoice']['id'],
         'amount': amount,
         'paymentMode': _paymentMode,
         'transactionId': _paymentMode != 'Cash' ? _refController.text : '',
@@ -103,8 +103,22 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     final lng = _order['gpsLongitude'];
     if (lat != null && lng != null) {
       final url = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      try {
+        if (await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not open map application')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error launching map')),
+          );
+        }
       }
     } else {
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No GPS location available')));
@@ -120,9 +134,9 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     final isAssignedToOther = _order['driverId'] != null && _order['driverId'] != user?.id;
     final isDelivered = _order['status'] == 'Delivered';
     final isApproved = _order['status'] == 'Approved';
-    final rawPending = _order['Invoice']?['balanceAmount'] ?? _order['totalAmount'];
-    final pendingAmount = rawPending is String ? double.tryParse(rawPending) ?? 0.0 : (rawPending ?? 0).toDouble();
-    final retailer = _order['retailer'] ?? _order['Order']?['Retailer'] ?? {};
+    final rawPending = _order['invoice']?['balanceAmount'] ?? _order['totalAmount'];
+    final pendingAmount = double.tryParse(rawPending.toString()) ?? 0.0;
+    final retailer = _order['retailer'] ?? _order['order']?['retailer'] ?? {};
     final status = _order['status']?.toString() ?? 'Unknown';
 
     return Scaffold(

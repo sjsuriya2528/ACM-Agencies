@@ -171,6 +171,7 @@ const Orders = () => {
                 page,
                 limit,
                 search: activeSearch,
+                status: filterStatus !== 'All' ? filterStatus : undefined,
                 paymentMode: paymentFilter !== 'All' ? paymentFilter : undefined
             };
             const response = await api.get('/orders', { params, signal });

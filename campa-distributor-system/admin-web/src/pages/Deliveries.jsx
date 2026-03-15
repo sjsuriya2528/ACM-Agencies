@@ -79,7 +79,7 @@ const Deliveries = () => {
 
     const handleRecordPayment = async (e) => {
         e.preventDefault();
-        if (!selectedDelivery || !selectedDelivery.Invoice) return;
+        if (!selectedDelivery || !selectedDelivery.invoice) return;
 
         const balance = parseFloat(selectedDelivery.invoice.balanceAmount);
         if (parseFloat(paymentData.amount) > balance) {
@@ -318,8 +318,8 @@ const Deliveries = () => {
                             <div className="bg-blue-600 dark:bg-blue-900/40 rounded-2xl p-6 flex justify-between items-center border border-blue-500/20 shadow-lg shadow-blue-200/50 dark:shadow-none relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div className="relative z-10">
-                                    <p className="text-[10px] font-black text-blue-100/70 uppercase tracking-[0.2em] mb-1">Outstanding Balance</p>
-                                    <p className="text-3xl font-black text-white">₹{parseFloat(selectedDelivery.Invoice?.balanceAmount || 0).toLocaleString()}</p>
+                                    <p className="text-[10px] font-black text-blue-100/70 uppercase tracking-[0.2em] mb-1">Bill Balance</p>
+                                    <p className="text-3xl font-black text-white">₹{parseFloat(selectedDelivery.invoice?.balanceAmount || 0).toLocaleString()}</p>
                                 </div>
                                 <div className="p-4 bg-white/20 rounded-xl backdrop-blur-md border border-white/20 relative z-10">
                                     <CreditCard className="text-white" size={28} />

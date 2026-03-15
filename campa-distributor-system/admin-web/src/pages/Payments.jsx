@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import api from '../api/axios';
 import {
     CreditCard,
@@ -49,12 +49,6 @@ const Payments = () => {
     const [limit, setLimit] = useState(50);
     const [error, setError] = useState(null);
     const [showRecordModal, setShowRecordModal] = useState(false);
-    const [invoices, setInvoices] = useState([]);
-    const [searchInvoice, setSearchInvoice] = useState('');
-    const [selectedInvoice, setSelectedInvoice] = useState(null);
-    const [paymentData, setPaymentData] = useState({ amount: '', paymentMode: 'Cash', transactionId: '', paymentDate: new Date().toISOString().split('T')[0] });
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [loadingInvoices, setLoadingInvoices] = useState(false);
     const [actionLoading, setActionLoading] = useState(null); // paymentId being actioned
     const [receiptData, setReceiptData] = useState(null);
     const [isPrinting, setIsPrinting] = useState(false);
@@ -95,31 +89,7 @@ const Payments = () => {
         }
     };
 
-    const fetchPendingInvoices = async (search = '') => {
-        try {
-            setLoadingInvoices(true);
-            const response = await api.get('/invoices', {
-                params: {
-                    status: 'Pending',
-                    search: search
-                }
-            });
-            setInvoices(response.data);
-        } catch (error) {
-            console.error('Failed to fetch invoices', error);
-        } finally {
-            setLoadingInvoices(false);
-        }
-    };
 
-    // Debounce invoice search in modal
-    useEffect(() => {
-        if (!showRecordModal) return;
-        const timer = setTimeout(() => {
-            fetchPendingInvoices(searchInvoice);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchInvoice, showRecordModal]);
 
     const handleAction = async (id, action) => {
         const confirmMessages = {
@@ -171,38 +141,7 @@ const Payments = () => {
         }
     };
 
-    const handleRecordPayment = async (e) => {
-        e.preventDefault();
-        if (!selectedInvoice) return;
-        const balance = parseFloat(selectedInvoice.balanceAmount);
-        if (parseFloat(paymentData.amount) > balance) {
-            alert(`Payment amount cannot exceed balance (₹${balance})`);
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            const response = await api.post('/payments', {
-                invoiceId: selectedInvoice.id,
-                amount: paymentData.amount,
-                paymentMode: paymentData.paymentMode,
-                transactionId: paymentData.transactionId,
-                paymentDate: paymentData.paymentDate,
-            });
-            setShowRecordModal(false);
-            setSelectedInvoice(null);
-            setPaymentData({ amount: '', paymentMode: 'Cash', transactionId: '', paymentDate: new Date().toISOString().split('T')[0] });
 
-            if (window.confirm('Payment recorded successfully! Do you want to print the receipt?')) {
-                handlePrintReceipt(response.data.id);
-            }
-
-            fetchPayments();
-        } catch (error) {
-            alert(error.response?.data?.message || 'Failed to record payment');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     // For counts across all pages, we get it from the backend
     const pendingCount = totalPendingCount;
@@ -262,7 +201,7 @@ const Payments = () => {
                     )}
 
                     <button
-                        onClick={() => { setShowRecordModal(true); fetchPendingInvoices(); }}
+                        onClick={() => { setShowRecordModal(true); }}
                         className="flex-1 lg:flex-none bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-800 dark:hover:bg-slate-100 shadow-xl shadow-slate-200 dark:shadow-none transition-all active:scale-95 group font-black text-xs uppercase tracking-widest"
                     >
                         <Plus size={20} className="group-hover:rotate-90 transition-transform" /> Record Payment
@@ -516,130 +455,11 @@ const Payments = () => {
 
             {/* Record New Payment Modal */}
             {showRecordModal && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 pt-10 md:pt-20 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden mb-10 border border-slate-200 dark:border-slate-800 animate-scale-in">
-                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Record New Payment</h3>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 uppercase font-black tracking-widest">Admin-recorded payments are approved immediately</p>
-                            </div>
-                            <button onClick={() => setShowRecordModal(false)} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                            {/* Invoice Selection */}
-                            <div className="p-8 border-r border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
-                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 ml-1">1. Select Invoice</label>
-                                <div className="relative mb-6 group">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
-                                    <input
-                                        type="text"
-                                        placeholder="Search retailer or bill #..."
-                                        className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all dark:text-slate-100"
-                                        value={searchInvoice}
-                                        onChange={e => setSearchInvoice(e.target.value)}
-                                    />
-                                </div>
-                                <div className="h-[400px] overflow-y-auto space-y-3 pr-2 scrollbar-thin">
-                                    {loadingInvoices ? (
-                                        <div className="flex justify-center py-10"><LoadingSpinner /></div>
-                                    ) : invoices.map(invoice => (
-                                        <button
-                                            key={invoice.id}
-                                            onClick={() => { setSelectedInvoice(invoice); setPaymentData({ ...paymentData, amount: invoice.balanceAmount }); }}
-                                            className={`w-full text-left p-5 rounded-2xl border transition-all transform active:scale-[0.98] ${selectedInvoice?.id === invoice.id ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200 dark:shadow-none' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-500/50 text-slate-700 dark:text-slate-200'}`}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1.5 ${selectedInvoice?.id === invoice.id ? 'text-blue-100/70' : 'text-slate-400 dark:text-slate-500'}`}>Bill #{invoice.id}</p>
-                                                    <p className="font-black text-sm tracking-tight truncate max-w-[180px]">{invoice.order?.retailer?.shopName || 'Wholesale Order'}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className={`font-black text-lg tabular-nums ${selectedInvoice?.id === invoice.id ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>₹{parseFloat(invoice.balanceAmount).toLocaleString()}</p>
-                                                    <p className={`text-[10px] font-bold uppercase ${selectedInvoice?.id === invoice.id ? 'text-blue-100/50' : 'text-slate-400'}`}>Balance</p>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                    {!loadingInvoices && invoices.length === 0 && (
-                                        <div className="text-center py-20 text-slate-400 dark:text-slate-600">
-                                            <Search size={32} className="mx-auto mb-3 opacity-20" />
-                                            <p className="text-xs font-black uppercase tracking-widest">No pending invoices</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Payment Form */}
-                            <div className="p-8 bg-white dark:bg-slate-900">
-                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8 ml-1">2. Payment Details</label>
-                                {selectedInvoice ? (
-                                    <form onSubmit={handleRecordPayment} className="space-y-6">
-                                        <div className="bg-blue-600 dark:bg-blue-900/40 rounded-3xl p-6 flex justify-between items-center border border-blue-500/20 shadow-xl shadow-blue-100 dark:shadow-none relative overflow-hidden group">
-                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                            <div className="relative z-10">
-                                                <p className="text-[10px] font-black text-blue-100/70 uppercase tracking-[0.2em] mb-1">Selected Balance</p>
-                                                <p className="text-3xl font-black text-white">₹{parseFloat(selectedInvoice.balanceAmount).toLocaleString()}</p>
-                                            </div>
-                                            <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-md border border-white/20 relative z-10">
-                                                <CreditCard className="text-white" size={28} />
-                                            </div>
-                                            <IndianRupee className="absolute -right-4 -bottom-4 text-white/5" size={100} />
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                            <div>
-                                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Payment Date</label>
-                                                <div className="relative group">
-                                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
-                                                    <input type="date" required value={paymentData.paymentDate} onChange={e => setPaymentData({ ...paymentData, paymentDate: e.target.value })} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-black text-slate-700 dark:text-slate-100 transition-all text-sm" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Amount (₹)</label>
-                                                <div className="relative group">
-                                                    <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
-                                                    <input type="number" step="0.01" required value={paymentData.amount} onChange={e => setPaymentData({ ...paymentData, amount: e.target.value })} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-black text-slate-700 dark:text-slate-100 transition-all text-sm" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Payment Mode</label>
-                                            <select value={paymentData.paymentMode} onChange={e => setPaymentData({ ...paymentData, paymentMode: e.target.value })} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-black text-slate-700 dark:text-slate-200 text-sm appearance-none cursor-pointer">
-                                                <option>Cash</option>
-                                                <option>UPI</option>
-                                                <option>Bank Transfer</option>
-                                                <option>Cheque</option>
-                                            </select>
-                                        </div>
-
-                                        {paymentData.paymentMode !== 'Cash' && (
-                                            <div className="animate-fade-in">
-                                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Reference ID / Trans. No</label>
-                                                <input type="text" value={paymentData.transactionId} onChange={e => setPaymentData({ ...paymentData, transactionId: e.target.value })} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-bold text-slate-700 dark:text-slate-100 text-sm" placeholder="Ref No, UPI ID, etc." />
-                                            </div>
-                                        )}
-
-                                        <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 text-white font-black uppercase tracking-widest transition-all shadow-xl mt-8 text-xs transform hover:-translate-y-0.5 active:scale-[0.98] ${isSubmitting ? 'bg-slate-300 dark:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200 dark:shadow-none'}`}>
-                                            {isSubmitting ? 'Recording...' : <><CheckCircle size={20} /> Record & Approve</>}
-                                        </button>
-                                    </form>
-                                ) : (
-                                    <div className="h-[400px] flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
-                                        <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-full text-slate-200 dark:text-slate-700"><IndianRupee size={48} /></div>
-                                        <div>
-                                            <p className="text-slate-800 dark:text-slate-200 font-black uppercase tracking-widest text-xs">Awaiting Invoice</p>
-                                            <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 max-w-[200px]">Select an invoice from the list on the left to record a payment.</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <RecordPaymentModal 
+                    onClose={() => setShowRecordModal(false)}
+                    onSuccess={fetchPayments}
+                    handlePrintReceipt={handlePrintReceipt}
+                />
             )}
 
             {/* Receipt Component for Printing */}
@@ -647,5 +467,220 @@ const Payments = () => {
         </div>
     );
 };
+
+const RecordPaymentModal = ({ onClose, onSuccess, handlePrintReceipt }) => {
+    const [invoices, setInvoices] = useState([]);
+    const [searchInvoice, setSearchInvoice] = useState('');
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [paymentData, setPaymentData] = useState({ amount: '', paymentMode: 'Cash', transactionId: '', paymentDate: new Date().toISOString().split('T')[0] });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loadingInvoices, setLoadingInvoices] = useState(false);
+
+    useEffect(() => {
+        fetchPendingInvoices();
+    }, []);
+
+    const fetchPendingInvoices = async (search = '') => {
+        try {
+            setLoadingInvoices(true);
+            const response = await api.get('/invoices', {
+                params: {
+                    status: 'Pending',
+                    search: search
+                }
+            });
+            setInvoices(response.data);
+        } catch (error) {
+            console.error('Failed to fetch invoices', error);
+        } finally {
+            setLoadingInvoices(false);
+        }
+    };
+
+    // Debounce invoice search in modal
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchPendingInvoices(searchInvoice);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchInvoice]);
+
+    const handleSelectInvoice = useCallback((invoice) => {
+        setSelectedInvoice(invoice);
+        setPaymentData(prev => ({ ...prev, amount: invoice.balanceAmount }));
+    }, []);
+
+    const handleRecordPayment = async (e) => {
+        e.preventDefault();
+        if (!selectedInvoice) return;
+        const balance = parseFloat(selectedInvoice.balanceAmount);
+        if (parseFloat(paymentData.amount) > balance) {
+            alert(`Payment amount cannot exceed balance (₹${balance})`);
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const response = await api.post('/payments', {
+                invoiceId: selectedInvoice.id,
+                amount: paymentData.amount,
+                paymentMode: paymentData.paymentMode,
+                transactionId: paymentData.transactionId,
+                paymentDate: paymentData.paymentDate,
+            });
+            
+            if (window.confirm('Payment recorded successfully! Do you want to print the receipt?')) {
+                handlePrintReceipt(response.data.id);
+            }
+
+            onSuccess();
+            onClose();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to record payment');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 pt-10 md:pt-20 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden mb-10 border border-slate-200 dark:border-slate-800 animate-scale-in">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Record New Payment</h3>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 uppercase font-black tracking-widest">Admin-recorded payments are approved immediately</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                    {/* Invoice Selection */}
+                    <div className="p-8 border-r border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
+                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 ml-1">1. Select Invoice</label>
+                        <div className="relative mb-6 group">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search retailer or bill #..."
+                                className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all dark:text-slate-100"
+                                value={searchInvoice}
+                                onChange={e => setSearchInvoice(e.target.value)}
+                            />
+                        </div>
+                        <div className="h-[400px] overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                            {loadingInvoices ? (
+                                <div className="flex justify-center py-10"><LoadingSpinner /></div>
+                            ) : (
+                                <MemoizedInvoiceList 
+                                    invoices={invoices}
+                                    selectedId={selectedInvoice?.id}
+                                    onSelect={handleSelectInvoice}
+                                />
+                            )}
+                            {!loadingInvoices && invoices.length === 0 && (
+                                <div className="text-center py-20 text-slate-400 dark:text-slate-600">
+                                    <Search size={32} className="mx-auto mb-3 opacity-20" />
+                                    <p className="text-xs font-black uppercase tracking-widest">No pending invoices</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Payment Form */}
+                    <div className="p-8 bg-white dark:bg-slate-900">
+                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8 ml-1">2. Payment Details</label>
+                        {selectedInvoice ? (
+                            <form onSubmit={handleRecordPayment} className="space-y-6">
+                                <div className="bg-blue-600 dark:bg-blue-900/40 rounded-3xl p-6 flex justify-between items-center border border-blue-500/20 shadow-xl shadow-blue-100 dark:shadow-none relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    <div className="relative z-10">
+                                        <p className="text-[10px] font-black text-blue-100/70 uppercase tracking-[0.2em] mb-1">Selected Balance</p>
+                                        <p className="text-3xl font-black text-white">₹{parseFloat(selectedInvoice.balanceAmount).toLocaleString()}</p>
+                                    </div>
+                                    <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-md border border-white/20 relative z-10">
+                                        <CreditCard className="text-white" size={28} />
+                                    </div>
+                                    <IndianRupee className="absolute -right-4 -bottom-4 text-white/5" size={100} />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Payment Date</label>
+                                        <div className="relative group">
+                                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
+                                            <input type="date" required value={paymentData.paymentDate} onChange={e => setPaymentData({ ...paymentData, paymentDate: e.target.value })} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-black text-slate-700 dark:text-slate-100 transition-all text-sm" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Amount (₹)</label>
+                                        <div className="relative group">
+                                            <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
+                                            <input type="number" step="0.01" required value={paymentData.amount} onChange={e => setPaymentData({ ...paymentData, amount: e.target.value })} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-black text-slate-700 dark:text-slate-100 transition-all text-sm" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Payment Mode</label>
+                                    <select value={paymentData.paymentMode} onChange={e => setPaymentData({ ...paymentData, paymentMode: e.target.value })} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-black text-slate-700 dark:text-slate-200 text-sm appearance-none cursor-pointer">
+                                        <option>Cash</option>
+                                        <option>UPI</option>
+                                        <option>Bank Transfer</option>
+                                        <option>Cheque</option>
+                                    </select>
+                                </div>
+
+                                {paymentData.paymentMode !== 'Cash' && (
+                                    <div className="animate-fade-in">
+                                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 ml-1">Reference ID / Trans. No</label>
+                                        <input type="text" value={paymentData.transactionId} onChange={e => setPaymentData({ ...paymentData, transactionId: e.target.value })} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none font-bold text-slate-700 dark:text-slate-100 text-sm" placeholder="Ref No, UPI ID, etc." />
+                                    </div>
+                                )}
+
+                                <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 text-white font-black uppercase tracking-widest transition-all shadow-xl mt-8 text-xs transform hover:-translate-y-0.5 active:scale-[0.98] ${isSubmitting ? 'bg-slate-300 dark:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200 dark:shadow-none'}`}>
+                                    {isSubmitting ? 'Recording...' : <><CheckCircle size={20} /> Record & Approve</>}
+                                </button>
+                            </form>
+                        ) : (
+                            <div className="h-[400px] flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
+                                <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-full text-slate-200 dark:text-slate-700"><IndianRupee size={48} /></div>
+                                <div>
+                                    <p className="text-slate-800 dark:text-slate-200 font-black uppercase tracking-widest text-xs">Awaiting Invoice</p>
+                                    <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 max-w-[200px]">Select an invoice from the list on the left to record a payment.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const MemoizedInvoiceList = memo(({ invoices, selectedId, onSelect }) => {
+    return (
+        <>
+            {invoices.map(invoice => (
+                <button
+                    key={invoice.id}
+                    onClick={() => onSelect(invoice)}
+                    className={`w-full text-left p-5 rounded-2xl border transition-all transform active:scale-[0.98] ${selectedId === invoice.id ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200 dark:shadow-none' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-500/50 text-slate-700 dark:text-slate-200'}`}
+                >
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className={`text-[10px] font-black uppercase tracking-widest mb-1.5 ${selectedId === invoice.id ? 'text-blue-100/70' : 'text-slate-400 dark:text-slate-500'}`}>Bill #{invoice.id}</p>
+                            <p className="font-black text-sm tracking-tight truncate max-w-[180px]">{invoice.customerName || invoice.order?.retailer?.shopName || 'Wholesale Order'}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className={`font-black text-lg tabular-nums ${selectedId === invoice.id ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>₹{parseFloat(invoice.balanceAmount).toLocaleString()}</p>
+                            <p className={`text-[10px] font-bold uppercase ${selectedId === invoice.id ? 'text-blue-100/50' : 'text-slate-400'}`}>Balance</p>
+                        </div>
+                    </div>
+                </button>
+            ))}
+        </>
+    );
+});
 
 export default Payments;

@@ -47,6 +47,8 @@ const getRetailerById = async (req, res) => {
                 {
                     model: Order,
                     as: 'orders',
+                    separate: true, // Fetch orders in a separate query to avoid JOIN issues
+                    order: [['createdAt', 'DESC'], ['id', 'DESC']],
                     include: [
                         {
                             model: OrderItem,
@@ -66,8 +68,7 @@ const getRetailerById = async (req, res) => {
                         }
                     ]
                 }
-            ],
-            order: [[{ model: Order, as: 'orders' }, 'createdAt', 'DESC']]
+            ]
         });
 
         if (retailer) {

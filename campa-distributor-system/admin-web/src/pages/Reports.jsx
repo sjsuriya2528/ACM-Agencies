@@ -107,6 +107,11 @@ const Reports = () => {
         fetchProducts();
     }, []);
 
+    React.useEffect(() => {
+        setReportData(null);
+        setFetchStatus('idle');
+    }, [reportType]);
+
     const generatePDF = async () => {
         if (!reportData) return;
         setIsGenerating(true);
@@ -270,7 +275,7 @@ const Reports = () => {
                         <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest ml-1">Report Module</label>
                         <div className="flex flex-col gap-3">
                             <button
-                                onClick={() => setReportType('bills')}
+                                onClick={() => { setReportType('bills'); setReportData(null); setFetchStatus('idle'); }}
                                 className={`flex items-center gap-4 p-4 rounded-2xl transition-all border-2 ${reportType === 'bills'
                                     ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30'
                                     : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -280,7 +285,7 @@ const Reports = () => {
                                 <span className={`text-sm tracking-tight ${reportType === 'bills' ? 'font-black' : 'font-bold'}`}>Bill Wise Sales</span>
                             </button>
                             <button
-                                onClick={() => setReportType('collections')}
+                                onClick={() => { setReportType('collections'); setReportData(null); setFetchStatus('idle'); }}
                                 className={`flex items-center gap-4 p-4 rounded-2xl transition-all border-2 ${reportType === 'collections'
                                     ? 'bg-amber-500 border-amber-500 text-white shadow-xl shadow-amber-500/30'
                                     : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -290,7 +295,7 @@ const Reports = () => {
                                 <span className={`text-sm tracking-tight ${reportType === 'collections' ? 'font-black' : 'font-bold'}`}>Collection Summary</span>
                             </button>
                             <button
-                                onClick={() => setReportType('stock_history')}
+                                onClick={() => { setReportType('stock_history'); setReportData(null); setFetchStatus('idle'); }}
                                 className={`flex items-center gap-4 p-4 rounded-2xl transition-all border-2 ${reportType === 'stock_history'
                                     ? 'bg-emerald-600 border-emerald-600 text-white shadow-xl shadow-emerald-500/30'
                                     : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -300,7 +305,7 @@ const Reports = () => {
                                 <span className={`text-sm tracking-tight ${reportType === 'stock_history' ? 'font-black' : 'font-bold'}`}>Stock History</span>
                             </button>
                             <button
-                                onClick={() => setReportType('current_stock')}
+                                onClick={() => { setReportType('current_stock'); setReportData(null); setFetchStatus('idle'); }}
                                 className={`flex items-center gap-4 p-4 rounded-2xl transition-all border-2 ${reportType === 'current_stock'
                                     ? 'bg-violet-600 border-violet-600 text-white shadow-xl shadow-violet-500/30'
                                     : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -496,7 +501,7 @@ const Reports = () => {
                             <FileText size={20} className="text-blue-600" />
                             Preview Results
                             <span className="ml-3 px-3 py-1.5 bg-blue-600/10 text-blue-600 text-[10px] rounded-full">
-                                {reportType === 'bills' ? (reportData.invoices.length + reportData.cancelled.length) : reportData.length} Records Found
+                                {reportType === 'bills' ? (reportData?.invoices?.length || 0 + (reportData?.cancelled?.length || 0)) : (Array.isArray(reportData) ? reportData.length : 0)} Records Found
                             </span>
                         </h2>
                     </div>
@@ -542,7 +547,7 @@ const Reports = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                                {reportType === 'bills' && (
+                                {reportType === 'bills' && reportData?.invoices && Array.isArray(reportData.invoices) && (
                                     <>
                                         {reportData.invoices.slice(0, 50).map((inv, idx) => (
                                             <tr key={`inv-${idx}`} className="group hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
@@ -559,7 +564,7 @@ const Reports = () => {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {reportData.cancelled.slice(0, 50).map((can, idx) => (
+                                        {reportData?.cancelled && Array.isArray(reportData.cancelled) && reportData.cancelled.slice(0, 50).map((can, idx) => (
                                             <tr key={`can-${idx}`} className="group hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition-colors">
                                                 <td className="px-8 py-5 text-sm font-black text-rose-600 dark:text-rose-400 tracking-tighter">{can.billNumber || `CAN-${can.id}`}</td>
                                                 <td className="px-8 py-5 text-sm font-bold text-slate-400 dark:text-slate-500 tabular-nums">{new Date(can.originalCreatedAt).toLocaleDateString('en-CA')}</td>
@@ -576,7 +581,7 @@ const Reports = () => {
                                         ))}
                                     </>
                                 )}
-                                {reportType === 'collections' && reportData.slice(0, 50).map((p, idx) => (
+                                {reportType === 'collections' && Array.isArray(reportData) && reportData.slice(0, 50).map((p, idx) => (
                                     <tr key={`p-${idx}`} className="group hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors">
                                         <td className="px-8 py-5 text-sm font-bold text-slate-500 dark:text-slate-400 tabular-nums">{formatDate(p.paymentDate)}</td>
                                         <td className="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tighter">{p.invoice?.order?.billNumber || p.invoice?.invoiceNumber || 'N/A'}</td>
@@ -591,7 +596,7 @@ const Reports = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {reportType === 'stock_history' && reportData.slice(0, 50).map((item, idx) => (
+                                {reportType === 'stock_history' && Array.isArray(reportData) && reportData.slice(0, 50).map((item, idx) => (
                                     <tr key={`sh-${idx}`} className="group hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
                                         <td className="px-8 py-5 text-sm font-bold text-slate-500 dark:text-slate-400 tabular-nums">{new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
                                         <td className="px-8 py-5 text-sm font-black text-slate-900 dark:text-white">{item.product?.name || '—'}</td>
@@ -606,7 +611,7 @@ const Reports = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {reportType === 'current_stock' && reportData.slice(0, 50).map((p, idx) => (
+                                {reportType === 'current_stock' && Array.isArray(reportData) && reportData.slice(0, 50).map((p, idx) => (
                                     <tr key={`cs-${idx}`} className="group hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-colors">
                                         <td className="px-8 py-5 font-mono text-xs text-indigo-500">{p.sku || '—'}</td>
                                         <td className="px-8 py-5 text-sm font-black text-slate-900 dark:text-white">{p.name || '—'}</td>
@@ -614,7 +619,7 @@ const Reports = () => {
                                         <td className="px-8 py-5 text-right font-black text-lg text-indigo-600 dark:text-indigo-400 tabular-nums">{p.stock || 0}</td>
                                     </tr>
                                 ))}
-                                {(reportType === 'bills' ? (reportData.invoices.length + reportData.cancelled.length) : reportData.length) === 0 && (
+                                {(reportType === 'bills' ? ((reportData?.invoices?.length || 0) + (reportData?.cancelled?.length || 0)) : (Array.isArray(reportData) ? reportData.length : 0)) === 0 && (
                                     <tr>
                                         <td colSpan="5" className="px-8 py-20 text-center">
                                             <div className="flex flex-col items-center justify-center">

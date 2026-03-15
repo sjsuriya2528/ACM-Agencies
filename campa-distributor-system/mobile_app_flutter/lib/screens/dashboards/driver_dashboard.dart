@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/quick_action_card.dart';
 import '../delivery/my_deliveries_screen.dart';
+import '../order/view_orders_screen.dart';
 import '../collection/collect_payment_screen.dart';
 import '../retailers_screen.dart';
 import '../order/create_order_screen.dart';
@@ -204,11 +205,24 @@ class _DriverDashboardState extends State<DriverDashboard> {
         QuickActionCard(
           title: 'My Deliveries',
           desc: 'View current tasks and manage route',
-          icon: LucideIcons.package,
+          icon: LucideIcons.truck,
           gradient: [Theme.of(context).primaryColor, Theme.of(context).primaryColor.withOpacity(0.8)],
           onTap: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const MyDeliveriesScreen()),
+            );
+            _fetchStats();
+          },
+        ),
+        const SizedBox(height: 16),
+        QuickActionCard(
+          title: 'Track Orders',
+          desc: 'View status of all your orders',
+          icon: LucideIcons.package,
+          gradient: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const ViewOrdersScreen(myOrdersOnly: true)),
             );
             _fetchStats();
           },
