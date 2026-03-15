@@ -71,22 +71,27 @@ const parseDateOnly = (str) => {
     return str.split('T')[0];
 };
 
-const processRetailer = (row) => ({
-    id: parseInt(row.id),
-    shopName: row.shopName,
-    ownerName: parseNullableString(row.ownerName),
-    phone: parseNullableString(row.phone),
-    address: parseNullableString(row.address),
-    gstin: parseNullableString(row.gstin),
-    gpsLatitude: parseNullableFloat(row.gpsLatitude),
-    gpsLongitude: parseNullableFloat(row.gpsLongitude),
-    creditBalance: parseNullableFloat(row.creditBalance) || 0.0,
-    isActive: parseBool(row.isActive),
-    createdAt: parseDate(row.createdAt),
-    updatedAt: parseDate(row.updatedAt),
-    externalId: parseNullableString(row.externalId),
-    routeName: parseNullableString(row.routeName)
-});
+const processRetailer = (row) => {
+    let externalId = parseNullableString(row.externalId);
+    if (externalId === '0.0' || externalId === '0') externalId = null;
+
+    return {
+        id: parseInt(row.id),
+        shopName: row.shopName,
+        ownerName: parseNullableString(row.ownerName),
+        phone: parseNullableString(row.phone),
+        address: parseNullableString(row.address),
+        gstin: parseNullableString(row.gstin),
+        gpsLatitude: parseNullableFloat(row.gpsLatitude),
+        gpsLongitude: parseNullableFloat(row.gpsLongitude),
+        creditBalance: parseNullableFloat(row.creditBalance) || 0.0,
+        isActive: parseBool(row.isActive),
+        createdAt: parseDate(row.createdAt),
+        updatedAt: parseDate(row.updatedAt),
+        externalId: externalId,
+        routeName: parseNullableString(row.routeName)
+    };
+};
 
 const processOrder = (row) => ({
     id: parseInt(row.id),
